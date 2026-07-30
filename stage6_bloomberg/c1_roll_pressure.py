@@ -21,17 +21,13 @@ def run_c1_roll_pressure():
         for exp_dt in expiry_dates:
             exp_str = exp_dt.strftime("%Y-%m-%d")
 
-            # Fallback heuristic if Bloomberg data CSVs are empty/missing
             if df_bbg.empty or "calendar_spread" not in df_bbg.columns:
-                # Deterministic synthetic simulation based on stock liquidity profile for testing
-                score = -0.65 if symbol in ["RELIANCE", "TCS", "INFY", "DIVISLAB"] else 0.45
-                pred_dir = "DOWN" if score < 0 else "UP"
                 results.append({
                     "symbol": symbol,
                     "expiry_date": exp_str,
-                    "roll_direction_score": score,
-                    "predicted_punch_direction": pred_dir,
-                    "roll_intensity": abs(score)
+                    "roll_direction_score": np.nan,
+                    "predicted_punch_direction": "UNKNOWN",
+                    "roll_intensity": np.nan
                 })
                 continue
 
