@@ -1,11 +1,8 @@
 """
-setup.py — Build script for order_book_cpp pybind11 C++ extension module.
-Supports MSVC and MinGW compilers.
-
-Build commands:
-  MSVC:  python stage4_clob/cpp/setup.py build_ext --inplace
-  MinGW: python stage4_clob/cpp/setup.py build_ext --compiler=mingw32 --inplace
-  Or:    python stage4_clob/cpp/build_mingw.py
+setup.py — Multi-module build script for C++ PyBind11 extensions:
+- order_book_cpp
+- clob_replay_engine
+- line_parser_cpp
 """
 import sys
 from setuptools import setup
@@ -20,13 +17,25 @@ ext_modules = [
         cxx_std=14,
         extra_compile_args=compile_args
     ),
+    Pybind11Extension(
+        "clob_replay_engine",
+        ["stage4_clob/cpp/clob_replay_engine.cpp"],
+        cxx_std=14,
+        extra_compile_args=compile_args
+    ),
+    Pybind11Extension(
+        "line_parser_cpp",
+        ["stage1_parse/cpp/line_parser_cpp.cpp"],
+        cxx_std=14,
+        extra_compile_args=compile_args
+    ),
 ]
 
 setup(
-    name="order_book_cpp",
+    name="nse_cpp_accelerators",
     version="1.0",
     author="Antigravity",
-    description="C++ PyBind11 OrderBook Extension",
+    description="C++ PyBind11 Microstructure Accelerators",
     ext_modules=ext_modules,
     cmdclass={"build_ext": build_ext},
 )

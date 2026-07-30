@@ -1,15 +1,5 @@
 """
 main.py — Master Pipeline Runner for NSE Expiry Day Dynamics & VWAP Settlement Anomalies.
-
-Usage:
-  python main.py --stage parse              # Run Stage 1 (parse raw files)
-  python main.py --stage enrich             # Run Stage 2 (enrichment)
-  python main.py --stage analyze            # Run Stage 3 (trade-level analysis)
-  python main.py --stage clob               # Run Stage 4 (CLOB reconstruction)
-  python main.py --stage clob-analyze       # Run Stage 5 (CLOB-based analysis)
-  python main.py --stage bloomberg          # Run Stage 6 (Bloomberg analysis)
-  python main.py --stage report             # Run Stage 7 (generate report & charts)
-  python main.py --stage all                # Run entire pipeline end-to-end
 """
 import argparse
 from stage1_parse.run_parse_all import run_parse
@@ -21,7 +11,7 @@ from stage6_bloomberg.run_bloomberg_analysis import run_bloomberg
 from stage7_report.generate_report import generate_report
 
 def main():
-    parser = argparse.ArgumentParser(description="NSE Expiry Day VWAP Analysis Pipeline")
+    parser = argparse.ArgumentParser(description="NSE Expiry Day VWAP Analysis Pipeline (H1-H30)")
     parser.add_argument(
         "--stage",
         choices=["parse", "enrich", "analyze", "clob", "clob-analyze", "bloomberg", "report", "all"],
@@ -29,7 +19,7 @@ def main():
         help="Stage of the pipeline to run"
     )
     parser.add_argument("--date", help="Process a single date in DDMMYYYY format")
-    parser.add_argument("--symbol", help="Process a single symbol (for CLOB stage)")
+    parser.add_argument("--symbol", help="Process a single symbol")
     args = parser.parse_args()
 
     stg = args.stage
