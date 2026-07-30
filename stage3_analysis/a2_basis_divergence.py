@@ -1,11 +1,11 @@
 """
-a2_basis_divergence.py — Basis volatility, divergence metrics, and statistical tests (H1, H2).
+a2_basis_divergence.py — Basis volatility, divergence metrics, and paired statistical tests (H1, H2).
 """
 import os
 import pandas as pd
 import numpy as np
 from scipy import stats
-from config.settings import RESULTS_DIR
+from config.settings import RESULTS_DIR, EXPIRY_CONTROL_PAIRS
 
 def run_a2_basis_divergence():
     in_csv = os.path.join(RESULTS_DIR, "a1_vwap_trajectory.csv")
@@ -16,7 +16,6 @@ def run_a2_basis_divergence():
     print("[ANALYSIS A2] Analyzing Basis Volatility & Divergence...")
     df = pd.read_csv(in_csv)
 
-    # Group by symbol, trade_date, is_expiry, liquidity_group
     grouped = df.groupby(["symbol", "trade_date", "is_expiry", "liquidity_group"])
 
     metrics = []
@@ -46,21 +45,40 @@ def run_a2_basis_divergence():
     out_csv = os.path.join(RESULTS_DIR, "a2_basis_divergence.csv")
     res_df.to_csv(out_csv, index=False)
 
-    # Statistical Tests
-    expiry_vol = res_df[res_df["is_expiry"] == True]["basis_std_dev"]
-    control_vol = res_df[res_df["is_expiry"] == False]["basis_std_dev"]
-
     print("\n--- HYPOTHESIS TESTS (A2) ---")
-    if len(expiry_vol) > 0 and len(control_vol) > 0:
-        t_stat, p_val = stats.ttest_ind(expiry_vol, control_vol)
-        print(f"[H1] Basis Volatility Expiry vs Control: t-stat={t_stat:.4f}, p-val={p_val:.4e}")
+    # Paired t-test using EXPIRY_CONTROL_PAIRS
+    expiry_vols = []
+    control_vols = []
+    
+    # Map dates to DDMMYYYY format
+    res_df["date_ddmmyyyy"] = pd.to_datetime(res_df["trade_date"]).dt.strftime("%d%m%Y")
 
+    for exp_date, ctl_date in EXPIRY_CONTROL_PAIRS:
+        exp_sub = res_df[res_df["date_ddmmyyyy"] == exp_date]
+        ctl_sub = res_df[res_df["date_ddmmyyyy"] == ctl_date]
+        
+        merged_pair = exp_sub.merge(ctl_sub, on="symbol", suffixes=("_exp", "_ctl"))
+        for _, r in merged_pair.iterrows():
+            expiry_vols.append(r["basis_std_dev_exp"])
+            control_vols.append(r["basis_std_dev_ctl"])
+
+    if len(expiry_vols) > 1:
+        # H1: Paired t-test
+        t_stat, p_val = stats.ttest_rel(expiry_vols, control_vols)
+        w_stat, w_pval = stats.wilcoxon(expiry_vols, control_vols)
+        diffs = np.array(expiry_vols) - np.array(control_vols)
+        cohen_d = np.mean(diffs) / (np.std(diffs, ddof=1) + 1e-8)
+
+        print(f"[H1 Paired t-test] t-stat={t_stat:.4f}, p-val={p_val:.4e}, Cohen's d={cohen_d:.4f}")
+        print(f"[H1 Wilcoxon Signed-Rank] W-stat={w_stat:.4f}, p-val={w_pval:.4e}")
+
+    # H2: Illiquid vs Liquid basis vol on expiry
     liquid_exp = res_df[(res_df["is_expiry"] == True) & (res_df["liquidity_group"] == "Liquid")]["basis_std_dev"]
     illiquid_exp = res_df[(res_df["is_expiry"] == True) & (res_df["liquidity_group"] == "Illiquid")]["basis_std_dev"]
 
     if len(liquid_exp) > 0 and len(illiquid_exp) > 0:
-        t_stat2, p_val2 = stats.ttest_ind(illiquid_exp, liquid_exp)
-        print(f"[H2] Illiquid vs Liquid Basis Vol on Expiry: t-stat={t_stat2:.4f}, p-val={p_val2:.4e}")
+        u_stat, p_val2 = stats.mannwhitneyu(illiquid_exp, liquid_exp)
+        print(f"[H2 Mann-Whitney U] Illiquid vs Liquid Basis Vol: U-stat={u_stat:.4f}, p-val={p_val2:.4e}")
 
     print(f"[DONE] Saved A2 results to {out_csv}")
     return res_df
