@@ -16,5 +16,6 @@ def get_spark(app_name="NSE_ExpiryDayAnalysis"):
         .config("spark.local.dir", SPARK_LOCAL_DIR)
         .config("spark.sql.parquet.compression.codec", "snappy")
         .config("spark.driver.maxResultSize", "4g")
+        .config("spark.sql.sources.partitionOverwriteMode", "dynamic")
         .getOrCreate()
     )
