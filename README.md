@@ -2,7 +2,7 @@
 
 Empirical market microstructure analysis pipeline for NSE tick-level order/trade data and Bloomberg Terminal roll/spread metrics.
 
-Designed and optimized for **single-machine execution** (i7 8th Gen, 24 GB RAM, Windows) using PySpark local mode, PyArrow, and a high-performance C++/Numba Limit Order Book engine.
+Built with PySpark, PyArrow, and a high-performance C++/Numba Limit Order Book engine.
 
 ---
 
@@ -108,7 +108,7 @@ python stage4_clob/cpp/setup.py build_ext --inplace
 
 ### 2. Execution Options
 
-Run the full pipeline end-to-end on your machine:
+Run the full pipeline end-to-end:
 ```bash
 python main.py --stage all
 ```
@@ -122,4 +122,10 @@ python main.py --stage clob         # Stage 4: Replay CLOB & take 1s snapshots
 python main.py --stage clob-analyze # Stage 5: CLOB-based microstructure analysis (H12-H19)
 python main.py --stage bloomberg    # Stage 6: Bloomberg roll pressure integration (H20-H23)
 python main.py --stage report       # Stage 7: Run hypothesis tests & generate report + charts
+```
+
+Run a specific date or symbol:
+```bash
+python main.py --stage parse --date 27012022
+python main.py --stage clob --symbol RELIANCE --date 27012022
 ```
