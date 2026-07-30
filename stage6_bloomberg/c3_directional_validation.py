@@ -32,7 +32,7 @@ def run_c3_directional_validation():
 
     results = []
 
-    cols_c1 = ["symbol", "expiry_date", "predicted_punch_direction", "roll_intensity"]
+    cols_c1 = ["symbol", "expiry_date", "predicted_punch_direction", "roll_intensity", "roll_direction_score"]
     for r in df_c1[cols_c1].itertuples(index=False):
         symbol = r.symbol
         exp_date = r.expiry_date
@@ -76,7 +76,7 @@ def run_c3_directional_validation():
         results.append({
             "symbol": symbol,
             "trade_date": exp_date,
-            "roll_direction_score": r["roll_direction_score"],
+            "roll_direction_score": r.roll_direction_score,
             "roll_intensity": intensity,
             "predicted_punch_dir": pred_dir,
             "vwap_drift_bps": vwap_drift_bps,
