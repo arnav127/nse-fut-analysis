@@ -31,6 +31,11 @@ def parse_fao_trades(date_str, spark=None):
         spark = get_spark()
 
     df_raw = spark.read.text(pattern)
+    # High-Performance Predicate Pushdown on raw string
+    df_raw_filtered = df_raw.filter(
+        (F.substring(F.col("value"), 38, 10).isin(TARGET_SYMBOLS_RAW)) &
+        (F.trim(F.substring(F.col("value"), 48, 6)) == "FUTSTK")
+    )
 
     select_exprs = []
     for field_name, start, length, dtype in FAO_TRADES_SCHEMA:
@@ -39,12 +44,7 @@ def parse_fao_trades(date_str, spark=None):
             col_expr = col_expr.cast(dtype)
         select_exprs.append(col_expr.alias(field_name))
 
-    df_parsed = df_raw.select(*select_exprs)
-
-    df_filtered = df_parsed.filter(
-        (F.col("symbol").isin(TARGET_SYMBOLS_RAW)) &
-        (F.trim(F.col("instrument")) == "FUTSTK")
-    ).withColumn("symbol", F.trim(F.col("symbol")))
+    df_filtered = df_raw_filtered.select(*select_exprs).withColumn("symbol", F.trim(F.col("symbol")))
 
     df_filtered.write.mode("overwrite").parquet(out_dir)
     print(f"[DONE] Saved parsed FAO Trades to {out_dir}")

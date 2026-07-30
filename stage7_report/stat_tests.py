@@ -28,10 +28,9 @@ def _evaluate_paired_hypothesis(h_id, desc, file_name, col_name):
         ctl_sub = df[df["date_ddmmyyyy"] == ctl_d]
         merged = exp_sub.merge(ctl_sub, on="symbol", suffixes=("_exp", "_ctl"))
 
-        for _, r in merged.iterrows():
-            if not np.isnan(r[f"{col_name}_exp"]) and not np.isnan(r[f"{col_name}_ctl"]):
-                exp_vals.append(r[f"{col_name}_exp"])
-                ctl_vals.append(r[f"{col_name}_ctl"])
+        valid = merged[merged[f"{col_name}_exp"].notna() & merged[f"{col_name}_ctl"].notna()]
+        exp_vals.extend(valid[f"{col_name}_exp"].values)
+        ctl_vals.extend(valid[f"{col_name}_ctl"].values)
 
     if len(exp_vals) < 2:
         return None

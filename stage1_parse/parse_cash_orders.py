@@ -28,6 +28,11 @@ def parse_cash_orders(date_str, spark=None):
         spark = get_spark()
 
     df_raw = spark.read.text(in_file)
+    # High-Performance Predicate Pushdown on raw string (avoids extracting/casting 17 columns on 98% non-target rows)
+    df_raw_filtered = df_raw.filter(
+        (F.substring(F.col("value"), 39, 10).isin(TARGET_SYMBOLS_RAW)) &
+        (F.trim(F.substring(F.col("value"), 49, 2)) == CASH_SERIES_FILTER)
+    )
 
     select_exprs = []
     for field_name, start, length, dtype in CM_ORDERS_SCHEMA:
@@ -36,13 +41,7 @@ def parse_cash_orders(date_str, spark=None):
             col_expr = col_expr.cast(dtype)
         select_exprs.append(col_expr.alias(field_name))
 
-    df_parsed = df_raw.select(*select_exprs)
-
-    # Filter to target symbols and EQ series
-    df_filtered = df_parsed.filter(
-        (F.col("symbol").isin(TARGET_SYMBOLS_RAW)) &
-        (F.trim(F.col("series")) == CASH_SERIES_FILTER)
-    ).withColumn("symbol", F.trim(F.col("symbol")))
+    df_filtered = df_raw_filtered.select(*select_exprs).withColumn("symbol", F.trim(F.col("symbol")))
 
     df_filtered.write.mode("overwrite").parquet(out_dir)
     print(f"[DONE] Saved parsed CASH Orders to {out_dir}")

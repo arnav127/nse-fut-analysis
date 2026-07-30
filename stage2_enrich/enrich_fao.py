@@ -62,7 +62,7 @@ def enrich_fao_orders(spark=None):
     df = df.withColumn("activity_label", F.coalesce(act_map[F.col("activity_type")], F.lit("Unknown")))
     df = df.withColumn("liquidity_group", F.when(F.col("symbol").isin(LIQUID_SYMBOLS), "Liquid").otherwise("Illiquid"))
 
-    df.write.mode("overwrite").partitionBy("trade_date").parquet(out_path)
+    df.write.mode("overwrite").partitionBy("symbol", "trade_date").parquet(out_path)
     print(f"[DONE] Enriched FAO Orders saved to {out_path}")
 
 def enrich_fao_trades(spark=None):
@@ -106,5 +106,5 @@ def enrich_fao_trades(spark=None):
     df = df.withColumn("sell_algo_type", F.coalesce(a_map[F.col("sell_algo_indicator")], F.lit("Unknown")))
     df = df.withColumn("liquidity_group", F.when(F.col("symbol").isin(LIQUID_SYMBOLS), "Liquid").otherwise("Illiquid"))
 
-    df.write.mode("overwrite").partitionBy("trade_date").parquet(out_path)
+    df.write.mode("overwrite").partitionBy("symbol", "trade_date").parquet(out_path)
     print(f"[DONE] Enriched FAO Trades saved to {out_path}")

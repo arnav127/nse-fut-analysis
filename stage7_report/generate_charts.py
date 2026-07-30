@@ -159,7 +159,7 @@ def generate_all_charts():
             y_pos = np.arange(len(df_stat))
             ax.errorbar(df_stat["effect_size_cohen_d"], y_pos, xerr=0.15, fmt='o', color=COLOR_EXPIRY, ecolor='gray', elinewidth=2, capsize=4)
             ax.set_yticks(y_pos)
-            ax.set_yticklabels([f"{r['hypothesis_id']}: {r['description'][:35]}..." for _, r in df_stat.iterrows()])
+            ax.set_yticklabels([f"{hid}: {str(desc)[:35]}..." for hid, desc in zip(df_stat["hypothesis_id"], df_stat["description"])])
             ax.axvline(0, color='red', linestyle='--')
             ax.set_xlabel("Effect Size (Cohen's d)")
             ax.set_title("Figure 10: Hypothesis Testing Forest Plot (H1-H30 Effect Sizes)")
