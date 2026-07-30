@@ -58,9 +58,8 @@ def run_a2_basis_divergence():
         ctl_sub = res_df[res_df["date_ddmmyyyy"] == ctl_date]
         
         merged_pair = exp_sub.merge(ctl_sub, on="symbol", suffixes=("_exp", "_ctl"))
-        for _, r in merged_pair.iterrows():
-            expiry_vols.append(r["basis_std_dev_exp"])
-            control_vols.append(r["basis_std_dev_ctl"])
+        expiry_vols.extend(merged_pair["basis_std_dev_exp"].values)
+        control_vols.extend(merged_pair["basis_std_dev_ctl"].values)
 
     if len(expiry_vols) > 1:
         # H1: Paired t-test

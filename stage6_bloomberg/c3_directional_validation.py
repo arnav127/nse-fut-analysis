@@ -32,11 +32,12 @@ def run_c3_directional_validation():
 
     results = []
 
-    for _, r in df_c1.iterrows():
-        symbol = r["symbol"]
-        exp_date = r["expiry_date"]
-        pred_dir = r["predicted_punch_direction"]
-        intensity = r["roll_intensity"]
+    cols_c1 = ["symbol", "expiry_date", "predicted_punch_direction", "roll_intensity"]
+    for r in df_c1[cols_c1].itertuples(index=False):
+        symbol = r.symbol
+        exp_date = r.expiry_date
+        pred_dir = r.predicted_punch_direction
+        intensity = r.roll_intensity
 
         vwap_drift_bps = 0.0
         book_imbalance = 0.0

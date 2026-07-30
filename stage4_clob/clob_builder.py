@@ -75,24 +75,30 @@ def build_clob_for_symbol_date(symbol, date_str):
     snapshots = []
     last_snap_second = -1
 
-    for _, row in combined_events.iterrows():
-        event_kind = row["event_kind"]
-        t_time = row["trade_time"]
+    # 2. Replay loop using fast columnar iteration (~50x faster than df.iterrows())
+    cols_order = [
+        "event_kind", "trade_time", "order_number", "activity_type", "buy_sell",
+        "limit_price", "volume_original", "buy_order_number", "sell_order_number",
+        "trade_quantity", "txn_datetime", "activity_label"
+    ]
+    for ev in combined_events[cols_order].itertuples(index=False):
+        event_kind = ev.event_kind
+        t_time = ev.trade_time
 
         if event_kind == 1:
             # Process order event
             book.process_event(
-                row["order_number"],
-                int(row["activity_type"]),
-                row["buy_sell"],
-                float(row["limit_price"]),
-                int(row["volume_original"])
+                ev.order_number,
+                int(ev.activity_type),
+                ev.buy_sell,
+                float(ev.limit_price),
+                int(ev.volume_original)
             )
         elif event_kind == 2:
             # Process trade execution (remove filled qty from both buy and sell orders)
-            t_qty = int(row["trade_quantity"])
-            book.remove_traded_qty(row["buy_order_number"], t_qty)
-            book.remove_traded_qty(row["sell_order_number"], t_qty)
+            t_qty = int(ev.trade_quantity)
+            book.remove_traded_qty(ev.buy_order_number, t_qty)
+            book.remove_traded_qty(ev.sell_order_number, t_qty)
 
         # Emit 1-second snapshots during settlement window
         if SETTLEMENT_WINDOW_START <= t_time <= SETTLEMENT_WINDOW_END:
@@ -103,10 +109,10 @@ def build_clob_for_symbol_date(symbol, date_str):
                 last_snap_second = sec_from_1500
                 snap = book.snapshot(depth=10)
                 snap["symbol"] = symbol
-                snap["trade_date"] = str(row["txn_datetime"])[:10]
-                snap["timestamp"] = row["txn_datetime"]
+                snap["trade_date"] = str(ev.txn_datetime)[:10]
+                snap["timestamp"] = ev.txn_datetime
                 snap["seconds_from_1500"] = sec_from_1500
-                snap["triggering_event"] = row["activity_label"]
+                snap["triggering_event"] = ev.activity_label
                 snapshots.append(snap)
 
     if snapshots:

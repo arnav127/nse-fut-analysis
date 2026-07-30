@@ -67,8 +67,9 @@ def run_b4_price_impact():
 
         snap_map = df_snap.set_index("time_sec")["midpoint"].to_dict()
 
-        for _, tr in df_trades.iterrows():
-            t_sec = tr["time_sec"]
+        cols_trades = ["time_sec", "trade_price", "trade_quantity"]
+        for tr in df_trades[cols_trades].itertuples(index=False):
+            t_sec = tr.time_sec
             prev_sec = t_sec - pd.Timedelta(seconds=1)
             next_sec = t_sec + pd.Timedelta(seconds=1)
 
@@ -77,11 +78,11 @@ def run_b4_price_impact():
 
             if p_before and p_after and p_before > 0:
                 # Signed trade side: +1 if trade at/above midpoint, -1 otherwise
-                side = 1.0 if tr["trade_price"] >= p_before else -1.0
+                side = 1.0 if tr.trade_price >= p_before else -1.0
                 impact = ((p_after - p_before) / p_before) * 10000.0 * side
                 impacts_bps.append(impact)
 
-                signed_flows.append(side * tr["trade_quantity"])
+                signed_flows.append(side * tr.trade_quantity)
                 midpoint_changes.append((p_after - p_before) / p_before * 10000.0)
 
         # 2. Estimate Kyle's Lambda via OLS regression: midpoint_change = lambda * signed_order_flow
