@@ -98,25 +98,22 @@ def run_all_hypothesis_tests():
             res["significant_bonferroni"] = res["p_value"] < alpha_adj
             results.append(res)
         else:
-            # Fallback deterministic synthetic statistical calculation if underlying stage output CSV not generated yet
-            sim_t = 3.45 if int(h_id[1:]) % 2 == 1 else 2.85
-            sim_p = 0.00085 if int(h_id[1:]) % 2 == 1 else 0.0032
             results.append({
                 "hypothesis_id": h_id,
                 "description": desc,
-                "test_name": "Paired t-test (Simulated)",
-                "test_stat": sim_t,
-                "p_value": sim_p,
-                "effect_size_cohen_d": 0.65,
-                "n_obs": 120,
+                "test_name": "Not Calculated (Missing Data)",
+                "test_stat": np.nan,
+                "p_value": np.nan,
+                "effect_size_cohen_d": np.nan,
+                "n_obs": 0,
                 "alpha_adj": alpha_adj,
-                "significant_bonferroni": sim_p < alpha_adj
+                "significant_bonferroni": False
             })
 
     summary_df = pd.DataFrame(results)
 
     # Benjamini-Hochberg FDR Correction
-    p_vals = summary_df["p_value"].values
+    p_vals = summary_df["p_value"].fillna(1.0).values
     n = len(p_vals)
     sorted_idx = np.argsort(p_vals)
     fdr_thresholds = (np.arange(1, n + 1) / n) * alpha
