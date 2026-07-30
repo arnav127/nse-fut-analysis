@@ -1,12 +1,16 @@
 """
 Create and configure local SparkSession.
 """
+import os
 from pyspark.sql import SparkSession
 from config.settings import (
     SPARK_DRIVER_MEMORY, SPARK_SQL_SHUFFLE_PARTITIONS, SPARK_LOCAL_DIR
 )
 
 def get_spark(app_name="NSE_ExpiryDayAnalysis"):
+    # Ensure compatibility with Java 24 / Java 25 (prevents Subject.getSubject UnsupportedOperationException)
+    os.environ.setdefault("SPARK_USER", os.environ.get("USERNAME", "user"))
+    os.environ.setdefault("HADOOP_USER_NAME", os.environ.get("USERNAME", "user"))
     return (
         SparkSession.builder
         .master("local[*]")

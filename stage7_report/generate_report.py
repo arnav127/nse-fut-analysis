@@ -7,6 +7,18 @@ from config.settings import RESULTS_DIR
 from stage7_report.stat_tests import run_all_hypothesis_tests
 from stage7_report.generate_charts import generate_all_charts
 
+def _df_to_markdown(df):
+    if df.empty:
+        return "*No data available*"
+    cols = list(df.columns)
+    lines = [
+        "| " + " | ".join(cols) + " |",
+        "| " + " | ".join(["---"] * len(cols)) + " |"
+    ]
+    for row in df.itertuples(index=False):
+        lines.append("| " + " | ".join(str(val) for val in row) + " |")
+    return "\n".join(lines)
+
 def generate_report():
     print("\n=== STAGE 7: CONSOLIDATED RESEARCH PAPER GENERATION ===")
 
@@ -30,7 +42,7 @@ def generate_report():
         f.write("holding large futures or options positions to influence the cash market closing VWAP.\n\n")
 
         f.write("## 2. Comprehensive Hypothesis Testing Results (H1 – H30)\n\n")
-        f.write(summary_df.to_markdown(index=False))
+        f.write(_df_to_markdown(summary_df))
         f.write("\n\n")
 
         f.write("## 3. Publication Figures & Visual Artifacts\n\n")
