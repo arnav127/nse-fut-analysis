@@ -1,0 +1,36 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyd
+*.so
+*.dll
+*.exe
+
+# C++ Build artifacts
+build/
+*.obj
+*.o
+*.a
+*.lib
+
+# Data files & intermediate storage
+data/raw/
+data/parsed/
+data/enriched/
+data/clob_snapshots/
+data/spark_tmp/
+data/results/*.csv
+data/results/*.png
+data/results/*.pdf
+
+# Keep results directory structure
+!data/results/.gitkeep
+!data/raw/.gitkeep
+!data/bloomberg/.gitkeep
+
+# IDEs & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
