@@ -61,7 +61,10 @@ def parse_file_with_duckdb(
     pattern = str(Path(RAW_DATA_DIR) / f"{file_prefix}_{date_str}*.DAT*")
     matched = glob.glob(pattern)
     if not matched:
-        print(f"[WARN] No raw file matching {pattern} found.")
+        if category == "fao_orders":
+            print(f"[INFO] Optional {category.upper()} for date={date_str} omitted (not required for pipeline analysis).")
+        else:
+            print(f"[WARN] No raw file matching {pattern} found.")
         return
 
     in_file = matched[0].replace("\\", "/")
