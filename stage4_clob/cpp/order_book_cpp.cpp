@@ -204,6 +204,74 @@ public:
 
         return snap;
     }
+
+    py::list process_event_stream(
+        py::array_t<int32_t> event_kind_arr,
+        py::array_t<int64_t> order_num_arr,
+        py::array_t<int32_t> act_type_arr,
+        py::array_t<int32_t> side_code_arr,
+        py::array_t<double> price_arr,
+        py::array_t<int64_t> vol_arr,
+        py::array_t<int64_t> buy_num_arr,
+        py::array_t<int64_t> sell_num_arr,
+        py::array_t<int64_t> trade_qty_arr,
+        py::array_t<int32_t> t_sec_arr,
+        int start_sec,
+        int end_sec,
+        const std::string& symbol,
+        const std::string& trade_date,
+        int depth = 10
+    ) {
+        py::list snaps;
+        auto kind_buf = event_kind_arr.unchecked<1>();
+        auto order_num_buf = order_num_arr.unchecked<1>();
+        auto act_type_buf = act_type_arr.unchecked<1>();
+        auto side_buf = side_code_arr.unchecked<1>();
+        auto price_buf = price_arr.unchecked<1>();
+        auto vol_buf = vol_arr.unchecked<1>();
+        auto buy_num_buf = buy_num_arr.unchecked<1>();
+        auto sell_num_buf = sell_num_arr.unchecked<1>();
+        auto trade_qty_buf = trade_qty_arr.unchecked<1>();
+        auto sec_buf = t_sec_arr.unchecked<1>();
+
+        int n = (int)kind_buf.shape(0);
+        int last_snap_sec = -1;
+
+        for (int i = 0; i < n; ++i) {
+            int ek = kind_buf(i);
+            int sec = sec_buf(i);
+
+            if (ek == 1) {
+                int sc = side_buf(i);
+                std::string s = (sc == 1) ? "B" : "S";
+                process_event(order_num_buf(i), act_type_buf(i), s, price_buf(i), vol_buf(i));
+            } else if (ek == 2) {
+                int64_t tq = trade_qty_buf(i);
+                remove_traded_qty(buy_num_buf(i), tq);
+                remove_traded_qty(sell_num_buf(i), tq);
+            }
+
+            if (sec >= start_sec && sec <= end_sec) {
+                int sec_from_1500 = sec - start_sec;
+                if (sec_from_1500 != last_snap_sec) {
+                    last_snap_sec = sec_from_1500;
+                    py::dict snap = snapshot(depth);
+                    snap["symbol"] = symbol;
+                    snap["trade_date"] = trade_date;
+                    snap["seconds_from_1500"] = sec_from_1500;
+
+                    int h = 15 + sec_from_1500 / 3600;
+                    int m = (sec_from_1500 % 3600) / 60;
+                    int s = sec_from_1500 % 60;
+                    char buf[16];
+                    snprintf(buf, sizeof(buf), "%02d:%02d:%02d", h, m, s);
+                    snap["snapshot_time"] = std::string(buf);
+                    snaps.append(snap);
+                }
+            }
+        }
+        return snaps;
+    }
 };
 
 PYBIND11_MODULE(order_book_cpp, m) {
@@ -213,5 +281,10 @@ PYBIND11_MODULE(order_book_cpp, m) {
         .def(py::init<>())
         .def("process_event", &OrderBookCpp::process_event, py::arg("order_number"), py::arg("activity_type"), py::arg("side"), py::arg("price"), py::arg("qty"))
         .def("remove_traded_qty", &OrderBookCpp::remove_traded_qty, py::arg("order_number"), py::arg("traded_qty"))
+        .def("process_event_stream", &OrderBookCpp::process_event_stream,
+             py::arg("event_kind_arr"), py::arg("order_num_arr"), py::arg("act_type_arr"), py::arg("side_code_arr"),
+             py::arg("price_arr"), py::arg("vol_arr"), py::arg("buy_num_arr"), py::arg("sell_num_arr"),
+             py::arg("trade_qty_arr"), py::arg("t_sec_arr"), py::arg("start_sec"), py::arg("end_sec"),
+             py::arg("symbol"), py::arg("trade_date"), py::arg("depth") = 10)
         .def("snapshot", &OrderBookCpp::snapshot, py::arg("depth") = 10);
 }

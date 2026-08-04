@@ -1,50 +1,61 @@
 """
-b5_book_asymmetry.py — Directional order book pressure & asymmetry (H18, H19).
+b5_book_asymmetry.py — Directional order book pressure & asymmetry (H18, H19) via DuckDB.
 """
 import os
 import glob
+import duckdb
 import pandas as pd
-import numpy as np
 from config.settings import CLOB_DATA_DIR, RESULTS_DIR, EXPIRY_THURSDAYS_DDMMYYYY
 
 def run_b5_book_asymmetry():
-    pattern = os.path.join(CLOB_DATA_DIR, "*", "date=*", "snapshots.parquet")
+    pattern = os.path.join(CLOB_DATA_DIR, "*", "date=*", "snapshots.parquet").replace("\\", "/")
     files = glob.glob(pattern)
     if not files:
         print("[WARN] No CLOB snapshot files found for B5 analysis.")
-        return
+        return pd.DataFrame()
 
-    print(f"[ANALYSIS B5] Analyzing Directional Book Pressure & Asymmetry...")
+    print(f"[ANALYSIS B5] Analyzing Directional Book Pressure & Asymmetry (DuckDB C++)...")
+    expiry_list = ", ".join([f"'{d}'" for d in EXPIRY_THURSDAYS_DDMMYYYY])
 
-    metrics = []
-    for f in files:
-        try:
-            df = pd.read_parquet(f)
-        except Exception:
-            continue
+    query = f"""
+    WITH base AS (
+        SELECT 
+            symbol, trade_date,
+            LN((total_bid_volume + 1.0) / (total_ask_volume + 1.0)) AS log_pressure,
+            book_imbalance,
+            snapshot_time
+        FROM read_parquet('{pattern}')
+    ),
+    means AS (
+        SELECT symbol, trade_date, AVG(book_imbalance) AS mean_imbalance
+        FROM base
+        GROUP BY symbol, trade_date
+    )
+    SELECT 
+        b.symbol,
+        b.trade_date,
+        (strftime(CAST(b.trade_date AS DATE), '%d%m%Y') IN ({expiry_list})) AS is_expiry,
+        AVG(b.log_pressure) AS mean_log_pressure,
+        AVG(CASE WHEN SIGN(b.book_imbalance) = SIGN(m.mean_imbalance) THEN 1.0 ELSE 0.0 END) AS book_pressure_persistence,
+        LAST(b.book_imbalance ORDER BY b.snapshot_time) AS final_imbalance
+    FROM base b
+    JOIN means m ON b.symbol = m.symbol AND b.trade_date = m.trade_date
+    GROUP BY b.symbol, b.trade_date
+    ORDER BY b.symbol, b.trade_date
+    """
 
-        if df.empty or "total_bid_volume" not in df.columns:
-            continue
+    conn = duckdb.connect()
+    try:
+        res_df = conn.execute(query).df()
+        out_csv = os.path.join(RESULTS_DIR, "b5_book_asymmetry.csv")
+        res_df.to_csv(out_csv, index=False)
+        print(f"[DONE-DUCKDB] Saved B5 results ({len(res_df)} rows) to {out_csv}")
+        return res_df
+    except Exception as e:
+        print(f"[ERROR-DUCKDB] B5 Book Asymmetry failed: {e}")
+        return pd.DataFrame()
+    finally:
+        conn.close()
 
-        symbol = df["symbol"].iloc[0]
-        trade_date = df["trade_date"].iloc[0]
-        date_clean = pd.to_datetime(trade_date).strftime("%d%m%Y")
-        is_expiry = date_clean in EXPIRY_THURSDAYS_DDMMYYYY
-
-        log_pressure = np.log((df["total_bid_volume"] + 1) / (df["total_ask_volume"] + 1))
-        same_sign = (np.sign(df["book_imbalance"]) == np.sign(df["book_imbalance"].mean())).mean()
-
-        metrics.append({
-            "symbol": symbol,
-            "trade_date": trade_date,
-            "is_expiry": is_expiry,
-            "mean_log_pressure": log_pressure.mean(),
-            "book_pressure_persistence": same_sign,
-            "final_imbalance": df["book_imbalance"].iloc[-1] if len(df) > 0 else 0
-        })
-
-    res_df = pd.DataFrame(metrics)
-    out_csv = os.path.join(RESULTS_DIR, "b5_book_asymmetry.csv")
-    res_df.to_csv(out_csv, index=False)
-    print(f"[DONE] Saved B5 results to {out_csv}")
-    return res_df
+if __name__ == "__main__":
+    run_b5_book_asymmetry()

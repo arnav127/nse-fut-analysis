@@ -1,39 +1,56 @@
 """
-a7_ioc_aggressiveness.py — IOC and Market order execution aggressiveness (H10, H11).
+a7_ioc_aggressiveness.py — IOC and Market order execution aggressiveness (H10, H11) via DuckDB.
 """
 import os
-from pyspark.sql import functions as F
+import glob
+import duckdb
+import pandas as pd
 from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR
-from utils.spark_session import get_spark
 
-def run_a7_ioc_aggressiveness(spark=None):
-    if spark is None:
-        spark = get_spark()
+def run_a7_ioc_aggressiveness():
+    orders_path = os.path.join(ENRICHED_DATA_DIR, "cash_orders").replace("\\", "/")
+    files = glob.glob(f"{orders_path}/*/*.parquet")
+    if not files:
+        print("[WARN] Enriched orders missing for A7 analysis (DuckDB).")
+        return pd.DataFrame()
 
-    orders_path = os.path.join(ENRICHED_DATA_DIR, "cash_orders")
-    if not os.path.exists(orders_path):
-        print("[WARN] Enriched orders missing for A7 analysis.")
-        return
+    print("[ANALYSIS A7] Analyzing IOC Aggressiveness & Market Orders (DuckDB C++)...")
 
-    print("[ANALYSIS A7] Analyzing IOC Aggressiveness & Market Orders...")
-    df = spark.read.parquet(orders_path).filter(
-        (F.col("is_settlement_window") == True) & (F.col("activity_type") == 1)
+    query = f"""
+    WITH base AS (
+        SELECT 
+            symbol, trade_date, time_bucket, is_expiry,
+            CASE WHEN EXTRACT(MINUTE FROM txn_datetime) >= 25 THEN 'Late' ELSE 'Early' END AS sub_window,
+            (ioc_flag = 'Y') AS is_ioc,
+            (mkt_order_flag = 'Y') AS is_mkt
+        FROM read_parquet('{orders_path}/*/*.parquet')
+        WHERE is_settlement_window = True AND activity_type = 1
     )
+    SELECT 
+        symbol, trade_date, time_bucket, sub_window, is_expiry,
+        COUNT(*) AS total_orders,
+        SUM(CASE WHEN is_ioc THEN 1 ELSE 0 END) AS ioc_orders,
+        SUM(CASE WHEN is_mkt THEN 1 ELSE 0 END) AS market_orders,
+        SUM(CASE WHEN is_ioc THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS ioc_ratio,
+        SUM(CASE WHEN is_mkt THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS mkt_ratio,
+        (SUM(CASE WHEN is_ioc THEN 1 ELSE 0 END) + SUM(CASE WHEN is_mkt THEN 1 ELSE 0 END)) * 1.0 / COUNT(*) AS aggressive_ratio
+    FROM base
+    GROUP BY symbol, trade_date, time_bucket, sub_window, is_expiry
+    ORDER BY symbol, trade_date, time_bucket
+    """
 
-    # Sub-window classification: Early (15:00-15:24) vs Late (15:25-15:30)
-    df = df.withColumn("minute_num", F.minute(F.col("txn_datetime")))
-    df = df.withColumn("sub_window", F.when(F.col("minute_num") >= 25, "Late").otherwise("Early"))
+    conn = duckdb.connect()
+    try:
+        res_pd = conn.execute(query).df()
+        out_csv = os.path.join(RESULTS_DIR, "a7_ioc_aggressiveness.csv")
+        res_pd.to_csv(out_csv, index=False)
+        print(f"[DONE-DUCKDB] Saved A7 results ({len(res_pd)} rows) to {out_csv}")
+        return res_pd
+    except Exception as e:
+        print(f"[ERROR-DUCKDB] A7 IOC Aggressiveness failed: {e}")
+        return pd.DataFrame()
+    finally:
+        conn.close()
 
-    grouped = df.groupBy("symbol", "trade_date", "time_bucket", "sub_window", "is_expiry").agg(
-        F.count("*").alias("total_orders"),
-        F.sum(F.when(F.col("ioc_flag") == "Y", 1).otherwise(0)).alias("ioc_orders"),
-        F.sum(F.when(F.col("mkt_order_flag") == "Y", 1).otherwise(0)).alias("market_orders")
-    ).withColumn("ioc_ratio", F.col("ioc_orders") / F.col("total_orders"))\
-     .withColumn("mkt_ratio", F.col("market_orders") / F.col("total_orders"))\
-     .withColumn("aggressive_ratio", (F.col("ioc_orders") + F.col("market_orders")) / F.col("total_orders"))
-
-    res_pd = grouped.toPandas()
-    out_csv = os.path.join(RESULTS_DIR, "a7_ioc_aggressiveness.csv")
-    res_pd.to_csv(out_csv, index=False)
-    print(f"[DONE] Saved A7 results to {out_csv}")
-    return res_pd
+if __name__ == "__main__":
+    run_a7_ioc_aggressiveness()

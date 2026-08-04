@@ -1,58 +1,87 @@
 """
-a1_vwap_trajectory.py — Reconstruct 1-minute cumulative & instantaneous VWAP and basis trajectory.
+a1_vwap_trajectory.py — Reconstruct 1-minute cumulative & instantaneous VWAP and basis trajectory (H1, H2) via DuckDB.
 """
 import os
-from pyspark.sql import functions as F
-from pyspark.sql.window import Window
-from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR
-from utils.spark_session import get_spark
+import glob
+import duckdb
+import pandas as pd
+from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR, LIQUID_SYMBOLS
 
-def run_a1_vwap_trajectory(spark=None):
-    if spark is None:
-        spark = get_spark()
+def run_a1_vwap_trajectory():
+    cash_path = os.path.join(ENRICHED_DATA_DIR, "cash_trades").replace("\\", "/")
+    fao_path = os.path.join(ENRICHED_DATA_DIR, "fao_trades").replace("\\", "/")
 
-    cash_path = os.path.join(ENRICHED_DATA_DIR, "cash_trades")
-    fao_path = os.path.join(ENRICHED_DATA_DIR, "fao_trades")
+    cash_files = glob.glob(f"{cash_path}/*/*.parquet")
+    fao_files = glob.glob(f"{fao_path}/*/*.parquet")
+    if not cash_files or not fao_files:
+        print("[WARN] Enriched trades missing for A1 analysis (DuckDB).")
+        return pd.DataFrame()
 
-    if not os.path.exists(cash_path) or not os.path.exists(fao_path):
-        print("[WARN] Enriched trades missing for A1 analysis.")
-        return
+    print("[ANALYSIS A1] Computing VWAP Trajectory & Basis (DuckDB C++)...")
+    liq_list = ", ".join([f"'{s}'" for s in LIQUID_SYMBOLS])
 
-    print("[ANALYSIS A1] Computing VWAP Trajectory & Basis...")
+    query = f"""
+    WITH cash_min AS (
+        SELECT 
+            symbol, trade_date, time_bucket, is_expiry,
+            SUM(trade_price * trade_quantity) AS cash_value,
+            SUM(trade_quantity) AS cash_volume,
+            COUNT(*) AS cash_trades,
+            SUM(trade_price * trade_quantity) / SUM(trade_quantity) AS cash_inst_vwap,
+            SUM(SUM(trade_price * trade_quantity)) OVER (
+                PARTITION BY symbol, trade_date 
+                ORDER BY time_bucket 
+                ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+            ) AS cum_cash_value,
+            SUM(SUM(trade_quantity)) OVER (
+                PARTITION BY symbol, trade_date 
+                ORDER BY time_bucket 
+                ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
+            ) AS cum_cash_volume
+        FROM read_parquet('{cash_path}/*/*.parquet')
+        WHERE is_settlement_window = True
+        GROUP BY symbol, trade_date, time_bucket, is_expiry
+    ),
+    fao_min AS (
+        SELECT 
+            symbol, trade_date, time_bucket,
+            SUM(trade_price * trade_quantity) / SUM(trade_quantity) AS futures_avg_price
+        FROM read_parquet('{fao_path}/*/*.parquet')
+        WHERE is_settlement_window = True
+        GROUP BY symbol, trade_date, time_bucket
+    )
+    SELECT 
+        c.symbol,
+        c.trade_date,
+        c.time_bucket,
+        c.is_expiry,
+        c.cash_value,
+        c.cash_volume,
+        c.cash_trades,
+        c.cash_inst_vwap,
+        c.cum_cash_value,
+        c.cum_cash_volume,
+        c.cum_cash_value / c.cum_cash_volume AS cash_cum_vwap,
+        f.futures_avg_price,
+        ((f.futures_avg_price - (c.cum_cash_value / c.cum_cash_volume)) / (c.cum_cash_value / c.cum_cash_volume)) * 10000.0 AS basis_bps,
+        CASE WHEN c.symbol IN ({liq_list}) THEN 'Liquid' ELSE 'Illiquid' END AS liquidity_group
+    FROM cash_min c
+    JOIN fao_min f ON c.symbol = f.symbol AND c.trade_date = f.trade_date AND c.time_bucket = f.time_bucket
+    ORDER BY c.symbol, c.trade_date, c.time_bucket
+    """
 
-    # Load cash trades in settlement window
-    cash_df = spark.read.parquet(cash_path).filter(F.col("is_settlement_window") == True)
-    # Load futures trades in settlement window
-    fao_df = spark.read.parquet(fao_path).filter(F.col("is_settlement_window") == True)
+    conn = duckdb.connect()
+    try:
+        res_pd = conn.execute(query).df()
+        out_csv = os.path.join(RESULTS_DIR, "a1_vwap_trajectory.csv")
+        res_pd.to_csv(out_csv, index=False)
+        print(f"[DONE-DUCKDB] Saved A1 results ({len(res_pd)} rows) to {out_csv}")
+        return res_pd
+    except Exception as e:
+        print(f"[ERROR-DUCKDB] A1 VWAP Trajectory failed: {e}")
+        return pd.DataFrame()
+    finally:
+        conn.close()
 
-    # 1. CASH minute-level aggregations
-    cash_min = cash_df.groupBy("symbol", "trade_date", "time_bucket", "is_expiry", "liquidity_group").agg(
-        F.sum(F.col("trade_price") * F.col("trade_quantity")).alias("cash_value"),
-        F.sum("trade_quantity").alias("cash_volume"),
-        F.count("*").alias("cash_trades")
-    ).withColumn("cash_inst_vwap", F.col("cash_value") / F.col("cash_volume"))
-
-    # Cumulative VWAP window partition by (symbol, trade_date) ordered by time_bucket
-    cum_window = Window.partitionBy("symbol", "trade_date").orderBy("time_bucket").rowsBetween(Window.unboundedPreceding, Window.currentRow)
-
-    cash_min = cash_min.withColumn("cum_cash_value", F.sum("cash_value").over(cum_window))\
-                       .withColumn("cum_cash_volume", F.sum("cash_volume").over(cum_window))\
-                       .withColumn("cash_cum_vwap", F.col("cum_cash_value") / F.col("cum_cash_volume"))
-
-    # 2. FAO minute-level aggregations
-    fao_min = fao_df.groupBy("symbol", "trade_date", "time_bucket").agg(
-        F.sum(F.col("trade_price") * F.col("trade_quantity")).alias("fao_value"),
-        F.sum("trade_quantity").alias("fao_volume"),
-        F.count("*").alias("fao_trades")
-    ).withColumn("futures_avg_price", F.col("fao_value") / F.col("fao_volume"))
-
-    # 3. Join CASH and FAO
-    result_df = cash_min.join(fao_min, on=["symbol", "trade_date", "time_bucket"], how="inner")\
-                        .withColumn("basis_bps", ((F.col("futures_avg_price") - F.col("cash_cum_vwap")) / F.col("cash_cum_vwap")) * 10000.0)
-
-    # Save to CSV
-    out_csv = os.path.join(RESULTS_DIR, "a1_vwap_trajectory.csv")
-    result_pd = result_df.toPandas()
-    result_pd.to_csv(out_csv, index=False)
-    print(f"[DONE] Saved A1 results ({len(result_pd)} rows) to {out_csv}")
-    return result_pd
+if __name__ == "__main__":
+    run_a1_vwap_trajectory()
