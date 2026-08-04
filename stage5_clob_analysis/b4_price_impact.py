@@ -1,21 +1,22 @@
-"""
-b4_price_impact.py — Per-trade price impact analysis & Kyle's Lambda estimation (H17) via DuckDB.
-"""
-import os
+"""Per-trade price impact analysis & Kyle's Lambda estimation (Stage 5 B4, H11-H12)."""
+
 import glob
+from pathlib import Path
+
 import duckdb
 import pandas as pd
-from config.settings import CLOB_DATA_DIR, ENRICHED_DATA_DIR, RESULTS_DIR, EXPIRY_THURSDAYS_DDMMYYYY
 
-def run_b4_price_impact():
-    print("[ANALYSIS B4] Calculating Per-Trade Price Impact & Kyle's Lambda (DuckDB C++)...")
+from config.settings import CLOB_DATA_DIR, ENRICHED_DATA_DIR, EXPIRY_THURSDAYS_DDMMYYYY, RESULTS_DIR
+
+
+def run_b4_price_impact() -> pd.DataFrame:
+    print("[ANALYSIS B4] Calculating Per-Trade Price Impact & Kyle's Lambda...")
     
-    clob_pattern = os.path.join(CLOB_DATA_DIR, "*", "date=*", "snapshots.parquet").replace("\\", "/")
-    trades_path = os.path.join(ENRICHED_DATA_DIR, "cash_trades").replace("\\", "/")
-    out_csv = os.path.join(RESULTS_DIR, "b4_price_impact.csv")
+    clob_pattern = str(Path(CLOB_DATA_DIR) / "*" / "date=*" / "snapshots.parquet").replace("\\", "/")
+    trades_path = str(Path(ENRICHED_DATA_DIR) / "cash_trades").replace("\\", "/")
+    out_csv = Path(RESULTS_DIR) / "b4_price_impact.csv"
 
-    clob_files = glob.glob(clob_pattern)
-    if not clob_files or not glob.glob(f"{trades_path}/*/*.parquet"):
+    if not glob.glob(clob_pattern) or not glob.glob(f"{trades_path}/*/*.parquet"):
         print("[WARN] No CLOB snapshot files found for B4 analysis.")
         df_res = pd.DataFrame(columns=[
             "symbol", "trade_date", "is_expiry", "mean_price_impact_bps",
@@ -24,7 +25,7 @@ def run_b4_price_impact():
         df_res.to_csv(out_csv, index=False)
         return df_res
 
-    expiry_list = ", ".join([f"'{d}'" for d in EXPIRY_THURSDAYS_DDMMYYYY])
+    expiry_list = ", ".join(f"'{d}'" for d in EXPIRY_THURSDAYS_DDMMYYYY)
 
     query = f"""
     WITH trade_deltas AS (
@@ -50,17 +51,16 @@ def run_b4_price_impact():
     ORDER BY symbol, trade_date
     """
 
-    conn = duckdb.connect()
     try:
-        df_res = conn.execute(query).df()
+        with duckdb.connect() as conn:
+            df_res = conn.execute(query).df()
         df_res.to_csv(out_csv, index=False)
         print(f"[DONE-DUCKDB] Saved B4 results ({len(df_res)} rows) to {out_csv}")
         return df_res
-    except Exception as e:
-        print(f"[ERROR-DUCKDB] B4 Price Impact failed: {e}")
+    except Exception as exc:
+        print(f"[ERROR-DUCKDB] B4 Price Impact failed: {exc}")
         return pd.DataFrame()
-    finally:
-        conn.close()
+
 
 if __name__ == "__main__":
     run_b4_price_impact()

@@ -1,20 +1,21 @@
-"""
-a11_amihud_illiquidity.py — Amihud Illiquidity Ratio Analysis (H27) via DuckDB.
-"""
-import os
+"""Amihud Illiquidity Ratio Analysis across settlement windows (Stage 3 A11, H27)."""
+
 import glob
+from pathlib import Path
+
 import duckdb
 import pandas as pd
+
 from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR
 
-def run_a11_amihud_illiquidity():
-    cash_path = os.path.join(ENRICHED_DATA_DIR, "cash_trades").replace("\\", "/")
-    files = glob.glob(f"{cash_path}/*/*.parquet")
-    if not files:
-        print("[WARN] Enriched trades missing for A11 analysis (DuckDB).")
+
+def run_a11_amihud_illiquidity() -> pd.DataFrame:
+    cash_path = str(Path(ENRICHED_DATA_DIR) / "cash_trades").replace("\\", "/")
+    if not glob.glob(f"{cash_path}/*/*.parquet"):
+        print("[WARN] Enriched trades missing for A11 analysis.")
         return pd.DataFrame()
 
-    print("[ANALYSIS A11] Calculating Amihud Illiquidity Ratio (H27) (DuckDB C++)...")
+    print("[ANALYSIS A11] Calculating Amihud Illiquidity Ratio (H27)...")
 
     query = f"""
     WITH min_agg AS (
@@ -43,18 +44,17 @@ def run_a11_amihud_illiquidity():
     ORDER BY symbol, trade_date
     """
 
-    conn = duckdb.connect()
     try:
-        res_pd = conn.execute(query).df()
-        out_csv = os.path.join(RESULTS_DIR, "a11_amihud_illiquidity.csv")
+        with duckdb.connect() as conn:
+            res_pd = conn.execute(query).df()
+        out_csv = Path(RESULTS_DIR) / "a11_amihud_illiquidity.csv"
         res_pd.to_csv(out_csv, index=False)
         print(f"[DONE-DUCKDB] Saved A11 Amihud Illiquidity results to {out_csv}")
         return res_pd
-    except Exception as e:
-        print(f"[ERROR-DUCKDB] A11 Amihud Illiquidity failed: {e}")
+    except Exception as exc:
+        print(f"[ERROR-DUCKDB] A11 Amihud Illiquidity failed: {exc}")
         return pd.DataFrame()
-    finally:
-        conn.close()
+
 
 if __name__ == "__main__":
     run_a11_amihud_illiquidity()

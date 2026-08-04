@@ -1,20 +1,21 @@
-"""
-a3_participant_profile.py — Participant profiling (Custodian, Proprietary, NCNP) (H3, H4) via DuckDB.
-"""
-import os
+"""Participant profiling (Custodian, Proprietary, NCNP) (Stage 3 A3, H13-H14)."""
+
 import glob
+from pathlib import Path
+
 import duckdb
 import pandas as pd
+
 from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR
 
-def run_a3_participant_profile():
-    cash_path = os.path.join(ENRICHED_DATA_DIR, "cash_trades").replace("\\", "/")
-    files = glob.glob(f"{cash_path}/*/*.parquet")
-    if not files:
-        print("[WARN] Enriched trades missing for A3 analysis (DuckDB).")
+
+def run_a3_participant_profile() -> pd.DataFrame:
+    cash_path = str(Path(ENRICHED_DATA_DIR) / "cash_trades").replace("\\", "/")
+    if not glob.glob(f"{cash_path}/*/*.parquet"):
+        print("[WARN] Enriched trades missing for A3 analysis.")
         return pd.DataFrame()
 
-    print("[ANALYSIS A3] Profiling Participant Segment Activity (DuckDB C++)...")
+    print("[ANALYSIS A3] Profiling Participant Segment Activity...")
 
     query = f"""
     WITH buy_side AS (
@@ -43,18 +44,17 @@ def run_a3_participant_profile():
     ORDER BY symbol, trade_date, side, participant_type
     """
 
-    conn = duckdb.connect()
     try:
-        res_pd = conn.execute(query).df()
-        out_csv = os.path.join(RESULTS_DIR, "a3_participant_profile.csv")
+        with duckdb.connect() as conn:
+            res_pd = conn.execute(query).df()
+        out_csv = Path(RESULTS_DIR) / "a3_participant_profile.csv"
         res_pd.to_csv(out_csv, index=False)
         print(f"[DONE-DUCKDB] Saved A3 results ({len(res_pd)} rows) to {out_csv}")
         return res_pd
-    except Exception as e:
-        print(f"[ERROR-DUCKDB] A3 Participant Profile failed: {e}")
+    except Exception as exc:
+        print(f"[ERROR-DUCKDB] A3 Participant Profile failed: {exc}")
         return pd.DataFrame()
-    finally:
-        conn.close()
+
 
 if __name__ == "__main__":
     run_a3_participant_profile()

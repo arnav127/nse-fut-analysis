@@ -1,35 +1,37 @@
-"""
-b6_volume_profile.py — Settlement Volume Profile & Gini Concentration (H29) via DuckDB.
-"""
-import os
+"""Settlement Volume Profile & Gini Concentration (Stage 5 B6, H29)."""
+
 import glob
+from pathlib import Path
+
 import duckdb
-import pandas as pd
 import numpy as np
-from config.settings import CLOB_DATA_DIR, RESULTS_DIR, EXPIRY_THURSDAYS_DDMMYYYY
+import pandas as pd
 
-def _gini_coefficient(x):
-    """Compute Gini coefficient of array x."""
-    x = np.asarray(x, dtype=np.float64)
-    if np.amin(x) < 0:
-        x -= np.amin(x)
-    x += 1e-7
-    x = np.sort(x)
-    n = x.size
-    index = np.arange(1, n + 1)
-    return (np.sum((2 * index - n - 1) * x)) / (n * np.sum(x))
+from config.settings import CLOB_DATA_DIR, EXPIRY_THURSDAYS_DDMMYYYY, RESULTS_DIR
 
-def run_b6_volume_profile():
-    pattern = os.path.join(CLOB_DATA_DIR, "*", "date=*", "snapshots.parquet").replace("\\", "/")
+
+def _gini_coefficient(x: np.ndarray) -> float:
+    x_arr = np.asarray(x, dtype=np.float64)
+    if np.amin(x_arr) < 0:
+        x_arr -= np.amin(x_arr)
+    x_arr += 1e-7
+    x_sorted = np.sort(x_arr)
+    n = x_sorted.size
+    idx = np.arange(1, n + 1)
+    return float(np.sum((2 * idx - n - 1) * x_sorted) / (n * np.sum(x_sorted)))
+
+
+def run_b6_volume_profile() -> pd.DataFrame:
+    pattern = str(Path(CLOB_DATA_DIR) / "*" / "date=*" / "snapshots.parquet").replace("\\", "/")
     files = glob.glob(pattern)
-    out_csv = os.path.join(RESULTS_DIR, "b6_volume_profile.csv")
+    out_csv = Path(RESULTS_DIR) / "b6_volume_profile.csv"
 
     if not files:
         print("[WARN] No CLOB snapshot files found for B6 analysis.")
         return pd.DataFrame()
 
-    print(f"[ANALYSIS B6] Analyzing Settlement Volume Profile & Gini Index (H29) (DuckDB C++)...")
-    expiry_list = ", ".join([f"'{d}'" for d in EXPIRY_THURSDAYS_DDMMYYYY])
+    print("[ANALYSIS B6] Analyzing Settlement Volume Profile & Gini Index (H29)...")
+    expiry_list = ", ".join(f"'{d}'" for d in EXPIRY_THURSDAYS_DDMMYYYY)
 
     query = f"""
     SELECT 
@@ -44,9 +46,10 @@ def run_b6_volume_profile():
     ORDER BY symbol, trade_date, seconds_from_1500
     """
 
-    conn = duckdb.connect()
     try:
-        df_mins = conn.execute(query).df()
+        with duckdb.connect() as conn:
+            df_mins = conn.execute(query).df()
+
         metrics = []
         for (symbol, trade_date, is_expiry), grp in df_mins.groupby(["symbol", "trade_date", "is_expiry"]):
             vol_vals = grp["tot_vol"].values
@@ -59,18 +62,17 @@ def run_b6_volume_profile():
                 "is_expiry": is_expiry,
                 "volume_gini": gini_val,
                 "peak_to_trough_ratio": np.max(vol_vals) / (np.min(vol_vals) + 1e-5),
-                "final_min_share": vol_vals[-1] / (np.sum(vol_vals) + 1e-5)
+                "final_min_share": vol_vals[-1] / (np.sum(vol_vals) + 1e-5),
             })
 
         res_df = pd.DataFrame(metrics)
         res_df.to_csv(out_csv, index=False)
         print(f"[DONE-DUCKDB] Saved B6 results ({len(res_df)} rows) to {out_csv}")
         return res_df
-    except Exception as e:
-        print(f"[ERROR-DUCKDB] B6 Volume Profile failed: {e}")
+    except Exception as exc:
+        print(f"[ERROR-DUCKDB] B6 Volume Profile failed: {exc}")
         return pd.DataFrame()
-    finally:
-        conn.close()
+
 
 if __name__ == "__main__":
     run_b6_volume_profile()

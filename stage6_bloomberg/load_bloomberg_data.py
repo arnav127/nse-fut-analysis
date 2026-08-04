@@ -1,27 +1,33 @@
-"""
-load_bloomberg_data.py — Read exported Bloomberg CSVs into DataFrames.
-"""
-import os
+"""Bloomberg Terminal CSV loader and dataset consolidation utility."""
+
+from pathlib import Path
+
 import pandas as pd
+
 from config.settings import BLOOMBERG_DATA_DIR
 
-def load_calendar_spreads():
-    p = os.path.join(BLOOMBERG_DATA_DIR, "calendar_spreads.csv")
-    return pd.read_csv(p, parse_dates=["date"]) if os.path.exists(p) else pd.DataFrame()
 
-def load_open_interest():
-    p = os.path.join(BLOOMBERG_DATA_DIR, "open_interest.csv")
-    return pd.read_csv(p, parse_dates=["date"]) if os.path.exists(p) else pd.DataFrame()
+def load_calendar_spreads() -> pd.DataFrame:
+    p = Path(BLOOMBERG_DATA_DIR) / "calendar_spreads.csv"
+    return pd.read_csv(p, parse_dates=["date"]) if p.exists() else pd.DataFrame()
 
-def load_cost_of_carry():
-    p = os.path.join(BLOOMBERG_DATA_DIR, "cost_of_carry.csv")
-    return pd.read_csv(p, parse_dates=["date"]) if os.path.exists(p) else pd.DataFrame()
 
-def load_futures_volume():
-    p = os.path.join(BLOOMBERG_DATA_DIR, "futures_volume.csv")
-    return pd.read_csv(p, parse_dates=["date"]) if os.path.exists(p) else pd.DataFrame()
+def load_open_interest() -> pd.DataFrame:
+    p = Path(BLOOMBERG_DATA_DIR) / "open_interest.csv"
+    return pd.read_csv(p, parse_dates=["date"]) if p.exists() else pd.DataFrame()
 
-def build_bloomberg_master():
+
+def load_cost_of_carry() -> pd.DataFrame:
+    p = Path(BLOOMBERG_DATA_DIR) / "cost_of_carry.csv"
+    return pd.read_csv(p, parse_dates=["date"]) if p.exists() else pd.DataFrame()
+
+
+def load_futures_volume() -> pd.DataFrame:
+    p = Path(BLOOMBERG_DATA_DIR) / "futures_volume.csv"
+    return pd.read_csv(p, parse_dates=["date"]) if p.exists() else pd.DataFrame()
+
+
+def build_bloomberg_master() -> pd.DataFrame:
     spreads = load_calendar_spreads()
     oi = load_open_interest()
     coc = load_cost_of_carry()

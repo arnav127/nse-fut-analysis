@@ -1,21 +1,22 @@
-"""
-a6_iceberg_detection.py — Iceberg order detection and hidden liquidity (H9) via DuckDB.
-"""
-import os
+"""Iceberg order detection and hidden liquidity contribution (Stage 3 A6, H19)."""
+
 import glob
+from pathlib import Path
+
 import duckdb
 import pandas as pd
-from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR, LIQUID_SYMBOLS
 
-def run_a6_iceberg_detection():
-    orders_path = os.path.join(ENRICHED_DATA_DIR, "cash_orders").replace("\\", "/")
-    files = glob.glob(f"{orders_path}/*/*.parquet")
-    if not files:
-        print("[WARN] Enriched orders missing for A6 analysis (DuckDB).")
+from config.settings import ENRICHED_DATA_DIR, LIQUID_SYMBOLS, RESULTS_DIR
+
+
+def run_a6_iceberg_detection() -> pd.DataFrame:
+    orders_path = str(Path(ENRICHED_DATA_DIR) / "cash_orders").replace("\\", "/")
+    if not glob.glob(f"{orders_path}/*/*.parquet"):
+        print("[WARN] Enriched orders missing for A6 analysis.")
         return pd.DataFrame()
 
-    print("[ANALYSIS A6] Detecting Iceberg Orders & Hidden Volume (DuckDB C++)...")
-    liq_list = ", ".join([f"'{s}'" for s in LIQUID_SYMBOLS])
+    print("[ANALYSIS A6] Detecting Iceberg Orders & Hidden Volume...")
+    liq_list = ", ".join(f"'{s}'" for s in LIQUID_SYMBOLS)
 
     query = f"""
     WITH base AS (
@@ -46,18 +47,17 @@ def run_a6_iceberg_detection():
     ORDER BY symbol, trade_date, participant_type
     """
 
-    conn = duckdb.connect()
     try:
-        res_pd = conn.execute(query).df()
-        out_csv = os.path.join(RESULTS_DIR, "a6_iceberg_detection.csv")
+        with duckdb.connect() as conn:
+            res_pd = conn.execute(query).df()
+        out_csv = Path(RESULTS_DIR) / "a6_iceberg_detection.csv"
         res_pd.to_csv(out_csv, index=False)
         print(f"[DONE-DUCKDB] Saved A6 results ({len(res_pd)} rows) to {out_csv}")
         return res_pd
-    except Exception as e:
-        print(f"[ERROR-DUCKDB] A6 Iceberg Detection failed: {e}")
+    except Exception as exc:
+        print(f"[ERROR-DUCKDB] A6 Iceberg Detection failed: {exc}")
         return pd.DataFrame()
-    finally:
-        conn.close()
+
 
 if __name__ == "__main__":
     run_a6_iceberg_detection()

@@ -1,20 +1,21 @@
-"""
-a7_ioc_aggressiveness.py — IOC and Market order execution aggressiveness (H10, H11) via DuckDB.
-"""
-import os
+"""Immediate-Or-Cancel (IOC) and Market order execution aggressiveness (Stage 3 A7)."""
+
 import glob
+from pathlib import Path
+
 import duckdb
 import pandas as pd
+
 from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR
 
-def run_a7_ioc_aggressiveness():
-    orders_path = os.path.join(ENRICHED_DATA_DIR, "cash_orders").replace("\\", "/")
-    files = glob.glob(f"{orders_path}/*/*.parquet")
-    if not files:
-        print("[WARN] Enriched orders missing for A7 analysis (DuckDB).")
+
+def run_a7_ioc_aggressiveness() -> pd.DataFrame:
+    orders_path = str(Path(ENRICHED_DATA_DIR) / "cash_orders").replace("\\", "/")
+    if not glob.glob(f"{orders_path}/*/*.parquet"):
+        print("[WARN] Enriched orders missing for A7 analysis.")
         return pd.DataFrame()
 
-    print("[ANALYSIS A7] Analyzing IOC Aggressiveness & Market Orders (DuckDB C++)...")
+    print("[ANALYSIS A7] Analyzing IOC Aggressiveness & Market Orders...")
 
     query = f"""
     WITH base AS (
@@ -39,18 +40,17 @@ def run_a7_ioc_aggressiveness():
     ORDER BY symbol, trade_date, time_bucket
     """
 
-    conn = duckdb.connect()
     try:
-        res_pd = conn.execute(query).df()
-        out_csv = os.path.join(RESULTS_DIR, "a7_ioc_aggressiveness.csv")
+        with duckdb.connect() as conn:
+            res_pd = conn.execute(query).df()
+        out_csv = Path(RESULTS_DIR) / "a7_ioc_aggressiveness.csv"
         res_pd.to_csv(out_csv, index=False)
         print(f"[DONE-DUCKDB] Saved A7 results ({len(res_pd)} rows) to {out_csv}")
         return res_pd
-    except Exception as e:
-        print(f"[ERROR-DUCKDB] A7 IOC Aggressiveness failed: {e}")
+    except Exception as exc:
+        print(f"[ERROR-DUCKDB] A7 IOC Aggressiveness failed: {exc}")
         return pd.DataFrame()
-    finally:
-        conn.close()
+
 
 if __name__ == "__main__":
     run_a7_ioc_aggressiveness()

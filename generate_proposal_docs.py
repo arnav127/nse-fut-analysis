@@ -1,19 +1,20 @@
-"""
-generate_proposal_docs.py — Generate Word (.docx) and LaTeX (.pdf) documents
-containing the research proposal steps and H1-H30 hypotheses for academic review.
-"""
-import os
+"""Generate Word (.docx) and LaTeX (.pdf) proposal & methodology documents for academic review."""
+
+import shutil
 import subprocess
+from pathlib import Path
+from typing import List, Tuple
+
 import docx
-from docx.shared import Inches, Pt, RGBColor
+from docx.enum.table import WD_ALIGN_VERTICAL, WD_TABLE_ALIGNMENT
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.enum.table import WD_TABLE_ALIGNMENT, WD_ALIGN_VERTICAL
 from docx.oxml import OxmlElement, parse_xml
 from docx.oxml.ns import nsdecls, qn
+from docx.shared import Inches, Pt, RGBColor
 
-ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+ROOT_DIR = Path(__file__).resolve().parent
 
-HYPOTHESES = [
+HYPOTHESES: List[Tuple[str, str, str, str, str]] = [
     ("H1", "Expiry Day Basis Volatility Elevation", "Basis volatility is identical on Expiry and Control days", "Basis volatility is significantly higher on Expiry days due to VWAP settlement trading", "Paired t-test & Wilcoxon Signed-Rank"),
     ("H2", "Liquidity Impact on Expiry Basis Volatility", "Illiquid and Liquid stocks experience identical basis volatility elevation", "Illiquid stocks exhibit significantly higher basis volatility on Expiry day than Liquid stocks", "Mann-Whitney U Test"),
     ("H3", "Expiry vs Control Spread Widening", "Bid-Ask spreads remain unchanged between Expiry and Control days", "Bid-Ask spreads widen significantly during the 15:00-15:30 window on Expiry day", "Paired t-test & Wilcoxon Signed-Rank"),
@@ -46,7 +47,7 @@ HYPOTHESES = [
     ("H30", "Expiry Day Intraday Price Reversal Post-15:15 IST", "Price movement post-15:15 is independent of 15:00-15:15 movement", "Prices exhibit significant mean-reverting reversal post-15:15 IST on Expiry day", "Paired t-test & Wilcoxon Signed-Rank"),
 ]
 
-STEPS_TEXT = [
+STEPS_TEXT: List[Tuple[str, List[str]]] = [
     (
         "Step 1: Sample Selection & Experimental Design (10 Symbols x 24 Dates)",
         [
@@ -60,13 +61,13 @@ STEPS_TEXT = [
         [
             "Input Data Format: Ingest fixed-width binary text files (.DAT.gz) from NSE for CASH_Orders, CASH_Trades, FAO_Orders, and FAO_Trades.",
             "Predicate Pushdown: Filter raw strings on symbol substrings and instrument types ('EQ' for Cash, 'FUTSTK' for Futures) before extracting schema columns.",
-            "Column Extraction: Extract 17 standardized fields including Order/Trade numbers, timestamps (Jiffies), prices, volumes, client identity, and algo indicator flags, saving as partitioned Parquet."
+            "Column Extraction: Extract standardized fields including Order/Trade numbers, timestamps (Jiffies), prices, volumes, client identity, and algo indicator flags, saving as partitioned Parquet."
         ]
     ),
     (
         "Step 3: Temporal & Microstructure Enrichment (Stage 2)",
         [
-            "Timestamp Normalization: Convert NSE Jiffies (1/65536th of a second since epoch) into standard Python/Spark timestamps and HH:mm:ss time buckets.",
+            "Timestamp Normalization: Convert NSE Jiffies (1/65536th of a second since epoch) into standard timestamps and HH:mm:ss time buckets.",
             "Currency & Flag Mapping: Convert Paise to INR Rupees (/ 100.0), flag the 30-minute settlement window (15:00-15:30 IST), and identify Expiry vs. Control dates.",
             "Participant & Algo Tagging: Categorize Client Identity into Custodian (Institutional), Proprietary, and NCNP (Retail), and classify Algo Indicator flags into Algo vs. Non-Algo execution.",
             "Dynamic Partitioning: Save enriched datasets partitioned by ['symbol', 'trade_date'] to enable instant single-symbol filter pushdown during downstream CLOB replay."
@@ -120,12 +121,14 @@ STEPS_TEXT = [
     )
 ]
 
-def set_cell_background(cell, fill_color):
+
+def set_cell_background(cell: docx.table._Cell, fill_color: str) -> None:
     tcPr = cell._element.get_or_add_tcPr()
     shd = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{fill_color}"/>')
     tcPr.append(shd)
 
-def set_cell_margins(cell, top=100, bottom=100, left=150, right=150):
+
+def set_cell_margins(cell: docx.table._Cell, top: int = 100, bottom: int = 100, left: int = 150, right: int = 150) -> None:
     tcPr = cell._element.get_or_add_tcPr()
     tcMar = OxmlElement('w:tcMar')
     for m, val in [('w:top', top), ('w:bottom', bottom), ('w:left', left), ('w:right', right)]:
@@ -135,27 +138,25 @@ def set_cell_margins(cell, top=100, bottom=100, left=150, right=150):
         tcMar.append(node)
     tcPr.append(tcMar)
 
-def create_word_document():
-    doc_path = os.path.join(ROOT_DIR, "NSE_Expiry_Day_Analysis_Proposal_and_Steps.docx")
-    print(f"[DOCX] Creating Word Document: {doc_path} ...")
+
+def create_word_document() -> None:
+    doc_path = ROOT_DIR / "NSE_Expiry_Day_Analysis_Proposal_and_Steps.docx"
+    print(f"[DOCX] Creating Word Document: {doc_path}")
     doc = docx.Document()
 
-    # Page Margins (1 inch)
-    sections = doc.sections
-    for s in sections:
+    for s in doc.sections:
         s.top_margin = Inches(1)
         s.bottom_margin = Inches(1)
         s.left_margin = Inches(1)
         s.right_margin = Inches(1)
 
-    # Title
     p_title = doc.add_paragraph()
     p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run_title = p_title.add_run("NSE Expiry Day Dynamics & VWAP Settlement Anomalies")
     run_title.font.name = "Calibri"
     run_title.font.size = Pt(22)
     run_title.font.bold = True
-    run_title.font.color.rgb = RGBColor(26, 54, 93) # Deep Navy
+    run_title.font.color.rgb = RGBColor(26, 54, 93)
 
     p_sub = doc.add_paragraph()
     p_sub.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -165,9 +166,8 @@ def create_word_document():
     run_sub.font.italic = True
     run_sub.font.color.rgb = RGBColor(74, 85, 104)
 
-    doc.add_paragraph() # spacing
+    doc.add_paragraph()
 
-    # Section 1: Rough Processing Steps
     h1 = doc.add_heading("1. Methodology & Rough Processing Steps (Pipeline Overview)", level=1)
     h1.style.font.color.rgb = RGBColor(26, 54, 93)
 
@@ -187,9 +187,8 @@ def create_word_document():
             p_b.style.font.name = "Calibri"
             p_b.style.font.size = Pt(10.5)
 
-    doc.add_paragraph() # spacing
+    doc.add_paragraph()
 
-    # Section 2: 30 Formal Hypotheses
     h2 = doc.add_heading("2. Complete List of Tested Hypotheses (H1 – H30)", level=1)
     h2.style.font.color.rgb = RGBColor(26, 54, 93)
 
@@ -200,7 +199,6 @@ def create_word_document():
     p_h_intro.style.font.name = "Calibri"
     p_h_intro.style.font.size = Pt(11)
 
-    # Table creation
     table = doc.add_table(rows=1, cols=5)
     table.alignment = WD_TABLE_ALIGNMENT.CENTER
     table.autofit = False
@@ -243,10 +241,11 @@ def create_word_document():
     doc.save(doc_path)
     print(f"[DONE] Saved Word document to: {doc_path}")
 
-def create_latex_document():
-    tex_path = os.path.join(ROOT_DIR, "NSE_Expiry_Day_Analysis_Proposal_and_Steps.tex")
-    pdf_path = os.path.join(ROOT_DIR, "NSE_Expiry_Day_Analysis_Proposal_and_Steps.pdf")
-    print(f"[LATEX] Creating LaTeX Document: {tex_path} ...")
+
+def create_latex_document() -> None:
+    tex_path = ROOT_DIR / "NSE_Expiry_Day_Analysis_Proposal_and_Steps.tex"
+    pdf_path = ROOT_DIR / "NSE_Expiry_Day_Analysis_Proposal_and_Steps.pdf"
+    print(f"[LATEX] Creating LaTeX Document: {tex_path}")
 
     lines = [
         r"\documentclass[11pt,a4paper]{article}",
@@ -324,24 +323,22 @@ def create_latex_document():
         f.write("\n".join(lines))
     print(f"[DONE] Saved LaTeX source to: {tex_path}")
 
-    # Compile LaTeX to PDF
-    pdflatex_exe = r"C:\Users\arnav\AppData\Roaming\TinyTeX\bin\windows\pdflatex.exe"
-    if not os.path.exists(pdflatex_exe):
-        pdflatex_exe = "pdflatex"
+    pdflatex_exe = shutil.which("pdflatex") or r"C:\Users\arnav\AppData\Roaming\TinyTeX\bin\windows\pdflatex.exe"
 
-    print(f"[COMPILE] Compiling LaTeX to PDF via {pdflatex_exe} ...")
-    try:
-        # Run pdflatex twice for longtable headers/page numbering
-        for _ in range(2):
-            subprocess.run(
-                [pdflatex_exe, "-interaction=nonstopmode", "NSE_Expiry_Day_Analysis_Proposal_and_Steps.tex"],
-                cwd=ROOT_DIR,
-                check=True,
-                stdout=subprocess.DEVNULL
-            )
-        print(f"[SUCCESS] Compiled PDF successfully: {pdf_path}")
-    except Exception as e:
-        print(f"[WARN] Error compiling LaTeX: {e}")
+    if Path(pdflatex_exe).exists():
+        print(f"[COMPILE] Compiling LaTeX to PDF via {pdflatex_exe} ...")
+        try:
+            for _ in range(2):
+                subprocess.run(
+                    [pdflatex_exe, "-interaction=nonstopmode", "NSE_Expiry_Day_Analysis_Proposal_and_Steps.tex"],
+                    cwd=ROOT_DIR,
+                    check=True,
+                    stdout=subprocess.DEVNULL
+                )
+            print(f"[SUCCESS] Compiled PDF successfully: {pdf_path}")
+        except Exception as exc:
+            print(f"[WARN] Error compiling LaTeX: {exc}")
+
 
 if __name__ == "__main__":
     create_word_document()

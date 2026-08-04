@@ -1,21 +1,23 @@
-"""
-b5_book_asymmetry.py — Directional order book pressure & asymmetry (H18, H19) via DuckDB.
-"""
-import os
+"""Directional order book pressure & asymmetry (Stage 5 B5, H22)."""
+
 import glob
+from pathlib import Path
+
 import duckdb
 import pandas as pd
-from config.settings import CLOB_DATA_DIR, RESULTS_DIR, EXPIRY_THURSDAYS_DDMMYYYY
 
-def run_b5_book_asymmetry():
-    pattern = os.path.join(CLOB_DATA_DIR, "*", "date=*", "snapshots.parquet").replace("\\", "/")
+from config.settings import CLOB_DATA_DIR, EXPIRY_THURSDAYS_DDMMYYYY, RESULTS_DIR
+
+
+def run_b5_book_asymmetry() -> pd.DataFrame:
+    pattern = str(Path(CLOB_DATA_DIR) / "*" / "date=*" / "snapshots.parquet").replace("\\", "/")
     files = glob.glob(pattern)
     if not files:
         print("[WARN] No CLOB snapshot files found for B5 analysis.")
         return pd.DataFrame()
 
-    print(f"[ANALYSIS B5] Analyzing Directional Book Pressure & Asymmetry (DuckDB C++)...")
-    expiry_list = ", ".join([f"'{d}'" for d in EXPIRY_THURSDAYS_DDMMYYYY])
+    print("[ANALYSIS B5] Analyzing Directional Book Pressure & Asymmetry...")
+    expiry_list = ", ".join(f"'{d}'" for d in EXPIRY_THURSDAYS_DDMMYYYY)
 
     query = f"""
     WITH base AS (
@@ -44,18 +46,17 @@ def run_b5_book_asymmetry():
     ORDER BY b.symbol, b.trade_date
     """
 
-    conn = duckdb.connect()
     try:
-        res_df = conn.execute(query).df()
-        out_csv = os.path.join(RESULTS_DIR, "b5_book_asymmetry.csv")
+        with duckdb.connect() as conn:
+            res_df = conn.execute(query).df()
+        out_csv = Path(RESULTS_DIR) / "b5_book_asymmetry.csv"
         res_df.to_csv(out_csv, index=False)
         print(f"[DONE-DUCKDB] Saved B5 results ({len(res_df)} rows) to {out_csv}")
         return res_df
-    except Exception as e:
-        print(f"[ERROR-DUCKDB] B5 Book Asymmetry failed: {e}")
+    except Exception as exc:
+        print(f"[ERROR-DUCKDB] B5 Book Asymmetry failed: {exc}")
         return pd.DataFrame()
-    finally:
-        conn.close()
+
 
 if __name__ == "__main__":
     run_b5_book_asymmetry()
