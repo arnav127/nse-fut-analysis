@@ -100,7 +100,10 @@ def run_c3_directional_validation():
         print(f"[H20 Binomial Test] VWAP Direction Match Rate: {vwap_matches}/{n_obs} ({vwap_matches/n_obs*100:.1f}%), p-val={binom_res.pvalue:.4e}")
 
         # H21: Spearman correlation between roll intensity and |vwap_drift_bps|
-        rho, rho_p = stats.spearmanr(df_res["roll_intensity"], np.abs(df_res["vwap_drift_bps"]))
+        if df_res["roll_intensity"].nunique() > 1 and df_res["vwap_drift_bps"].nunique() > 1:
+            rho, rho_p = stats.spearmanr(df_res["roll_intensity"], np.abs(df_res["vwap_drift_bps"]))
+        else:
+            rho, rho_p = np.nan, np.nan
         print(f"[H21 Spearman Correlation] Roll Intensity vs |VWAP Drift|: rho={rho:.4f}, p-val={rho_p:.4e}")
 
         # H22: Binomial test for Book Asymmetry match rate > 50%
