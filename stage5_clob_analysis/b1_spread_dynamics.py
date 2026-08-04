@@ -1,22 +1,24 @@
-"""
-b1_spread_dynamics.py — Bid-Ask spread dynamics and expansion (H12, H13) via DuckDB.
-"""
-import os
+"""Bid-Ask spread dynamics and expansion across settlement windows (Stage 5 B1, H3-H4)."""
+
 import glob
+from pathlib import Path
+
 import duckdb
 import pandas as pd
-from config.settings import CLOB_DATA_DIR, RESULTS_DIR, LIQUID_SYMBOLS, EXPIRY_THURSDAYS_DDMMYYYY
 
-def run_b1_spread_dynamics():
-    pattern = os.path.join(CLOB_DATA_DIR, "*", "date=*", "snapshots.parquet").replace("\\", "/")
+from config.settings import CLOB_DATA_DIR, EXPIRY_THURSDAYS_DDMMYYYY, LIQUID_SYMBOLS, RESULTS_DIR
+
+
+def run_b1_spread_dynamics() -> pd.DataFrame:
+    pattern = str(Path(CLOB_DATA_DIR) / "*" / "date=*" / "snapshots.parquet").replace("\\", "/")
     files = glob.glob(pattern)
     if not files:
         print("[WARN] No CLOB snapshot files found for B1 analysis.")
         return pd.DataFrame()
 
-    print(f"[ANALYSIS B1] Analyzing Bid-Ask Spread Dynamics ({len(files)} files via DuckDB C++)...")
-    liq_list = ", ".join([f"'{s}'" for s in LIQUID_SYMBOLS])
-    expiry_list = ", ".join([f"'{d}'" for d in EXPIRY_THURSDAYS_DDMMYYYY])
+    print(f"[ANALYSIS B1] Analyzing Bid-Ask Spread Dynamics ({len(files)} files)...")
+    liq_list = ", ".join(f"'{s}'" for s in LIQUID_SYMBOLS)
+    expiry_list = ", ".join(f"'{d}'" for d in EXPIRY_THURSDAYS_DDMMYYYY)
 
     query = f"""
     WITH snap_agg AS (
@@ -47,18 +49,17 @@ def run_b1_spread_dynamics():
     ORDER BY symbol, trade_date
     """
 
-    conn = duckdb.connect()
     try:
-        res_df = conn.execute(query).df()
-        out_csv = os.path.join(RESULTS_DIR, "b1_spread_dynamics.csv")
+        with duckdb.connect() as conn:
+            res_df = conn.execute(query).df()
+        out_csv = Path(RESULTS_DIR) / "b1_spread_dynamics.csv"
         res_df.to_csv(out_csv, index=False)
         print(f"[DONE-DUCKDB] Saved B1 results ({len(res_df)} rows) to {out_csv}")
         return res_df
-    except Exception as e:
-        print(f"[ERROR-DUCKDB] B1 Spread Dynamics failed: {e}")
+    except Exception as exc:
+        print(f"[ERROR-DUCKDB] B1 Spread Dynamics failed: {exc}")
         return pd.DataFrame()
-    finally:
-        conn.close()
+
 
 if __name__ == "__main__":
     run_b1_spread_dynamics()

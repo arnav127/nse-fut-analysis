@@ -1,20 +1,21 @@
-"""
-a9_trade_clustering.py — Trade Size Distribution & Concentration (H25) via DuckDB.
-"""
-import os
+"""Trade size distribution and concentration metrics (Stage 3 A9, H25)."""
+
 import glob
+from pathlib import Path
+
 import duckdb
 import pandas as pd
+
 from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR
 
-def run_a9_trade_clustering():
-    cash_path = os.path.join(ENRICHED_DATA_DIR, "cash_trades").replace("\\", "/")
-    files = glob.glob(f"{cash_path}/*/*.parquet")
-    if not files:
-        print("[WARN] Enriched trades missing for A9 analysis (DuckDB).")
+
+def run_a9_trade_clustering() -> pd.DataFrame:
+    cash_path = str(Path(ENRICHED_DATA_DIR) / "cash_trades").replace("\\", "/")
+    if not glob.glob(f"{cash_path}/*/*.parquet"):
+        print("[WARN] Enriched trades missing for A9 analysis.")
         return pd.DataFrame()
 
-    print("[ANALYSIS A9] Analyzing Trade Size Concentration & Clustering (H25) (DuckDB C++)...")
+    print("[ANALYSIS A9] Analyzing Trade Size Concentration & Clustering (H25)...")
 
     query = f"""
     SELECT 
@@ -32,18 +33,17 @@ def run_a9_trade_clustering():
     ORDER BY symbol, trade_date
     """
 
-    conn = duckdb.connect()
     try:
-        res_pd = conn.execute(query).df()
-        out_csv = os.path.join(RESULTS_DIR, "a9_trade_clustering.csv")
+        with duckdb.connect() as conn:
+            res_pd = conn.execute(query).df()
+        out_csv = Path(RESULTS_DIR) / "a9_trade_clustering.csv"
         res_pd.to_csv(out_csv, index=False)
         print(f"[DONE-DUCKDB] Saved A9 results ({len(res_pd)} rows) to {out_csv}")
         return res_pd
-    except Exception as e:
-        print(f"[ERROR-DUCKDB] A9 Trade Clustering failed: {e}")
+    except Exception as exc:
+        print(f"[ERROR-DUCKDB] A9 Trade Clustering failed: {exc}")
         return pd.DataFrame()
-    finally:
-        conn.close()
+
 
 if __name__ == "__main__":
     run_a9_trade_clustering()

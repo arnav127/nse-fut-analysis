@@ -1,7 +1,8 @@
-"""
-main.py — Master Pipeline Runner for NSE Expiry Day Dynamics & VWAP Settlement Anomalies.
-"""
+"""Master Pipeline Runner for NSE Expiry Day Dynamics & VWAP Settlement Anomalies."""
+
 import argparse
+import sys
+
 from stage1_parse.run_parse_all import run_parse
 from stage2_enrich.run_enrich_all import run_enrich
 from stage3_analysis.run_all_analysis import run_analysis
@@ -10,46 +11,57 @@ from stage5_clob_analysis.run_clob_analysis import run_clob_analysis
 from stage6_bloomberg.run_bloomberg_analysis import run_bloomberg
 from stage7_report.generate_report import generate_report
 
-def main():
-    parser = argparse.ArgumentParser(description="NSE Expiry Day VWAP Analysis Pipeline (H1-H30)")
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(
+        description="NSE Expiry Day VWAP Microstructure Pipeline (H1-H30)",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     parser.add_argument(
         "--stage",
         choices=["parse", "enrich", "analyze", "clob", "clob-analyze", "bloomberg", "report", "all"],
         default="all",
-        help="Stage of the pipeline to run"
+        help="Stage of the pipeline to run",
     )
     parser.add_argument("--date", help="Process a single date in DDMMYYYY format")
     parser.add_argument("--symbol", help="Process a single symbol")
-    parser.add_argument(
-        "--engine",
-        choices=["duckdb", "spark"],
-        default="duckdb",
-        help="Execution engine for Stage 1 & Stage 2 (default: duckdb for zero-JVM C++ speed)"
-    )
-    args = parser.parse_args()
+    return parser
 
+
+def main() -> None:
+    parser = build_parser()
+    args = parser.parse_args()
     stg = args.stage
 
-    if stg in ("parse", "all"):
-        run_parse(single_date=args.date, engine=args.engine)
+    try:
+        if stg in ("parse", "all"):
+            run_parse(single_date=args.date)
 
-    if stg in ("enrich", "all"):
-        run_enrich(engine=args.engine)
+        if stg in ("enrich", "all"):
+            run_enrich()
 
-    if stg in ("analyze", "all"):
-        run_analysis()
+        if stg in ("analyze", "all"):
+            run_analysis()
 
-    if stg in ("clob", "all"):
-        run_clob(single_date=args.date, single_symbol=args.symbol)
+        if stg in ("clob", "all"):
+            run_clob(single_date=args.date, single_symbol=args.symbol)
 
-    if stg in ("clob-analyze", "all"):
-        run_clob_analysis()
+        if stg in ("clob-analyze", "all"):
+            run_clob_analysis()
 
-    if stg in ("bloomberg", "all"):
-        run_bloomberg()
+        if stg in ("bloomberg", "all"):
+            run_bloomberg()
 
-    if stg in ("report", "all"):
-        generate_report()
+        if stg in ("report", "all"):
+            generate_report()
+
+    except KeyboardInterrupt:
+        print("\n[ABORTED] Execution interrupted by user.")
+        sys.exit(130)
+    except Exception as exc:
+        print(f"\n[FATAL ERROR] Pipeline execution failed: {exc}")
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()

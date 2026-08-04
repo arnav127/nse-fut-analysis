@@ -34,3 +34,7 @@ data/results/*.pdf
 .idea/
 .DS_Store
 Thumbs.db
+scratch/
+*.aux
+*.log
+*.out

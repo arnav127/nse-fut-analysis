@@ -1,15 +1,18 @@
-"""
-run_clob_all.py — Multiprocessing orchestrator for Stage 4 CLOB reconstruction.
-"""
+"""Multiprocessing orchestrator for Stage 4 CLOB reconstruction."""
+
 from multiprocessing import Pool
-from config.settings import ALL_TARGET_DATES, TARGET_SYMBOLS, CLOB_PARALLEL_WORKERS
+from typing import Optional, Tuple
+
+from config.settings import ALL_TARGET_DATES, CLOB_PARALLEL_WORKERS, TARGET_SYMBOLS
 from stage4_clob.clob_builder import build_clob_for_symbol_date
 
-def _build_worker(args):
+
+def _build_worker(args: Tuple[str, str]) -> None:
     symbol, date_str = args
     build_clob_for_symbol_date(symbol, date_str)
 
-def run_clob(single_date=None, single_symbol=None):
+
+def run_clob(single_date: Optional[str] = None, single_symbol: Optional[str] = None) -> None:
     symbols = [single_symbol] if single_symbol else TARGET_SYMBOLS
     dates = [single_date] if single_date else ALL_TARGET_DATES
 
@@ -20,6 +23,7 @@ def run_clob(single_date=None, single_symbol=None):
         pool.map(_build_worker, tasks)
 
     print("\n[COMPLETE] Stage 4 CLOB reconstruction finished.")
+
 
 if __name__ == "__main__":
     run_clob()

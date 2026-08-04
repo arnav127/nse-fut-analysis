@@ -1,36 +1,33 @@
-"""
-clob_builder.py — Replay orders & trades chronologically for a (symbol, date) pair via DuckDB C++ engine.
+"""Chronological Order & Trade Event Replay and CLOB Snapshot Generation (Stage 4)."""
 
-Optimizations:
-1. Replaced Pandas read_parquet + pd.concat + sort_values with zero-copy DuckDB SQL UNION ALL + ORDER BY.
-2. Orders and trades are merged into a single event stream sorted by txn_time_jiffies in C++.
-3. Uses C++ PyBind11 OrderBook engine when compiled or fast Numba/Python fallback.
-"""
-import os
+from pathlib import Path
+
 import duckdb
 import pandas as pd
-import numpy as np
-from config.settings import ENRICHED_DATA_DIR, CLOB_DATA_DIR, SETTLEMENT_WINDOW_START, SETTLEMENT_WINDOW_END
+
+from config.settings import (
+    CLOB_DATA_DIR,
+    ENRICHED_DATA_DIR,
+    SETTLEMENT_WINDOW_END,
+    SETTLEMENT_WINDOW_START,
+)
 from stage4_clob.order_book import OrderBook
 
-def build_clob_for_symbol_date(symbol, date_str):
-    """
-    Replay orders and trades in strict timestamp order using DuckDB SQL, emitting 1-second snapshots
-    during the 15:00:00 to 15:30:00 settlement window.
-    """
-    out_dir = os.path.join(CLOB_DATA_DIR, symbol, f"date={date_str}")
-    out_file = os.path.join(out_dir, "snapshots.parquet")
-    if os.path.exists(out_file):
+
+def build_clob_for_symbol_date(symbol: str, date_str: str) -> None:
+    out_dir = Path(CLOB_DATA_DIR) / symbol / f"date={date_str}"
+    out_file = out_dir / "snapshots.parquet"
+    if out_file.exists():
         return
 
-    orders_path = os.path.join(ENRICHED_DATA_DIR, "cash_orders").replace("\\", "/")
-    trades_path = os.path.join(ENRICHED_DATA_DIR, "cash_trades").replace("\\", "/")
-
-    if not os.path.exists(os.path.join(ENRICHED_DATA_DIR, "cash_orders")) or \
-       not os.path.exists(os.path.join(ENRICHED_DATA_DIR, "cash_trades")):
+    orders_dir = Path(ENRICHED_DATA_DIR) / "cash_orders"
+    trades_dir = Path(ENRICHED_DATA_DIR) / "cash_trades"
+    if not orders_dir.exists() or not trades_dir.exists():
         return
 
-    # 1. Build unified chronological event stream via DuckDB C++ SQL
+    orders_path = str(orders_dir).replace("\\", "/")
+    trades_path = str(trades_dir).replace("\\", "/")
+
     query = f"""
     WITH orders_ev AS (
         SELECT 
@@ -74,14 +71,11 @@ def build_clob_for_symbol_date(symbol, date_str):
     ORDER BY txn_time_jiffies, event_kind
     """
 
-    conn = duckdb.connect()
     try:
-        combined_events = conn.execute(query).df()
+        with duckdb.connect() as conn:
+            combined_events = conn.execute(query).df()
     except Exception:
-        conn.close()
         return
-    finally:
-        conn.close()
 
     if combined_events.empty:
         return
@@ -90,7 +84,6 @@ def build_clob_for_symbol_date(symbol, date_str):
     snapshots = []
     last_snap_second = -1
 
-    # 2. Replay loop using fast columnar iteration
     cols_order = [
         "event_kind", "trade_time", "order_number", "activity_type", "buy_sell",
         "limit_price", "volume_original", "buy_order_number", "sell_order_number",
@@ -113,7 +106,6 @@ def build_clob_for_symbol_date(symbol, date_str):
             book.remove_traded_qty(ev.buy_order_number, t_qty)
             book.remove_traded_qty(ev.sell_order_number, t_qty)
 
-        # Emit 1-second snapshots during settlement window
         if SETTLEMENT_WINDOW_START <= t_time <= SETTLEMENT_WINDOW_END:
             h, m, s = map(int, t_time.split(":"))
             sec_from_1500 = (h - 15) * 3600 + m * 60 + s
@@ -129,6 +121,6 @@ def build_clob_for_symbol_date(symbol, date_str):
 
     if snapshots:
         df_snaps = pd.DataFrame(snapshots)
-        os.makedirs(out_dir, exist_ok=True)
+        out_dir.mkdir(parents=True, exist_ok=True)
         df_snaps.to_parquet(out_file, engine="pyarrow", index=False)
-        print(f"[CLOB BUILT - DUCKDB] {symbol} on {date_str}: {len(snapshots)} snapshots generated -> {out_file}")
+        print(f"[CLOB BUILT] {symbol} on {date_str}: {len(snapshots)} snapshots -> {out_file}")

@@ -1,33 +1,36 @@
-"""
-generate_report.py — Final academic research paper generator compiling findings across all stages.
-"""
-import os
-import pandas as pd
-from config.settings import RESULTS_DIR
-from stage7_report.stat_tests import run_all_hypothesis_tests
-from stage7_report.generate_charts import generate_all_charts
+"""Final academic research paper generator compiling findings across all stages."""
 
-def _df_to_markdown(df):
+from pathlib import Path
+
+import pandas as pd
+
+from config.settings import RESULTS_DIR
+from stage7_report.generate_charts import generate_all_charts
+from stage7_report.stat_tests import run_all_hypothesis_tests
+
+
+def _df_to_markdown(df: pd.DataFrame) -> str:
     if df.empty:
         return "*No data available*"
     cols = list(df.columns)
     lines = [
         "| " + " | ".join(cols) + " |",
-        "| " + " | ".join(["---"] * len(cols)) + " |"
+        "| " + " | ".join(["---"] * len(cols)) + " |",
     ]
     for row in df.itertuples(index=False):
         lines.append("| " + " | ".join(str(val) for val in row) + " |")
     return "\n".join(lines)
 
-def generate_report():
+
+def generate_report() -> None:
     print("\n=== STAGE 7: CONSOLIDATED RESEARCH PAPER GENERATION ===")
 
     summary_df = run_all_hypothesis_tests()
     generate_all_charts()
 
-    report_md = os.path.join(RESULTS_DIR, "final_research_paper.md")
+    report_md = Path(RESULTS_DIR) / "final_research_paper.md"
 
-    with open(report_md, "w") as f:
+    with open(report_md, "w", encoding="utf-8") as f:
         f.write("# Expiry Day Dynamics & VWAP Settlement Anomalies: An Empirical Study of the National Stock Exchange of India\n\n")
         f.write("**Abstract**\n")
         f.write("We examine the market microstructure of 10 Nifty 50 stocks (5 liquid, 5 illiquid) and their corresponding FUTSTK contracts ")
@@ -62,6 +65,7 @@ def generate_report():
         f.write("The cross-validation of Bloomberg roll direction with cash VWAP drift confirms that roll pressure is a primary driver of settlement window dislocation.\n")
 
     print(f"[DONE] Final academic research paper compiled at {report_md}")
+
 
 if __name__ == "__main__":
     generate_report()

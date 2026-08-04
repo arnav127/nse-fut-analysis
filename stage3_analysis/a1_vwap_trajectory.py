@@ -1,24 +1,26 @@
-"""
-a1_vwap_trajectory.py — Reconstruct 1-minute cumulative & instantaneous VWAP and basis trajectory (H1, H2) via DuckDB.
-"""
-import os
+"""Reconstruct 1-minute VWAP trajectory and intraday basis dynamics (Stage 3 A1)."""
+
 import glob
+from pathlib import Path
+
 import duckdb
 import pandas as pd
-from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR, LIQUID_SYMBOLS
 
-def run_a1_vwap_trajectory():
-    cash_path = os.path.join(ENRICHED_DATA_DIR, "cash_trades").replace("\\", "/")
-    fao_path = os.path.join(ENRICHED_DATA_DIR, "fao_trades").replace("\\", "/")
+from config.settings import ENRICHED_DATA_DIR, LIQUID_SYMBOLS, RESULTS_DIR
+
+
+def run_a1_vwap_trajectory() -> pd.DataFrame:
+    cash_path = str(Path(ENRICHED_DATA_DIR) / "cash_trades").replace("\\", "/")
+    fao_path = str(Path(ENRICHED_DATA_DIR) / "fao_trades").replace("\\", "/")
 
     cash_files = glob.glob(f"{cash_path}/*/*.parquet")
     fao_files = glob.glob(f"{fao_path}/*/*.parquet")
     if not cash_files or not fao_files:
-        print("[WARN] Enriched trades missing for A1 analysis (DuckDB).")
+        print("[WARN] Enriched trades missing for A1 analysis.")
         return pd.DataFrame()
 
-    print("[ANALYSIS A1] Computing VWAP Trajectory & Basis (DuckDB C++)...")
-    liq_list = ", ".join([f"'{s}'" for s in LIQUID_SYMBOLS])
+    print("[ANALYSIS A1] Computing VWAP Trajectory & Basis...")
+    liq_list = ", ".join(f"'{s}'" for s in LIQUID_SYMBOLS)
 
     query = f"""
     WITH cash_min AS (
@@ -70,18 +72,17 @@ def run_a1_vwap_trajectory():
     ORDER BY c.symbol, c.trade_date, c.time_bucket
     """
 
-    conn = duckdb.connect()
     try:
-        res_pd = conn.execute(query).df()
-        out_csv = os.path.join(RESULTS_DIR, "a1_vwap_trajectory.csv")
+        with duckdb.connect() as conn:
+            res_pd = conn.execute(query).df()
+        out_csv = Path(RESULTS_DIR) / "a1_vwap_trajectory.csv"
         res_pd.to_csv(out_csv, index=False)
         print(f"[DONE-DUCKDB] Saved A1 results ({len(res_pd)} rows) to {out_csv}")
         return res_pd
-    except Exception as e:
-        print(f"[ERROR-DUCKDB] A1 VWAP Trajectory failed: {e}")
+    except Exception as exc:
+        print(f"[ERROR-DUCKDB] A1 VWAP Trajectory failed: {exc}")
         return pd.DataFrame()
-    finally:
-        conn.close()
+
 
 if __name__ == "__main__":
     run_a1_vwap_trajectory()

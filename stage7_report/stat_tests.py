@@ -1,18 +1,18 @@
-"""
-stat_tests.py — Consolidated statistical hypothesis testing engine for H1-H30.
-Evaluates all 30 formal hypotheses with paired t-tests, Wilcoxon signed-rank tests,
-Mann-Whitney U tests, Granger causality, and OLS regressions.
-Applies Bonferroni adjustment (alpha = 0.05 / 30 = 0.00167) and Benjamini-Hochberg FDR.
-"""
-import os
-import pandas as pd
-import numpy as np
-from scipy import stats
-from config.settings import RESULTS_DIR, EXPIRY_CONTROL_PAIRS
+"""Consolidated statistical hypothesis testing engine for H1-H30."""
 
-def _evaluate_paired_hypothesis(h_id, desc, file_name, col_name):
-    path = os.path.join(RESULTS_DIR, file_name)
-    if not os.path.exists(path):
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+import numpy as np
+import pandas as pd
+from scipy import stats
+
+from config.settings import EXPIRY_CONTROL_PAIRS, RESULTS_DIR
+
+
+def _evaluate_paired_hypothesis(h_id: str, desc: str, file_name: str, col_name: str) -> Optional[Dict[str, Any]]:
+    path = Path(RESULTS_DIR) / file_name
+    if not path.exists():
         return None
 
     df = pd.read_csv(path)
@@ -37,19 +37,20 @@ def _evaluate_paired_hypothesis(h_id, desc, file_name, col_name):
 
     t_stat, p_val = stats.ttest_rel(exp_vals, ctl_vals)
     diffs = np.array(exp_vals) - np.array(ctl_vals)
-    cohen_d = np.mean(diffs) / (np.std(diffs, ddof=1) + 1e-8)
+    cohen_d = float(np.mean(diffs) / (np.std(diffs, ddof=1) + 1e-8))
 
     return {
         "hypothesis_id": h_id,
         "description": desc,
         "test_name": "Paired t-test",
-        "test_stat": t_stat,
-        "p_value": p_val,
+        "test_stat": float(t_stat),
+        "p_value": float(p_val),
         "effect_size_cohen_d": cohen_d,
-        "n_obs": len(exp_vals)
+        "n_obs": len(exp_vals),
     }
 
-def run_all_hypothesis_tests():
+
+def run_all_hypothesis_tests() -> pd.DataFrame:
     print("[REPORT] Running Complete Statistical Testing Engine for H1-H30...")
 
     alpha = 0.05
@@ -86,7 +87,7 @@ def run_all_hypothesis_tests():
         ("H27", "Amihud illiquidity uplift higher on expiry", "a11_amihud_illiquidity.csv", "amihud_uplift"),
         ("H28", "Phantom order rate (<1s) higher on expiry", "a12_order_lifespan.csv", "phantom_order_rate"),
         ("H29", "Volume Gini coefficient higher on expiry", "b6_volume_profile.csv", "volume_gini"),
-        ("H30", "Market resilience recovery time lower on expiry", "b7_market_resilience.csv", "mean_recovery_time_sec")
+        ("H30", "Market resilience recovery time lower on expiry", "b7_market_resilience.csv", "mean_recovery_time_sec"),
     ]
 
     results = []
@@ -106,12 +107,11 @@ def run_all_hypothesis_tests():
                 "effect_size_cohen_d": np.nan,
                 "n_obs": 0,
                 "alpha_adj": alpha_adj,
-                "significant_bonferroni": False
+                "significant_bonferroni": False,
             })
 
     summary_df = pd.DataFrame(results)
 
-    # Benjamini-Hochberg FDR Correction
     p_vals = summary_df["p_value"].fillna(1.0).values
     n = len(p_vals)
     sorted_idx = np.argsort(p_vals)
@@ -120,7 +120,7 @@ def run_all_hypothesis_tests():
     summary_df["significant_fdr"] = False
     summary_df.iloc[sorted_idx, summary_df.columns.get_loc("significant_fdr")] = significant_fdr
 
-    out_csv = os.path.join(RESULTS_DIR, "hypothesis_testing_summary.csv")
+    out_csv = Path(RESULTS_DIR) / "hypothesis_testing_summary.csv"
     summary_df.to_csv(out_csv, index=False)
     print(f"[DONE] Evaluated all {len(summary_df)} Hypotheses. Saved to {out_csv}")
     return summary_df

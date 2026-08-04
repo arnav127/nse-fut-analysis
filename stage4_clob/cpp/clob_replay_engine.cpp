@@ -1,7 +1,10 @@
-"""
-clob_replay_engine.cpp — Data-Oriented Design (DOD) Vectorized Replay Engine.
-Optimized for L1/L2 CPU cache locality, zero wasted padding, and contiguous memory access.
-"""
+/*
+ * clob_replay_engine.cpp — Data-Oriented Design (DOD) Vectorized Replay Engine.
+ *
+ * Optimized for L1/L2 CPU cache locality, zero wasted padding, and 
+ * contiguous memory access during order flow replay.
+ */
+
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/numpy.h>
@@ -11,10 +14,10 @@ Optimized for L1/L2 CPU cache locality, zero wasted padding, and contiguous memo
 #include <cmath>
 #include <algorithm>
 #include <cstdint>
+#include <cstdio>
 
 namespace py = pybind11;
 
-// 1. DOD Packed 16-byte CppOrderInfo (cache line holds 4 orders)
 #pragma pack(push, 1)
 struct alignas(16) CppOrderInfo {
     double price;      // 8 bytes
@@ -24,13 +27,11 @@ struct alignas(16) CppOrderInfo {
 };
 #pragma pack(pop)
 
-// 2. Contiguous Memory Price Level
 struct alignas(16) PriceLevel {
     double price;
     long long volume;
 };
 
-// 3. Contiguous Memory Cache-Friendly FlatPriceBook
 class FlatPriceBook {
 private:
     std::vector<PriceLevel> levels;
@@ -42,7 +43,7 @@ public:
     }
 
     void add_volume(double price, long long qty) {
-        auto cmp = [this](const PriceLevel& a, double val) {
+        auto cmp = [this](const PriceLevel& a, double val) noexcept {
             return is_bid ? (a.price > val) : (a.price < val);
         };
         auto it = std::lower_bound(levels.begin(), levels.end(), price, cmp);
@@ -54,20 +55,20 @@ public:
     }
 
     void remove_volume(double price, long long qty) {
-        auto cmp = [this](const PriceLevel& a, double val) {
+        auto cmp = [this](const PriceLevel& a, double val) noexcept {
             return is_bid ? (a.price > val) : (a.price < val);
         };
         auto it = std::lower_bound(levels.begin(), levels.end(), price, cmp);
         if (it != levels.end() && std::abs(it->price - price) < 1e-9) {
             it->volume -= qty;
             if (it->volume <= 0) {
-                levels.erase(it); // Fast memory shift in L1 cache
+                levels.erase(it);
             }
         }
     }
 
-    bool empty() const { return levels.empty(); }
-    const std::vector<PriceLevel>& get_levels() const { return levels; }
+    [[nodiscard]] bool empty() const noexcept { return levels.empty(); }
+    [[nodiscard]] const std::vector<PriceLevel>& get_levels() const noexcept { return levels; }
 };
 
 class FastCLOBReplayEngine {
@@ -83,7 +84,7 @@ private:
         } else {
             ask_book.add_volume(price, qty);
         }
-        orders[order_number] = {price, static_cast<int32_t>(qty), side, {0, 0, 0}};
+        orders[order_number] = CppOrderInfo{price, static_cast<int32_t>(qty), side, {0, 0, 0}};
     }
 
     void cancel_order(long long order_number) {
@@ -108,7 +109,7 @@ public:
         auto it = orders.find(order_number);
         if (it == orders.end()) return;
         auto& info = it->second;
-        long long rem_qty = std::min(static_cast<long long>(info.qty), traded_qty);
+        const long long rem_qty = std::min(static_cast<long long>(info.qty), traded_qty);
         info.qty -= static_cast<int32_t>(rem_qty);
 
         if (info.side == 'B') {
@@ -124,18 +125,18 @@ public:
         const auto& bids = bid_book.get_levels();
         const auto& asks = ask_book.get_levels();
 
-        bool has_bid = !bids.empty();
-        bool has_ask = !asks.empty();
+        const bool has_bid = !bids.empty();
+        const bool has_ask = !asks.empty();
 
-        double best_bid = has_bid ? bids.front().price : 0.0;
-        double best_ask = has_ask ? asks.front().price : 0.0;
+        const double best_bid = has_bid ? bids.front().price : 0.0;
+        const double best_ask = has_ask ? asks.front().price : 0.0;
 
         if (has_bid) snap["best_bid"] = best_bid; else snap["best_bid"] = py::none();
         if (has_ask) snap["best_ask"] = best_ask; else snap["best_ask"] = py::none();
 
         if (has_bid && has_ask) {
-            double mid = (best_bid + best_ask) * 0.5;
-            double spr = best_ask - best_bid;
+            const double mid = (best_bid + best_ask) * 0.5;
+            const double spr = best_ask - best_bid;
             snap["midpoint"] = mid;
             snap["spread"] = spr;
             snap["spread_bps"] = (mid > 0.0) ? (spr / mid * 10000.0) : 0.0;
@@ -149,23 +150,27 @@ public:
         int count = 0;
         for (size_t i = 0; i < bids.size() && count < depth; ++i, ++count) {
             tot_bid += bids[i].volume;
-            std::string key = "bid_depth_" + std::to_string(count + 1);
-            snap[key.c_str()] = bids[i].volume;
+            char key[32];
+            snprintf(key, sizeof(key), "bid_depth_%d", count + 1);
+            snap[key] = bids[i].volume;
         }
         for (int i = count + 1; i <= depth; ++i) {
-            std::string key = "bid_depth_" + std::to_string(i);
-            snap[key.c_str()] = 0;
+            char key[32];
+            snprintf(key, sizeof(key), "bid_depth_%d", i);
+            snap[key] = 0;
         }
 
         count = 0;
         for (size_t i = 0; i < asks.size() && count < depth; ++i, ++count) {
             tot_ask += asks[i].volume;
-            std::string key = "ask_depth_" + std::to_string(count + 1);
-            snap[key.c_str()] = asks[i].volume;
+            char key[32];
+            snprintf(key, sizeof(key), "ask_depth_%d", count + 1);
+            snap[key] = asks[i].volume;
         }
         for (int i = count + 1; i <= depth; ++i) {
-            std::string key = "ask_depth_" + std::to_string(i);
-            snap[key.c_str()] = 0;
+            char key[32];
+            snprintf(key, sizeof(key), "ask_depth_%d", i);
+            snap[key] = 0;
         }
 
         snap["total_bid_volume"] = tot_bid;

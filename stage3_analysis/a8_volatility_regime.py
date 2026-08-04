@@ -1,20 +1,21 @@
-"""
-a8_volatility_regime.py — Intraday Volatility Regime & Settlement RV Ratio (H24) via DuckDB.
-"""
-import os
+"""Intraday Volatility Regime & Settlement Realized Volatility Ratio (Stage 3 A8, H24)."""
+
 import glob
+from pathlib import Path
+
 import duckdb
 import pandas as pd
+
 from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR
 
-def run_a8_volatility_regime():
-    cash_path = os.path.join(ENRICHED_DATA_DIR, "cash_trades").replace("\\", "/")
-    files = glob.glob(f"{cash_path}/*/*.parquet")
-    if not files:
-        print("[WARN] Enriched trades missing for A8 analysis (DuckDB).")
+
+def run_a8_volatility_regime() -> pd.DataFrame:
+    cash_path = str(Path(ENRICHED_DATA_DIR) / "cash_trades").replace("\\", "/")
+    if not glob.glob(f"{cash_path}/*/*.parquet"):
+        print("[WARN] Enriched trades missing for A8 analysis.")
         return pd.DataFrame()
 
-    print("[ANALYSIS A8] Analyzing Intraday Volatility Regimes (H24) (DuckDB C++)...")
+    print("[ANALYSIS A8] Analyzing Intraday Volatility Regimes (H24)...")
 
     query = f"""
     WITH b5m AS (
@@ -40,18 +41,17 @@ def run_a8_volatility_regime():
     ORDER BY symbol, trade_date
     """
 
-    conn = duckdb.connect()
     try:
-        res_pd = conn.execute(query).df()
-        out_csv = os.path.join(RESULTS_DIR, "a8_volatility_regime.csv")
+        with duckdb.connect() as conn:
+            res_pd = conn.execute(query).df()
+        out_csv = Path(RESULTS_DIR) / "a8_volatility_regime.csv"
         res_pd.to_csv(out_csv, index=False)
         print(f"[DONE-DUCKDB] Saved A8 results ({len(res_pd)} rows) to {out_csv}")
         return res_pd
-    except Exception as e:
-        print(f"[ERROR-DUCKDB] A8 Volatility Regime failed: {e}")
+    except Exception as exc:
+        print(f"[ERROR-DUCKDB] A8 Volatility Regime failed: {exc}")
         return pd.DataFrame()
-    finally:
-        conn.close()
+
 
 if __name__ == "__main__":
     run_a8_volatility_regime()

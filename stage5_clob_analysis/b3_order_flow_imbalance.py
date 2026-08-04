@@ -1,20 +1,21 @@
-"""
-b3_order_flow_imbalance.py — Order Flow Imbalance (OFI) analysis (H16) via DuckDB.
-"""
-import os
+"""Order Flow Imbalance (OFI) trajectory analysis (Stage 5 B3, H8-H10)."""
+
 import glob
+from pathlib import Path
+
 import duckdb
 import pandas as pd
+
 from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR
 
-def run_b3_order_flow_imbalance():
-    orders_path = os.path.join(ENRICHED_DATA_DIR, "cash_orders").replace("\\", "/")
-    files = glob.glob(f"{orders_path}/*/*.parquet")
-    if not files:
-        print("[WARN] Enriched orders missing for B3 analysis (DuckDB).")
+
+def run_b3_order_flow_imbalance() -> pd.DataFrame:
+    orders_path = str(Path(ENRICHED_DATA_DIR) / "cash_orders").replace("\\", "/")
+    if not glob.glob(f"{orders_path}/*/*.parquet"):
+        print("[WARN] Enriched orders missing for B3 analysis.")
         return pd.DataFrame()
 
-    print("[ANALYSIS B3] Computing Order Flow Imbalance (OFI) (DuckDB C++)...")
+    print("[ANALYSIS B3] Computing Order Flow Imbalance (OFI)...")
 
     query = f"""
     WITH base AS (
@@ -34,18 +35,17 @@ def run_b3_order_flow_imbalance():
     ORDER BY symbol, trade_date, time_bucket
     """
 
-    conn = duckdb.connect()
     try:
-        res_pd = conn.execute(query).df()
-        out_csv = os.path.join(RESULTS_DIR, "b3_order_flow_imbalance.csv")
+        with duckdb.connect() as conn:
+            res_pd = conn.execute(query).df()
+        out_csv = Path(RESULTS_DIR) / "b3_order_flow_imbalance.csv"
         res_pd.to_csv(out_csv, index=False)
         print(f"[DONE-DUCKDB] Saved B3 results ({len(res_pd)} rows) to {out_csv}")
         return res_pd
-    except Exception as e:
-        print(f"[ERROR-DUCKDB] B3 Order Flow Imbalance failed: {e}")
+    except Exception as exc:
+        print(f"[ERROR-DUCKDB] B3 Order Flow Imbalance failed: {exc}")
         return pd.DataFrame()
-    finally:
-        conn.close()
+
 
 if __name__ == "__main__":
     run_b3_order_flow_imbalance()

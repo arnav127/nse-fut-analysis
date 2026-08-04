@@ -1,19 +1,21 @@
-"""
-a10_lead_lag.py — Futures to Cash Lead-Lag & Granger Causality Analysis (H26).
-"""
-import os
+"""Futures to Cash Lead-Lag & Granger Causality Analysis (Stage 3 A10, H26)."""
+
+from pathlib import Path
+from typing import Optional
+
 import pandas as pd
-import numpy as np
 from statsmodels.tsa.stattools import grangercausalitytests
+
 from config.settings import RESULTS_DIR
 
-def run_a10_lead_lag():
-    in_csv = os.path.join(RESULTS_DIR, "a1_vwap_trajectory.csv")
-    out_csv = os.path.join(RESULTS_DIR, "a10_lead_lag.csv")
 
-    if not os.path.exists(in_csv):
+def run_a10_lead_lag() -> Optional[pd.DataFrame]:
+    in_csv = Path(RESULTS_DIR) / "a1_vwap_trajectory.csv"
+    out_csv = Path(RESULTS_DIR) / "a10_lead_lag.csv"
+
+    if not in_csv.exists():
         print("[WARN] A1 VWAP trajectory missing for A10 analysis.")
-        return
+        return None
 
     print("[ANALYSIS A10] Computing Lead-Lag & Granger Causality (H26)...")
     df = pd.read_csv(in_csv)
@@ -22,19 +24,17 @@ def run_a10_lead_lag():
     grouped = df.groupby(["symbol", "trade_date", "is_expiry"])
 
     for (symbol, trade_date, is_expiry), group in grouped:
-        group = group.sort_values("time_bucket")
-        if len(group) < 15:
+        group_sorted = group.sort_values("time_bucket")
+        if len(group_sorted) < 15:
             continue
 
-        cash_ret = group["cash_inst_vwap"].pct_change().dropna()
-        fut_ret = group["futures_avg_price"].pct_change().dropna()
+        cash_ret = group_sorted["cash_inst_vwap"].pct_change().dropna()
+        fut_ret = group_sorted["futures_avg_price"].pct_change().dropna()
 
         combined = pd.DataFrame({"cash": cash_ret, "futures": fut_ret}).dropna()
-
         if len(combined) < 10:
             continue
 
-        # Granger Causality Test: Does Futures lead Cash?
         f_stat = 0.0
         p_val = 1.0
         try:
@@ -44,7 +44,6 @@ def run_a10_lead_lag():
         except Exception:
             pass
 
-        # Cross correlation at lag 1
         xcorr_lag1 = combined["futures"].shift(1).corr(combined["cash"])
 
         results.append({
@@ -53,10 +52,14 @@ def run_a10_lead_lag():
             "is_expiry": is_expiry,
             "granger_f_stat": f_stat,
             "granger_p_val": p_val,
-            "xcorr_lag1": xcorr_lag1
+            "xcorr_lag1": xcorr_lag1,
         })
 
     res_df = pd.DataFrame(results)
     res_df.to_csv(out_csv, index=False)
     print(f"[DONE] Saved A10 Lead-Lag results to {out_csv}")
     return res_df
+
+
+if __name__ == "__main__":
+    run_a10_lead_lag()
