@@ -1,5 +1,7 @@
 """Orchestrator for Stage 3 trade-level analysis modules (A1-A12)."""
 
+import time
+
 from stage3_analysis.a10_lead_lag import run_a10_lead_lag
 from stage3_analysis.a11_amihud_illiquidity import run_a11_amihud_illiquidity
 from stage3_analysis.a12_order_lifespan import run_a12_order_lifespan
@@ -16,19 +18,29 @@ from stage3_analysis.a9_trade_clustering import run_a9_trade_clustering
 
 def run_analysis() -> None:
     print("\n=== STAGE 3: TRADE-LEVEL ANALYSIS (A1-A12 via DUCKDB) ===")
-    run_a1_vwap_trajectory()
-    run_a2_basis_divergence()
-    run_a3_participant_profile()
-    run_a4_algo_segmentation()
-    run_a5_cancellation_patterns()
-    run_a6_iceberg_detection()
-    run_a7_ioc_aggressiveness()
-    run_a8_volatility_regime()
-    run_a9_trade_clustering()
-    run_a10_lead_lag()
-    run_a11_amihud_illiquidity()
-    run_a12_order_lifespan()
-    print("\n[COMPLETE] Stage 3 DuckDB analysis finished.")
+    t_start = time.time()
+
+    modules = [
+        ("A1: VWAP Trajectory", run_a1_vwap_trajectory),
+        ("A2: Basis Divergence", run_a2_basis_divergence),
+        ("A3: Participant Profile", run_a3_participant_profile),
+        ("A4: Algo Segmentation", run_a4_algo_segmentation),
+        ("A5: Cancellation Patterns", run_a5_cancellation_patterns),
+        ("A6: Iceberg Detection", run_a6_iceberg_detection),
+        ("A7: IOC Aggressiveness", run_a7_ioc_aggressiveness),
+        ("A8: Volatility Regime", run_a8_volatility_regime),
+        ("A9: Trade Clustering", run_a9_trade_clustering),
+        ("A10: Lead-Lag Analysis", run_a10_lead_lag),
+        ("A11: Amihud Illiquidity", run_a11_amihud_illiquidity),
+        ("A12: Order Lifespan", run_a12_order_lifespan),
+    ]
+
+    for name, func in modules:
+        t0 = time.time()
+        func()
+        print(f"[TIMING] Module {name} finished in {time.time() - t0:.2f}s")
+
+    print(f"\n[COMPLETE] Stage 3 DuckDB analysis finished in {time.time() - t_start:.2f}s")
 
 
 if __name__ == "__main__":

@@ -1,8 +1,10 @@
 """Final academic research paper generator compiling findings into Markdown, LaTeX, and compiled PDF paper."""
 
+import os
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -143,6 +145,7 @@ def compile_latex_paper(summary_df: pd.DataFrame) -> Optional[Path]:
 
     if Path(pdflatex_exe).exists():
         print(f"[COMPILE] Compiling LaTeX to PDF via {pdflatex_exe} ...")
+        t_compile = time.time()
         try:
             for _ in range(2):
                 subprocess.run(
@@ -151,6 +154,7 @@ def compile_latex_paper(summary_df: pd.DataFrame) -> Optional[Path]:
                     check=True,
                     stdout=subprocess.DEVNULL
                 )
+            print(f"[TIMING] PDF compilation finished in {time.time() - t_compile:.2f}s")
             print(f"[SUCCESS] Compiled research paper PDF successfully: {pdf_path}")
             return pdf_path
         except Exception as exc:
@@ -163,9 +167,15 @@ def compile_latex_paper(summary_df: pd.DataFrame) -> Optional[Path]:
 
 def generate_report() -> None:
     print("\n=== STAGE 7: CONSOLIDATED RESEARCH PAPER GENERATION ===")
+    t_start = time.time()
 
+    t_stat = time.time()
     summary_df = run_all_hypothesis_tests()
+    print(f"[TIMING] Statistical hypothesis testing finished in {time.time() - t_stat:.2f}s")
+
+    t_chart = time.time()
     generate_all_charts()
+    print(f"[TIMING] Chart generation finished in {time.time() - t_chart:.2f}s")
 
     report_md = Path(RESULTS_DIR) / "final_research_paper.md"
 
@@ -207,6 +217,8 @@ def generate_report() -> None:
 
     # Compile LaTeX Research Paper PDF
     compile_latex_paper(summary_df)
+
+    print(f"\n[COMPLETE] Stage 7 Report Generation finished in {time.time() - t_start:.2f}s")
 
 
 if __name__ == "__main__":

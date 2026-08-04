@@ -1,12 +1,12 @@
 # Expiry Day Dynamics & VWAP Settlement Anomalies: An Empirical Study of the National Stock Exchange of India
 
 **Abstract**
-We examine the market microstructure of 10 Nifty 50 stocks (5 liquid, 5 illiquid) and their corresponding FUTSTK contracts on the National Stock Exchange (NSE) during the final 30-minute settlement window across 12 monthly expiry Thursdays and 12 matched control trading days in 2022. Integrating high-frequency tick-level cash and derivatives data with Bloomberg Terminal calendar spread, open interest migration, and cost-of-carry metrics, we test 30 formal hypotheses (H1–H30) regarding basis volatility, algorithmic execution urgency, Order Flow Imbalance (OFI), limit order book depth erosion, and roll pressure directional validation.
+We examine the market microstructure of 10 Nifty 50 stocks (5 liquid, 5 illiquid) and their corresponding FUTSTK contracts on the National Stock Exchange (NSE) during the final 30-minute settlement window across 12 monthly expiry Thursdays and 12 matched control trading days in 2022. Integrating high-frequency tick-level cash and derivatives data with Bloomberg Terminal calendar spread, open interest migration, and cost-of-carry metrics, we test 30 formal hypotheses (H1â€“H30) regarding basis volatility, algorithmic execution urgency, Order Flow Imbalance (OFI), limit order book depth erosion, and roll pressure directional validation.
 
 ## 1. Introduction & Institutional Background
 The NSE settlement price for equity derivatives is calculated as the volume-weighted average price (VWAP) of the underlying cash market during the final 30 minutes of trading (15:00 to 15:30 IST). This settlement design creates strong financial incentives for market participants holding large futures or options positions to influence the cash market closing VWAP.
 
-## 2. Comprehensive Hypothesis Testing Results (H1 – H30)
+## 2. Comprehensive Hypothesis Testing Results (H1 â€“ H30)
 
 | hypothesis_id | description | test_name | test_stat | p_value | effect_size_cohen_d | n_obs | alpha_adj | significant_bonferroni | significant_fdr |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
