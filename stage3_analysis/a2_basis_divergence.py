@@ -27,10 +27,10 @@ def run_a2_basis_divergence() -> Optional[pd.DataFrame]:
         if basis_vals.empty:
             continue
 
-        std_dev = np.std(basis_vals)
-        mad = np.mean(np.abs(basis_vals - np.mean(basis_vals)))
-        basis_range = np.ptp(basis_vals)
-        terminal_shift = basis_vals.iloc[-1] - basis_vals.iloc[0] if len(basis_vals) > 1 else 0.0
+        std_dev = float(np.std(basis_vals))
+        mad = float(np.mean(np.abs(basis_vals - np.mean(basis_vals))))
+        basis_range = float(np.ptp(basis_vals))
+        terminal_shift = float(basis_vals.iloc[-1] - basis_vals.iloc[0]) if len(basis_vals) > 1 else 0.0
 
         metrics.append({
             "symbol": symbol,
@@ -41,12 +41,16 @@ def run_a2_basis_divergence() -> Optional[pd.DataFrame]:
             "basis_mad": mad,
             "basis_range": basis_range,
             "terminal_shift": terminal_shift,
-            "max_abs_basis": np.max(np.abs(basis_vals)),
+            "max_abs_basis": float(np.max(np.abs(basis_vals))),
         })
 
     res_df = pd.DataFrame(metrics)
     out_csv = Path(RESULTS_DIR) / "a2_basis_divergence.csv"
     res_df.to_csv(out_csv, index=False)
+
+    if res_df.empty or "trade_date" not in res_df.columns:
+        print(f"[DONE] Saved empty A2 results to {out_csv}")
+        return res_df
 
     print("\n--- HYPOTHESIS TESTS (A2) ---")
     res_df["date_ddmmyyyy"] = pd.to_datetime(res_df["trade_date"]).dt.strftime("%d%m%Y")
