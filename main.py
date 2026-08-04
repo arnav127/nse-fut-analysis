@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+import time
 
 from stage1_parse.run_parse_all import run_parse
 from stage2_enrich.run_enrich_all import run_enrich
@@ -33,27 +34,48 @@ def main() -> None:
     args = parser.parse_args()
     stg = args.stage
 
+    pipeline_start = time.time()
+
     try:
         if stg in ("parse", "all"):
+            t0 = time.time()
             run_parse(single_date=args.date)
+            print(f"[TIMING] Stage 1 (Parse) completed in {time.time() - t0:.2f}s")
 
         if stg in ("enrich", "all"):
+            t0 = time.time()
             run_enrich()
+            print(f"[TIMING] Stage 2 (Enrich) completed in {time.time() - t0:.2f}s")
 
         if stg in ("analyze", "all"):
+            t0 = time.time()
             run_analysis()
+            print(f"[TIMING] Stage 3 (Trade Analysis) completed in {time.time() - t0:.2f}s")
 
         if stg in ("clob", "all"):
+            t0 = time.time()
             run_clob(single_date=args.date, single_symbol=args.symbol)
+            print(f"[TIMING] Stage 4 (CLOB Replay) completed in {time.time() - t0:.2f}s")
 
         if stg in ("clob-analyze", "all"):
+            t0 = time.time()
             run_clob_analysis()
+            print(f"[TIMING] Stage 5 (CLOB Analysis) completed in {time.time() - t0:.2f}s")
 
         if stg in ("bloomberg", "all"):
+            t0 = time.time()
             run_bloomberg()
+            print(f"[TIMING] Stage 6 (Bloomberg Analysis) completed in {time.time() - t0:.2f}s")
 
         if stg in ("report", "all"):
+            t0 = time.time()
             generate_report()
+            print(f"[TIMING] Stage 7 (Report & PDF Compilation) completed in {time.time() - t0:.2f}s")
+
+        total_elapsed = time.time() - pipeline_start
+        print(f"\n=======================================================")
+        print(f"[TOTAL TIMING] Entire Pipeline execution finished in {total_elapsed:.2f}s ({total_elapsed / 60.0:.2f} min)")
+        print(f"=======================================================")
 
     except KeyboardInterrupt:
         print("\n[ABORTED] Execution interrupted by user.")
