@@ -22,16 +22,26 @@ def run_a1_vwap_trajectory() -> pd.DataFrame:
     print("[ANALYSIS A1] Computing VWAP Trajectory & Basis...")
     liq_list = ", ".join(f"'{s}'" for s in LIQUID_SYMBOLS)
 
-    fao_subquery = f"""
-    fao_min AS (
-        SELECT 
-            TRIM(symbol) AS symbol, trade_date, time_bucket,
-            SUM(trade_price * trade_quantity) / SUM(trade_quantity) AS futures_avg_price
-        FROM read_parquet('{fao_path}/**/*.parquet')
-        WHERE is_settlement_window = True
-        GROUP BY TRIM(symbol), trade_date, time_bucket
-    ),
-    """ if fao_files else "fao_min AS (SELECT NULL AS symbol, NULL AS trade_date, NULL AS time_bucket, NULL AS futures_avg_price WHERE 1=0),"
+    if fao_files:
+        fao_cte = f""",
+        fao_min AS (
+            SELECT 
+                TRIM(symbol) AS symbol, trade_date, time_bucket,
+                SUM(trade_price * trade_quantity) / SUM(trade_quantity) AS futures_avg_price
+            FROM read_parquet('{fao_path}/**/*.parquet')
+            WHERE is_settlement_window = True
+            GROUP BY TRIM(symbol), trade_date, time_bucket
+        )"""
+    else:
+        fao_cte = f""",
+        fao_min AS (
+            SELECT 
+                CAST(NULL AS VARCHAR) AS symbol, 
+                CAST(NULL AS VARCHAR) AS trade_date, 
+                CAST(NULL AS VARCHAR) AS time_bucket, 
+                CAST(NULL AS DOUBLE) AS futures_avg_price 
+            WHERE 1=0
+        )"""
 
     query = f"""
     WITH cash_min AS (
@@ -54,8 +64,7 @@ def run_a1_vwap_trajectory() -> pd.DataFrame:
         FROM read_parquet('{cash_path}/**/*.parquet')
         WHERE is_settlement_window = True
         GROUP BY TRIM(symbol), trade_date, time_bucket, is_expiry
-    ),
-    {fao_subquery}
+    ){fao_cte}
     SELECT 
         c.symbol,
         c.trade_date,

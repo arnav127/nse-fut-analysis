@@ -36,7 +36,7 @@ def run_a9_trade_clustering() -> pd.DataFrame:
     SELECT 
         b.symbol, b.trade_date, b.is_expiry,
         SUM(POWER((b.bucket_volume * 1.0 / d.total_settlement_volume), 2)) AS hhi_concentration,
-        MAX(b.bucket_volume) * 1.0 / d.total_settlement_volume AS max_bucket_share
+        MAX(b.bucket_volume) * 1.0 / FIRST(d.total_settlement_volume) AS max_bucket_share
     FROM bucket_vol b
     JOIN day_vol d ON b.symbol = d.symbol AND b.trade_date = d.trade_date
     GROUP BY b.symbol, b.trade_date, b.is_expiry

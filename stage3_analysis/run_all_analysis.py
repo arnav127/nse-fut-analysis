@@ -1,6 +1,12 @@
 """Orchestrator for Stage 3 trade-level analysis modules (A1-A12)."""
 
+import sys
 import time
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from stage3_analysis.a10_lead_lag import run_a10_lead_lag
 from stage3_analysis.a11_amihud_illiquidity import run_a11_amihud_illiquidity
