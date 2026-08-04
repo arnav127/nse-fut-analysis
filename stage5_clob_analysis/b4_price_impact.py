@@ -40,7 +40,7 @@ def run_b4_price_impact() -> pd.DataFrame:
     SELECT 
         symbol,
         trade_date,
-        (trade_date IN ({expiry_list})) AS is_expiry,
+        (CAST(trade_date AS VARCHAR) IN ({expiry_list}) OR strftime(try_cast(trade_date AS DATE), '%d%m%Y') IN ({expiry_list})) AS is_expiry,
         AVG(impact_bps) AS mean_price_impact_bps,
         MEDIAN(impact_bps) AS median_price_impact_bps,
         COVAR_SAMP(px_change, qty) / (VAR_SAMP(qty) + 1e-12) AS kyle_lambda,
