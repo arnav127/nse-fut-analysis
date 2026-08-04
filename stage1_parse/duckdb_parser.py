@@ -60,15 +60,21 @@ def parse_file_with_duckdb(
 
     pattern = str(Path(RAW_DATA_DIR) / f"{file_prefix}_{date_str}*.DAT*")
     matched = glob.glob(pattern)
-    if not matched:
+    valid_files = [m.replace("\\", "/") for m in matched if not m.endswith(".trg")]
+
+    if not valid_files:
         if category == "fao_orders":
             print(f"[INFO] Optional {category.upper()} for date={date_str} omitted (not required for pipeline analysis).")
         else:
             print(f"[WARN] No raw file matching {pattern} found.")
         return
 
-    in_file = matched[0].replace("\\", "/")
-    print(f"[PARSE-DUCKDB] {category.upper()} for date={date_str} -> {in_file}")
+    if len(valid_files) == 1:
+        file_spec = f"'{valid_files[0]}'"
+        print(f"[PARSE-DUCKDB] {category.upper()} for date={date_str} -> {valid_files[0]}")
+    else:
+        file_spec = str(valid_files)
+        print(f"[PARSE-DUCKDB] {category.upper()} for date={date_str} -> {len(valid_files)} files: {file_prefix}_{date_str}*")
 
     out_dir.mkdir(parents=True, exist_ok=True)
     out_parquet = str((out_dir / "data.parquet")).replace("\\", "/")
@@ -79,7 +85,7 @@ def parse_file_with_duckdb(
     query = f"""
     SELECT 
         {select_sql}
-    FROM read_csv('{in_file}', header=False, sep='\\n', columns={{'line': 'VARCHAR'}}, auto_detect=False)
+    FROM read_csv({file_spec}, header=False, sep='\\n', columns={{'line': 'VARCHAR'}}, auto_detect=False)
     WHERE TRIM(SUBSTRING(line, {sym_pos}, 10)) IN ({symbols_sql})
       AND TRIM(SUBSTRING(line, {type_pos}, {type_len})) = '{type_val}'
     """
