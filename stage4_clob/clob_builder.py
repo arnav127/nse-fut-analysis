@@ -47,7 +47,7 @@ def build_clob_for_symbol_date(symbol: str, date_str: str) -> None:
             activity_label,
             txn_time_jiffies
         FROM read_parquet('{orders_path}/**/*.parquet')
-        WHERE TRIM(symbol) = '{symbol.strip()}' AND (trade_date = '{date_str}' OR trade_date = '{formatted_date}')
+        WHERE TRIM(symbol) = '{symbol.strip()}' AND CAST(trade_date AS VARCHAR) IN ('{date_str}', '{formatted_date}')
     ),
     trades_ev AS (
         SELECT 
@@ -65,7 +65,7 @@ def build_clob_for_symbol_date(symbol: str, date_str: str) -> None:
             'Trade' AS activity_label,
             txn_time_jiffies
         FROM read_parquet('{trades_path}/**/*.parquet')
-        WHERE TRIM(symbol) = '{symbol.strip()}' AND (trade_date = '{date_str}' OR trade_date = '{formatted_date}')
+        WHERE TRIM(symbol) = '{symbol.strip()}' AND CAST(trade_date AS VARCHAR) IN ('{date_str}', '{formatted_date}')
     )
     SELECT * FROM orders_ev
     UNION ALL

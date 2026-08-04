@@ -15,8 +15,12 @@ def _evaluate_paired_hypothesis(h_id: str, desc: str, file_name: str, col_name: 
     if not path.exists():
         return None
 
-    df = pd.read_csv(path)
-    if df.empty or col_name not in df.columns:
+    try:
+        df = pd.read_csv(path)
+    except Exception:
+        return None
+
+    if df.empty or col_name not in df.columns or "trade_date" not in df.columns:
         return None
 
     df["date_ddmmyyyy"] = pd.to_datetime(df["trade_date"]).dt.strftime("%d%m%Y")
