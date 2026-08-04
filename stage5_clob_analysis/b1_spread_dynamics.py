@@ -10,8 +10,8 @@ from config.settings import CLOB_DATA_DIR, EXPIRY_THURSDAYS_DDMMYYYY, LIQUID_SYM
 
 
 def run_b1_spread_dynamics() -> pd.DataFrame:
-    pattern = str(Path(CLOB_DATA_DIR) / "*" / "date=*" / "snapshots.parquet").replace("\\", "/")
-    files = glob.glob(pattern)
+    pattern = str(Path(CLOB_DATA_DIR) / "**" / "*.parquet").replace("\\", "/")
+    files = glob.glob(pattern, recursive=True)
     if not files:
         print("[WARN] No CLOB snapshot files found for B1 analysis.")
         return pd.DataFrame()
@@ -23,7 +23,7 @@ def run_b1_spread_dynamics() -> pd.DataFrame:
     query = f"""
     WITH snap_agg AS (
         SELECT 
-            symbol, trade_date,
+            TRIM(symbol) AS symbol, trade_date,
             AVG(spread_bps) AS mean_spread_bps,
             MAX(spread_bps) AS max_spread_bps,
             MIN(spread_bps) AS min_spread_bps,
@@ -32,12 +32,12 @@ def run_b1_spread_dynamics() -> pd.DataFrame:
             LAST(spread_bps ORDER BY snapshot_time) AS spread_at_1530
         FROM read_parquet('{pattern}')
         WHERE spread_bps IS NOT NULL
-        GROUP BY symbol, trade_date
+        GROUP BY TRIM(symbol), trade_date
     )
     SELECT 
         symbol,
         trade_date,
-        (strftime(CAST(trade_date AS DATE), '%d%m%Y') IN ({expiry_list})) AS is_expiry,
+        (trade_date IN ({expiry_list})) AS is_expiry,
         CASE WHEN symbol IN ({liq_list}) THEN 'Liquid' ELSE 'Illiquid' END AS liquidity_group,
         mean_spread_bps,
         max_spread_bps,

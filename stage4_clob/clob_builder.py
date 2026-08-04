@@ -28,6 +28,8 @@ def build_clob_for_symbol_date(symbol: str, date_str: str) -> None:
     orders_path = str(orders_dir).replace("\\", "/")
     trades_path = str(trades_dir).replace("\\", "/")
 
+    formatted_date = f"{date_str[4:]}-{date_str[2:4]}-{date_str[:2]}" if (len(date_str) == 8 and date_str.isdigit()) else date_str
+
     query = f"""
     WITH orders_ev AS (
         SELECT 
@@ -44,8 +46,8 @@ def build_clob_for_symbol_date(symbol: str, date_str: str) -> None:
             txn_datetime,
             activity_label,
             txn_time_jiffies
-        FROM read_parquet('{orders_path}/*/*.parquet')
-        WHERE symbol = '{symbol}' AND trade_date = '{date_str}'
+        FROM read_parquet('{orders_path}/**/*.parquet')
+        WHERE TRIM(symbol) = '{symbol.strip()}' AND (trade_date = '{date_str}' OR trade_date = '{formatted_date}')
     ),
     trades_ev AS (
         SELECT 
@@ -62,8 +64,8 @@ def build_clob_for_symbol_date(symbol: str, date_str: str) -> None:
             txn_datetime,
             'Trade' AS activity_label,
             txn_time_jiffies
-        FROM read_parquet('{trades_path}/*/*.parquet')
-        WHERE symbol = '{symbol}' AND trade_date = '{date_str}'
+        FROM read_parquet('{trades_path}/**/*.parquet')
+        WHERE TRIM(symbol) = '{symbol.strip()}' AND (trade_date = '{date_str}' OR trade_date = '{formatted_date}')
     )
     SELECT * FROM orders_ev
     UNION ALL
@@ -74,7 +76,8 @@ def build_clob_for_symbol_date(symbol: str, date_str: str) -> None:
     try:
         with duckdb.connect() as conn:
             combined_events = conn.execute(query).df()
-    except Exception:
+    except Exception as exc:
+        print(f"[ERROR-CLOB] Failed querying events for {symbol} on {date_str}: {exc}")
         return
 
     if combined_events.empty:
@@ -91,33 +94,35 @@ def build_clob_for_symbol_date(symbol: str, date_str: str) -> None:
     ]
     for ev in combined_events[cols_order].itertuples(index=False):
         event_kind = ev.event_kind
-        t_time = ev.trade_time
+        t_time = str(ev.trade_time)
 
         if event_kind == 1:
             book.process_event(
-                ev.order_number,
+                int(ev.order_number),
                 int(ev.activity_type),
-                ev.buy_sell,
+                str(ev.buy_sell),
                 float(ev.limit_price),
                 int(ev.volume_original)
             )
         elif event_kind == 2:
             t_qty = int(ev.trade_quantity)
-            book.remove_traded_qty(ev.buy_order_number, t_qty)
-            book.remove_traded_qty(ev.sell_order_number, t_qty)
+            book.remove_traded_qty(int(ev.buy_order_number), t_qty)
+            book.remove_traded_qty(int(ev.sell_order_number), t_qty)
 
         if SETTLEMENT_WINDOW_START <= t_time <= SETTLEMENT_WINDOW_END:
-            h, m, s = map(int, t_time.split(":"))
-            sec_from_1500 = (h - 15) * 3600 + m * 60 + s
+            parts = t_time.split(":")
+            if len(parts) == 3:
+                h, m, s = map(int, parts)
+                sec_from_1500 = (h - 15) * 3600 + m * 60 + s
 
-            if sec_from_1500 != last_snap_second:
-                last_snap_second = sec_from_1500
-                snap = book.snapshot(depth=10)
-                snap["symbol"] = symbol
-                snap["trade_date"] = date_str
-                snap["seconds_from_1500"] = sec_from_1500
-                snap["snapshot_time"] = f"{h:02d}:{m:02d}:{s:02d}"
-                snapshots.append(snap)
+                if sec_from_1500 != last_snap_second:
+                    last_snap_second = sec_from_1500
+                    snap = book.snapshot(depth=10)
+                    snap["symbol"] = symbol
+                    snap["trade_date"] = date_str
+                    snap["seconds_from_1500"] = sec_from_1500
+                    snap["snapshot_time"] = f"{h:02d}:{m:02d}:{s:02d}"
+                    snapshots.append(snap)
 
     if snapshots:
         df_snaps = pd.DataFrame(snapshots)

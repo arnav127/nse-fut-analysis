@@ -11,7 +11,7 @@ from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR
 
 def run_b3_order_flow_imbalance() -> pd.DataFrame:
     orders_path = str(Path(ENRICHED_DATA_DIR) / "cash_orders").replace("\\", "/")
-    if not glob.glob(f"{orders_path}/*/*.parquet"):
+    if not glob.glob(f"{orders_path}/**/*.parquet", recursive=True):
         print("[WARN] Enriched orders missing for B3 analysis.")
         return pd.DataFrame()
 
@@ -20,12 +20,12 @@ def run_b3_order_flow_imbalance() -> pd.DataFrame:
     query = f"""
     WITH base AS (
         SELECT 
-            symbol, trade_date, time_bucket, is_expiry,
+            TRIM(symbol) AS symbol, trade_date, time_bucket, is_expiry,
             SUM(CASE WHEN buy_sell = 'B' THEN volume_original ELSE 0 END) AS buy_volume,
             SUM(CASE WHEN buy_sell = 'S' THEN volume_original ELSE 0 END) AS sell_volume
-        FROM read_parquet('{orders_path}/*/*.parquet')
+        FROM read_parquet('{orders_path}/**/*.parquet')
         WHERE is_settlement_window = True AND activity_type = 1
-        GROUP BY symbol, trade_date, time_bucket, is_expiry
+        GROUP BY TRIM(symbol), trade_date, time_bucket, is_expiry
     )
     SELECT 
         symbol, trade_date, time_bucket, is_expiry,

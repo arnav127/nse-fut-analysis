@@ -10,8 +10,8 @@ from config.settings import CLOB_DATA_DIR, EXPIRY_THURSDAYS_DDMMYYYY, LIQUID_SYM
 
 
 def run_b2_depth_erosion() -> pd.DataFrame:
-    pattern = str(Path(CLOB_DATA_DIR) / "*" / "date=*" / "snapshots.parquet").replace("\\", "/")
-    files = glob.glob(pattern)
+    pattern = str(Path(CLOB_DATA_DIR) / "**" / "*.parquet").replace("\\", "/")
+    files = glob.glob(pattern, recursive=True)
     if not files:
         print("[WARN] No CLOB snapshot files found for B2 analysis.")
         return pd.DataFrame()
@@ -23,17 +23,17 @@ def run_b2_depth_erosion() -> pd.DataFrame:
     query = f"""
     WITH snap_agg AS (
         SELECT 
-            symbol, trade_date,
+            TRIM(symbol) AS symbol, trade_date,
             AVG(total_bid_volume) AS avg_bid_depth,
             AVG(total_ask_volume) AS avg_ask_depth,
             AVG(book_imbalance) AS avg_book_imbalance
         FROM read_parquet('{pattern}')
-        GROUP BY symbol, trade_date
+        GROUP BY TRIM(symbol), trade_date
     )
     SELECT 
         symbol,
         trade_date,
-        (strftime(CAST(trade_date AS DATE), '%d%m%Y') IN ({expiry_list})) AS is_expiry,
+        (trade_date IN ({expiry_list})) AS is_expiry,
         CASE WHEN symbol IN ({liq_list}) THEN 'Liquid' ELSE 'Illiquid' END AS liquidity_group,
         avg_bid_depth,
         avg_ask_depth,

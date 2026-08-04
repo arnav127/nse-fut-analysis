@@ -11,7 +11,7 @@ from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR
 
 def run_a3_participant_profile() -> pd.DataFrame:
     cash_path = str(Path(ENRICHED_DATA_DIR) / "cash_trades").replace("\\", "/")
-    if not glob.glob(f"{cash_path}/*/*.parquet"):
+    if not glob.glob(f"{cash_path}/**/*.parquet", recursive=True):
         print("[WARN] Enriched trades missing for A3 analysis.")
         return pd.DataFrame()
 
@@ -20,23 +20,23 @@ def run_a3_participant_profile() -> pd.DataFrame:
     query = f"""
     WITH buy_side AS (
         SELECT 
-            symbol, trade_date, is_expiry, is_settlement_window,
+            TRIM(symbol) AS symbol, trade_date, is_expiry, is_settlement_window,
             buy_participant_type AS participant_type,
             SUM(trade_quantity) AS volume,
             COUNT(*) AS trades,
             'BUY' AS side
-        FROM read_parquet('{cash_path}/*/*.parquet')
-        GROUP BY symbol, trade_date, is_expiry, is_settlement_window, buy_participant_type
+        FROM read_parquet('{cash_path}/**/*.parquet')
+        GROUP BY TRIM(symbol), trade_date, is_expiry, is_settlement_window, buy_participant_type
     ),
     sell_side AS (
         SELECT 
-            symbol, trade_date, is_expiry, is_settlement_window,
+            TRIM(symbol) AS symbol, trade_date, is_expiry, is_settlement_window,
             sell_participant_type AS participant_type,
             SUM(trade_quantity) AS volume,
             COUNT(*) AS trades,
             'SELL' AS side
-        FROM read_parquet('{cash_path}/*/*.parquet')
-        GROUP BY symbol, trade_date, is_expiry, is_settlement_window, sell_participant_type
+        FROM read_parquet('{cash_path}/**/*.parquet')
+        GROUP BY TRIM(symbol), trade_date, is_expiry, is_settlement_window, sell_participant_type
     )
     SELECT * FROM buy_side
     UNION ALL

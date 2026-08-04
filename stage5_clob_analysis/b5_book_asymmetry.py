@@ -10,8 +10,8 @@ from config.settings import CLOB_DATA_DIR, EXPIRY_THURSDAYS_DDMMYYYY, RESULTS_DI
 
 
 def run_b5_book_asymmetry() -> pd.DataFrame:
-    pattern = str(Path(CLOB_DATA_DIR) / "*" / "date=*" / "snapshots.parquet").replace("\\", "/")
-    files = glob.glob(pattern)
+    pattern = str(Path(CLOB_DATA_DIR) / "**" / "*.parquet").replace("\\", "/")
+    files = glob.glob(pattern, recursive=True)
     if not files:
         print("[WARN] No CLOB snapshot files found for B5 analysis.")
         return pd.DataFrame()
@@ -22,7 +22,7 @@ def run_b5_book_asymmetry() -> pd.DataFrame:
     query = f"""
     WITH base AS (
         SELECT 
-            symbol, trade_date,
+            TRIM(symbol) AS symbol, trade_date,
             LN((total_bid_volume + 1.0) / (total_ask_volume + 1.0)) AS log_pressure,
             book_imbalance,
             snapshot_time
@@ -36,7 +36,7 @@ def run_b5_book_asymmetry() -> pd.DataFrame:
     SELECT 
         b.symbol,
         b.trade_date,
-        (strftime(CAST(b.trade_date AS DATE), '%d%m%Y') IN ({expiry_list})) AS is_expiry,
+        (b.trade_date IN ({expiry_list})) AS is_expiry,
         AVG(b.log_pressure) AS mean_log_pressure,
         AVG(CASE WHEN SIGN(b.book_imbalance) = SIGN(m.mean_imbalance) THEN 1.0 ELSE 0.0 END) AS book_pressure_persistence,
         LAST(b.book_imbalance ORDER BY b.snapshot_time) AS final_imbalance

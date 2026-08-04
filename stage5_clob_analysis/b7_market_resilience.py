@@ -11,8 +11,8 @@ from config.settings import CLOB_DATA_DIR, EXPIRY_THURSDAYS_DDMMYYYY, RESULTS_DI
 
 
 def run_b7_market_resilience() -> pd.DataFrame:
-    pattern = str(Path(CLOB_DATA_DIR) / "*" / "date=*" / "snapshots.parquet").replace("\\", "/")
-    files = glob.glob(pattern)
+    pattern = str(Path(CLOB_DATA_DIR) / "**" / "*.parquet").replace("\\", "/")
+    files = glob.glob(pattern, recursive=True)
     out_csv = Path(RESULTS_DIR) / "b7_market_resilience.csv"
 
     if not files:
@@ -24,9 +24,9 @@ def run_b7_market_resilience() -> pd.DataFrame:
 
     query = f"""
     SELECT 
-        symbol,
+        TRIM(symbol) AS symbol,
         trade_date,
-        (strftime(CAST(trade_date AS DATE), '%d%m%Y') IN ({expiry_list})) AS is_expiry,
+        (trade_date IN ({expiry_list})) AS is_expiry,
         snapshot_time,
         spread_bps
     FROM read_parquet('{pattern}')

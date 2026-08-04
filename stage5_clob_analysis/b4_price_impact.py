@@ -12,11 +12,11 @@ from config.settings import CLOB_DATA_DIR, ENRICHED_DATA_DIR, EXPIRY_THURSDAYS_D
 def run_b4_price_impact() -> pd.DataFrame:
     print("[ANALYSIS B4] Calculating Per-Trade Price Impact & Kyle's Lambda...")
     
-    clob_pattern = str(Path(CLOB_DATA_DIR) / "*" / "date=*" / "snapshots.parquet").replace("\\", "/")
+    clob_pattern = str(Path(CLOB_DATA_DIR) / "**" / "*.parquet").replace("\\", "/")
     trades_path = str(Path(ENRICHED_DATA_DIR) / "cash_trades").replace("\\", "/")
     out_csv = Path(RESULTS_DIR) / "b4_price_impact.csv"
 
-    if not glob.glob(clob_pattern) or not glob.glob(f"{trades_path}/*/*.parquet"):
+    if not glob.glob(clob_pattern, recursive=True) or not glob.glob(f"{trades_path}/**/*.parquet", recursive=True):
         print("[WARN] No CLOB snapshot files found for B4 analysis.")
         df_res = pd.DataFrame(columns=[
             "symbol", "trade_date", "is_expiry", "mean_price_impact_bps",
@@ -30,17 +30,17 @@ def run_b4_price_impact() -> pd.DataFrame:
     query = f"""
     WITH trade_deltas AS (
         SELECT 
-            symbol, trade_date,
-            ABS(trade_price - LAG(trade_price) OVER (PARTITION BY symbol, trade_date ORDER BY txn_time_jiffies)) / (trade_price + 1e-5) * 10000.0 AS impact_bps,
-            (trade_price - LAG(trade_price) OVER (PARTITION BY symbol, trade_date ORDER BY txn_time_jiffies)) AS px_change,
+            TRIM(symbol) AS symbol, trade_date,
+            ABS(trade_price - LAG(trade_price) OVER (PARTITION BY TRIM(symbol), trade_date ORDER BY txn_time_jiffies)) / (trade_price + 1e-5) * 10000.0 AS impact_bps,
+            (trade_price - LAG(trade_price) OVER (PARTITION BY TRIM(symbol), trade_date ORDER BY txn_time_jiffies)) AS px_change,
             trade_quantity AS qty
-        FROM read_parquet('{trades_path}/*/*.parquet')
+        FROM read_parquet('{trades_path}/**/*.parquet')
         WHERE is_settlement_window = True
     )
     SELECT 
         symbol,
         trade_date,
-        (strftime(CAST(trade_date AS DATE), '%d%m%Y') IN ({expiry_list})) AS is_expiry,
+        (trade_date IN ({expiry_list})) AS is_expiry,
         AVG(impact_bps) AS mean_price_impact_bps,
         MEDIAN(impact_bps) AS median_price_impact_bps,
         COVAR_SAMP(px_change, qty) / (VAR_SAMP(qty) + 1e-12) AS kyle_lambda,
