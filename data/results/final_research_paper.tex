@@ -42,9 +42,9 @@ Below is the complete summary of all 30 formal statistical hypotheses evaluated 
 \addlinespace[2pt]
 \textbf{H2} & Basis divergence worse for illiquid stocks & Not Calculated (Missing Data) & N/A & N/A & N/A \\
 \addlinespace[2pt]
-\textbf{H3} & Proprietary desks volume share higher on expiry & Not Calculated (Missing Data) & N/A & N/A & N/A \\
+\textbf{H3} & Proprietary desks volume share higher on expiry & Paired t-test & 1.750 & 0.0823 & 0.146 \\
 \addlinespace[2pt]
-\textbf{H4} & Custodian volume patterns shift on expiry & Not Calculated (Missing Data) & N/A & N/A & N/A \\
+\textbf{H4} & Custodian volume patterns shift on expiry & Paired t-test & -2.138 & 0.0342 & -0.178 \\
 \addlinespace[2pt]
 \textbf{H5} & Algo volume share higher on expiry & Not Calculated (Missing Data) & N/A & N/A & N/A \\
 \addlinespace[2pt]
@@ -103,6 +103,16 @@ Below is the complete summary of all 30 formal statistical hypotheses evaluated 
 \section{Publication Figures \& Microstructure Plots}
 \begin{figure}[htbp]
   \centering
+  \includegraphics[width=0.85\textwidth]{fig1_vwap_basis_trajectory.png}
+  \caption{1-Minute Cash-Futures Basis Trajectory during Settlement Window (15:00-15:30 IST).}
+\end{figure}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{fig2_basis_volatility_boxplot.png}
+  \caption{Basis Volatility Distribution across Stock Liquidity Groups.}
+\end{figure}
+\begin{figure}[htbp]
+  \centering
   \includegraphics[width=0.85\textwidth]{fig3_participant_profile.png}
   \caption{Settlement Volume by Participant Identity (Custodian, Prop, Client).}
 \end{figure}
@@ -123,8 +133,18 @@ Below is the complete summary of all 30 formal statistical hypotheses evaluated 
 \end{figure}
 \begin{figure}[htbp]
   \centering
+  \includegraphics[width=0.85\textwidth]{fig7_spread_dynamics.png}
+  \caption{Bid-Ask Spread Dynamics across Expiry vs. Control Days.}
+\end{figure}
+\begin{figure}[htbp]
+  \centering
   \includegraphics[width=0.85\textwidth]{fig8_order_flow_imbalance.png}
   \caption{Order Flow Imbalance (OFI) Timeline.}
+\end{figure}
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{fig9_price_impact_bps.png}
+  \caption{Per-Trade Midpoint Price Impact (bps).}
 \end{figure}
 \begin{figure}[htbp]
   \centering

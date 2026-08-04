@@ -12,8 +12,8 @@ The NSE settlement price for equity derivatives is calculated as the volume-weig
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | H1 | Basis volatility higher on expiry | Not Calculated (Missing Data) | nan | nan | nan | 0 | 0.0016666666666666668 | False | False |
 | H2 | Basis divergence worse for illiquid stocks | Not Calculated (Missing Data) | nan | nan | nan | 0 | 0.0016666666666666668 | False | False |
-| H3 | Proprietary desks volume share higher on expiry | Not Calculated (Missing Data) | nan | nan | nan | 0 | 0.0016666666666666668 | False | False |
-| H4 | Custodian volume patterns shift on expiry | Not Calculated (Missing Data) | nan | nan | nan | 0 | 0.0016666666666666668 | False | False |
+| H3 | Proprietary desks volume share higher on expiry | Paired t-test | 1.7497288173373633 | 0.0823102443432695 | 0.14581073477809686 | 144 | 0.0016666666666666668 | False | False |
+| H4 | Custodian volume patterns shift on expiry | Paired t-test | -2.1379226433342957 | 0.034223088546478965 | -0.17816022027768424 | 144 | 0.0016666666666666668 | False | False |
 | H5 | Algo volume share higher on expiry | Not Calculated (Missing Data) | nan | nan | nan | 0 | 0.0016666666666666668 | False | False |
 | H6 | Algo order IOC rate higher on expiry | Not Calculated (Missing Data) | nan | nan | nan | 0 | 0.0016666666666666668 | False | False |
 | H7 | Cancel-to-entry ratio spikes on expiry | Not Calculated (Missing Data) | nan | nan | nan | 0 | 0.0016666666666666668 | False | False |
