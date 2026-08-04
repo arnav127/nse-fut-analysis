@@ -20,15 +20,21 @@ def main():
     )
     parser.add_argument("--date", help="Process a single date in DDMMYYYY format")
     parser.add_argument("--symbol", help="Process a single symbol")
+    parser.add_argument(
+        "--engine",
+        choices=["duckdb", "spark"],
+        default="duckdb",
+        help="Execution engine for Stage 1 & Stage 2 (default: duckdb for zero-JVM C++ speed)"
+    )
     args = parser.parse_args()
 
     stg = args.stage
 
     if stg in ("parse", "all"):
-        run_parse(single_date=args.date)
+        run_parse(single_date=args.date, engine=args.engine)
 
     if stg in ("enrich", "all"):
-        run_enrich()
+        run_enrich(engine=args.engine)
 
     if stg in ("analyze", "all"):
         run_analysis()

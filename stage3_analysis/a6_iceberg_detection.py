@@ -1,38 +1,63 @@
 """
-a6_iceberg_detection.py — Iceberg order detection and hidden liquidity (H9).
+a6_iceberg_detection.py — Iceberg order detection and hidden liquidity (H9) via DuckDB.
 """
 import os
-from pyspark.sql import functions as F
-from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR
-from utils.spark_session import get_spark
+import glob
+import duckdb
+import pandas as pd
+from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR, LIQUID_SYMBOLS
 
-def run_a6_iceberg_detection(spark=None):
-    if spark is None:
-        spark = get_spark()
+def run_a6_iceberg_detection():
+    orders_path = os.path.join(ENRICHED_DATA_DIR, "cash_orders").replace("\\", "/")
+    files = glob.glob(f"{orders_path}/*/*.parquet")
+    if not files:
+        print("[WARN] Enriched orders missing for A6 analysis (DuckDB).")
+        return pd.DataFrame()
 
-    orders_path = os.path.join(ENRICHED_DATA_DIR, "cash_orders")
-    if not os.path.exists(orders_path):
-        print("[WARN] Enriched orders missing for A6 analysis.")
-        return
+    print("[ANALYSIS A6] Detecting Iceberg Orders & Hidden Volume (DuckDB C++)...")
+    liq_list = ", ".join([f"'{s}'" for s in LIQUID_SYMBOLS])
 
-    print("[ANALYSIS A6] Detecting Iceberg Orders & Hidden Volume...")
-    df = spark.read.parquet(orders_path).filter(
-        (F.col("is_settlement_window") == True) & (F.col("activity_type") == 1)
+    query = f"""
+    WITH base AS (
+        SELECT 
+            symbol, trade_date, is_expiry,
+            CASE WHEN symbol IN ({liq_list}) THEN 'Liquid' ELSE 'Illiquid' END AS liquidity_group,
+            participant_type,
+            (volume_disclosed > 0 AND volume_disclosed < volume_original) AS is_iceberg,
+            CASE 
+                WHEN (volume_disclosed > 0 AND volume_disclosed < volume_original) 
+                THEN (volume_original - volume_disclosed) 
+                ELSE 0 
+            END AS hidden_vol,
+            volume_original
+        FROM read_parquet('{orders_path}/*/*.parquet')
+        WHERE is_settlement_window = True AND activity_type = 1
     )
+    SELECT 
+        symbol, trade_date, is_expiry, liquidity_group, participant_type,
+        COUNT(*) AS total_orders,
+        SUM(CASE WHEN is_iceberg THEN 1 ELSE 0 END) AS iceberg_orders,
+        SUM(volume_original) AS total_volume,
+        SUM(hidden_vol) AS total_hidden_volume,
+        SUM(CASE WHEN is_iceberg THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS iceberg_ratio,
+        SUM(hidden_vol) * 1.0 / (SUM(volume_original) + 1e-5) AS hidden_volume_ratio
+    FROM base
+    GROUP BY symbol, trade_date, is_expiry, liquidity_group, participant_type
+    ORDER BY symbol, trade_date, participant_type
+    """
 
-    df = df.withColumn("is_iceberg", (F.col("volume_disclosed") > 0) & (F.col("volume_disclosed") < F.col("volume_original")))
-    df = df.withColumn("hidden_volume", F.when(F.col("is_iceberg"), F.col("volume_original") - F.col("volume_disclosed")).otherwise(0))
+    conn = duckdb.connect()
+    try:
+        res_pd = conn.execute(query).df()
+        out_csv = os.path.join(RESULTS_DIR, "a6_iceberg_detection.csv")
+        res_pd.to_csv(out_csv, index=False)
+        print(f"[DONE-DUCKDB] Saved A6 results ({len(res_pd)} rows) to {out_csv}")
+        return res_pd
+    except Exception as e:
+        print(f"[ERROR-DUCKDB] A6 Iceberg Detection failed: {e}")
+        return pd.DataFrame()
+    finally:
+        conn.close()
 
-    grouped = df.groupBy("symbol", "trade_date", "is_expiry", "liquidity_group", "participant_type").agg(
-        F.count("*").alias("total_orders"),
-        F.sum(F.when(F.col("is_iceberg"), 1).otherwise(0)).alias("iceberg_orders"),
-        F.sum("volume_original").alias("total_volume"),
-        F.sum("hidden_volume").alias("total_hidden_volume")
-    ).withColumn("iceberg_ratio", F.col("iceberg_orders") / F.col("total_orders"))\
-     .withColumn("hidden_volume_ratio", F.col("total_hidden_volume") / F.col("total_volume"))
-
-    res_pd = grouped.toPandas()
-    out_csv = os.path.join(RESULTS_DIR, "a6_iceberg_detection.csv")
-    res_pd.to_csv(out_csv, index=False)
-    print(f"[DONE] Saved A6 results to {out_csv}")
-    return res_pd
+if __name__ == "__main__":
+    run_a6_iceberg_detection()

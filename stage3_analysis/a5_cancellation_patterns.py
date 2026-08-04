@@ -1,31 +1,50 @@
 """
-a5_cancellation_patterns.py — Cancellation patterns and spoofing detection (H7, H8).
+a5_cancellation_patterns.py — Cancellation patterns and spoofing detection (H7, H8) via DuckDB.
 """
 import os
-from pyspark.sql import functions as F
+import glob
+import duckdb
+import pandas as pd
 from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR
-from utils.spark_session import get_spark
 
-def run_a5_cancellation_patterns(spark=None):
-    if spark is None:
-        spark = get_spark()
+def run_a5_cancellation_patterns():
+    orders_path = os.path.join(ENRICHED_DATA_DIR, "cash_orders").replace("\\", "/")
+    files = glob.glob(f"{orders_path}/*/*.parquet")
+    if not files:
+        print("[WARN] Enriched orders missing for A5 analysis (DuckDB).")
+        return pd.DataFrame()
 
-    orders_path = os.path.join(ENRICHED_DATA_DIR, "cash_orders")
-    if not os.path.exists(orders_path):
-        print("[WARN] Enriched orders missing for A5 analysis.")
-        return
+    print("[ANALYSIS A5] Analyzing Cancellation Patterns (DuckDB C++)...")
 
-    print("[ANALYSIS A5] Analyzing Cancellation Patterns...")
-    df = spark.read.parquet(orders_path).filter(F.col("is_settlement_window") == True)
+    query = f"""
+    SELECT 
+        symbol, trade_date, time_bucket, is_expiry, participant_type, algo_type,
+        SUM(CASE WHEN activity_type = 1 THEN 1 ELSE 0 END) AS entries,
+        SUM(CASE WHEN activity_type = 3 THEN 1 ELSE 0 END) AS cancellations,
+        SUM(CASE WHEN activity_type = 4 THEN 1 ELSE 0 END) AS modifications,
+        CASE 
+            WHEN SUM(CASE WHEN activity_type = 1 THEN 1 ELSE 0 END) > 0 
+            THEN SUM(CASE WHEN activity_type = 3 THEN 1 ELSE 0 END) * 1.0 / SUM(CASE WHEN activity_type = 1 THEN 1 ELSE 0 END)
+            ELSE 0.0 
+        END AS cancel_to_entry_ratio
+    FROM read_parquet('{orders_path}/*/*.parquet')
+    WHERE is_settlement_window = True
+    GROUP BY symbol, trade_date, time_bucket, is_expiry, participant_type, algo_type
+    ORDER BY symbol, trade_date, time_bucket
+    """
 
-    grouped = df.groupBy("symbol", "trade_date", "time_bucket", "is_expiry", "participant_type", "algo_type").agg(
-        F.sum(F.when(F.col("activity_type") == 1, 1).otherwise(0)).alias("entries"),
-        F.sum(F.when(F.col("activity_type") == 3, 1).otherwise(0)).alias("cancellations"),
-        F.sum(F.when(F.col("activity_type") == 4, 1).otherwise(0)).alias("modifications")
-    ).withColumn("cancel_to_entry_ratio", F.when(F.col("entries") > 0, F.col("cancellations") / F.col("entries")).otherwise(0.0))
+    conn = duckdb.connect()
+    try:
+        res_pd = conn.execute(query).df()
+        out_csv = os.path.join(RESULTS_DIR, "a5_cancellation_patterns.csv")
+        res_pd.to_csv(out_csv, index=False)
+        print(f"[DONE-DUCKDB] Saved A5 results ({len(res_pd)} rows) to {out_csv}")
+        return res_pd
+    except Exception as e:
+        print(f"[ERROR-DUCKDB] A5 Cancellation Patterns failed: {e}")
+        return pd.DataFrame()
+    finally:
+        conn.close()
 
-    res_pd = grouped.toPandas()
-    out_csv = os.path.join(RESULTS_DIR, "a5_cancellation_patterns.csv")
-    res_pd.to_csv(out_csv, index=False)
-    print(f"[DONE] Saved A5 results to {out_csv}")
-    return res_pd
+if __name__ == "__main__":
+    run_a5_cancellation_patterns()

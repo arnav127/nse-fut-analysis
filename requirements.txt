@@ -1,4 +1,4 @@
-pyspark==3.5.1
+duckdb>=1.0.0
 pandas>=2.0
 matplotlib>=3.7
 seaborn>=0.12
