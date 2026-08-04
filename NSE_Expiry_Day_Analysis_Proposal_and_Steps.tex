@@ -1,0 +1,165 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[top=1in,bottom=1in,left=0.8in,right=0.8in]{geometry}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\definecolor{deepnavy}{RGB}{26,54,93}
+\definecolor{sectionblue}{RGB}{43,108,176}
+\titleformat{\section}{\Large\bfseries\color{deepnavy}}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries\color{sectionblue}}{\thesubsection}{1em}{}
+\hypersetup{colorlinks=true,linkcolor=deepnavy,urlcolor=sectionblue}
+\begin{document}
+\begin{center}
+{\LARGE \textbf{\color{deepnavy} NSE Expiry Day Dynamics \& VWAP Settlement Anomalies}\\[0.4cm]}
+{\large \textit{Research Methodology Workflow, Processing Steps \& Complete Hypotheses (H1--H30)}\\[0.5cm]}
+\end{center}
+\vspace{0.3cm}
+\section{Methodology \& Rough Processing Steps (Pipeline Overview)}
+This research examines the microstructure of 10 Nifty 50 stocks (5 liquid, 5 illiquid) and their corresponding futures contracts on the National Stock Exchange (NSE) during the final 30-minute settlement window (15:00--15:30 IST) across 12 Monthly Expiry Thursdays and 12 matched Control trading days in 2022. Below is the step-by-step processing workflow:
+\vspace{0.2cm}
+\subsection*{Step 1: Sample Selection \& Experimental Design (10 Symbols x 24 Dates)}
+\begin{itemize}[noitemsep,topsep=2pt]
+  \item Target Asset Universe: Select 5 Liquid Nifty 50 stocks (RELIANCE, TCS, INFY, HDFCBANK, ICICIBANK) and 5 Illiquid Nifty 50 stocks (GRASIM, HEROMOTOCO, SHREEVECEM, UPL, TECHM).
+  \item Experimental Pairing: Match 12 Monthly Expiry Thursdays in 2022 against 12 Control Thursdays (typically 2 weeks prior to expiry) to isolate expiry-day effects from day-of-week seasonality.
+  \item Settlement Focus Window: Extract tick-by-tick cash market and derivatives market data during the NSE VWAP settlement window (15:00 to 15:30 IST).
+\end{itemize}
+\vspace{0.15cm}
+\subsection*{Step 2: High-Speed Binary Tick Data Parsing (Stage 1)}
+\begin{itemize}[noitemsep,topsep=2pt]
+  \item Input Data Format: Ingest fixed-width binary text files (.DAT.gz) from NSE for CASH\_Orders, CASH\_Trades, FAO\_Orders, and FAO\_Trades.
+  \item Predicate Pushdown: Filter raw strings on symbol substrings and instrument types ('EQ' for Cash, 'FUTSTK' for Futures) before extracting schema columns.
+  \item Column Extraction: Extract 17 standardized fields including Order/Trade numbers, timestamps (Jiffies), prices, volumes, client identity, and algo indicator flags, saving as partitioned Parquet.
+\end{itemize}
+\vspace{0.15cm}
+\subsection*{Step 3: Temporal \& Microstructure Enrichment (Stage 2)}
+\begin{itemize}[noitemsep,topsep=2pt]
+  \item Timestamp Normalization: Convert NSE Jiffies (1/65536th of a second since epoch) into standard Python/Spark timestamps and HH:mm:ss time buckets.
+  \item Currency \& Flag Mapping: Convert Paise to INR Rupees (/ 100.0), flag the 30-minute settlement window (15:00-15:30 IST), and identify Expiry vs. Control dates.
+  \item Participant \& Algo Tagging: Categorize Client Identity into Custodian (Institutional), Proprietary, and NCNP (Retail), and classify Algo Indicator flags into Algo vs. Non-Algo execution.
+  \item Dynamic Partitioning: Save enriched datasets partitioned by ['symbol', 'trade\_date'] to enable instant single-symbol filter pushdown during downstream CLOB replay.
+\end{itemize}
+\vspace{0.15cm}
+\subsection*{Step 4: Trade-Level Microstructure Metrics Computation (Stage 3)}
+\begin{itemize}[noitemsep,topsep=2pt]
+  \item A1 (VWAP Trajectory): Compute cumulative and rolling 1-minute Volume-Weighted Average Price (VWAP) trajectories across 15:00-15:30 IST.
+  \item A2 (Basis Divergence): Compute intraday Futures-Cash basis spread and Basis Volatility (standard deviation of basis).
+  \item A3-A7 (Participant \& Algo Profiling): Quantify Prop/Custodian trade shares, Algo volume contribution, Immediate-Or-Cancel (IOC) aggressiveness, cancellation-to-trade ratios, and iceberg hidden order volume.
+\end{itemize}
+\vspace{0.15cm}
+\subsection*{Step 5: High-Performance Limit Order Book (CLOB) Reconstruction (Stage 4)}
+\begin{itemize}[noitemsep,topsep=2pt]
+  \item Chronological Event Merging: Merge order entry/modify/cancel events with trade execution events into a unified chronological stream.
+  \item Data-Oriented Design (C++): Replay events through a cache-line aligned C++ order book engine (FlatPriceBook with O(log N) price level lookup and zero heap fragmentation).
+  \item 1-Second Depth Snapshots: Emit Top-10 bid/ask price levels and available shares at every second from 15:00:00 to 15:30:00 IST (1,800 snapshots per symbol/date).
+\end{itemize}
+\vspace{0.15cm}
+\subsection*{Step 6: Limit Order Book Liquidity \& Price Impact Analysis (Stage 5)}
+\begin{itemize}[noitemsep,topsep=2pt]
+  \item B1-B2 (Spread \& Depth Dynamics): Calculate percentage bid-ask spread widening and Top-5 / Top-10 order book depth erosion across the settlement window.
+  \item B3-B5 (OFI, Kyle's Lambda \& Asymmetry): Calculate Order Flow Imbalance (OFI), estimate Kyle's Lambda (price impact per million INR traded via OLS regression), and measure Bid-vs-Ask book asymmetry.
+\end{itemize}
+\vspace{0.15cm}
+\subsection*{Step 7: Bloomberg Terminal Integration \& Cross-Market Validation (Stage 6)}
+\begin{itemize}[noitemsep,topsep=2pt]
+  \item C1 (Roll Pressure): Ingest Bloomberg calendar spread data to quantify institutional rollover urgency and predict net directional punch ('UP' or 'DOWN').
+  \item C2-C3 (Cost-of-Carry \& Cross-Validation): Calculate implied repo rates and test whether Bloomberg roll direction predicts actual NSE Cash VWAP terminal drift and CLOB book imbalance.
+  \item C4 (Event Study): Evaluate price trajectories around block trade executions during the final 15 minutes.
+\end{itemize}
+\vspace{0.15cm}
+\subsection*{Step 8: Formal Hypothesis Testing Engine \& Statistical Reporting (Stage 7)}
+\begin{itemize}[noitemsep,topsep=2pt]
+  \item Statistical Test Execution: Evaluate all 30 formal hypotheses (H1-H30) using Paired t-tests, Wilcoxon Signed-Rank tests, Mann-Whitney U tests, OLS regression, Spearman rank correlation, and Binomial tests.
+  \item FDR Multiple-Testing Correction: Apply Benjamini-Hochberg False Discovery Rate correction across all p-values to control Type I errors.
+  \item Artifact Compilation: Automatically generate publication-quality figures (fig1 to fig10), summary statistical tables, and the final Markdown research paper.
+\end{itemize}
+\vspace{0.15cm}
+\subsection*{Step 9: Modular Staged Execution \& Scale-Up Strategy}
+\begin{itemize}[noitemsep,topsep=2pt]
+  \item Staged Workflow: Start processing with 1 or 2 symbols/dates for rapid initial verification of the entire pipeline.
+  \item Incremental Scaling: Copy additional raw data files into 'data/raw/' at any time; pipeline automatically skips previously parsed/built snapshots and dynamically updates partitions without wiping existing data.
+\end{itemize}
+\vspace{0.15cm}
+\newpage
+\section{Complete List of Tested Hypotheses (H1 -- H30)}
+The table below outlines all 30 formal statistical hypotheses evaluated in Stage 7 of the pipeline, along with their null hypothesis ($H_0$), alternative hypothesis ($H_1$), and statistical testing methodology.
+\vspace{0.3cm}
+\begin{longtable}{p{0.8cm} p{3.2cm} p{4.2cm} p{4.2cm} p{2.8cm}}
+\toprule
+\textbf{ID} & \textbf{Hypothesis Name} & \textbf{Null Hypothesis ($H_0$)} & \textbf{Alternative Hypothesis ($H_1$)} & \textbf{Statistical Test} \\
+\midrule
+\endfirsthead
+\toprule
+\textbf{ID} & \textbf{Hypothesis Name} & \textbf{Null Hypothesis ($H_0$)} & \textbf{Alternative Hypothesis ($H_1$)} & \textbf{Statistical Test} \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+\bottomrule
+\endlastfoot
+\textbf{H1} & Expiry Day Basis Volatility Elevation & Basis volatility is identical on Expiry and Control days & Basis volatility is significantly higher on Expiry days due to VWAP settlement trading & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H2} & Liquidity Impact on Expiry Basis Volatility & Illiquid and Liquid stocks experience identical basis volatility elevation & Illiquid stocks exhibit significantly higher basis volatility on Expiry day than Liquid stocks & Mann-Whitney U Test \\
+\addlinespace[3pt]
+\textbf{H3} & Expiry vs Control Spread Widening & Bid-Ask spreads remain unchanged between Expiry and Control days & Bid-Ask spreads widen significantly during the 15:00-15:30 window on Expiry day & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H4} & Spread Widening in Illiquid vs Liquid Symbols & Spread widening on Expiry day is equal across liquidity groups & Illiquid symbols experience significantly greater percentage spread widening than Liquid symbols & Mann-Whitney U Test \\
+\addlinespace[3pt]
+\textbf{H5} & CLOB Top-5 Depth Erosion on Expiry Day & Available order book depth at Top-5 price levels is unchanged on Expiry day & Top-5 limit order book depth erodes significantly on Expiry day & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H6} & Asymmetric Depth Erosion (Illiquid vs Liquid) & Depth erosion on Expiry day is identical across liquid and illiquid stocks & Illiquid symbols suffer more severe percentage depth erosion than Liquid symbols & Mann-Whitney U Test \\
+\addlinespace[3pt]
+\textbf{H7} & Final 10-Minute Depth Collapse & LOB depth remains stable across the entire 30-minute settlement window & LOB depth drops significantly in the final 10 minutes (15:20-15:30 IST) of Expiry day & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H8} & Cash Order Flow Imbalance (OFI) Expiry Elevation & Absolute Cash OFI is identical on Expiry and Control days & Absolute Cash OFI is significantly elevated on Expiry day due to directional settlement pressure & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H9} & Futures OFI Expiry Elevation & Absolute Futures OFI is identical on Expiry and Control days & Absolute Futures OFI is significantly elevated on Expiry day due to contract rolling/closing & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H10} & Cross-Market OFI Synchronization & Cash and Futures OFI are uncorrelated during the settlement window & Cash and Futures OFI exhibit strong positive correlation on Expiry day & Pearson \& Spearman Correlation \\
+\addlinespace[3pt]
+\textbf{H11} & Kyle's Lambda (Price Impact) Elevation & Price impact per million INR traded is identical on Expiry and Control days & Kyle's Lambda (price impact) is significantly higher on Expiry day & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H12} & Illiquid Symbol Price Impact Sensitivity & Kyle's Lambda elevation is uniform across all Nifty 50 symbols & Illiquid symbols show a significantly larger increase in Kyle's Lambda on Expiry day & Mann-Whitney U Test \\
+\addlinespace[3pt]
+\textbf{H13} & Proprietary Trader Activity Elevation & Proprietary trader share of trading volume is unchanged on Expiry day & Proprietary trader share of volume is significantly higher on Expiry day & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H14} & Custodian Trade Share Stability & Custodian institutional trading volume share changes dramatically on Expiry day & Custodian trade share shows minimal deviation between Expiry and Control days & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H15} & Algorithmic Order Contribution Elevation & Algorithmic order entry share is identical on Expiry and Control days & Algorithmic order entry share is significantly higher during Expiry settlement & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H16} & Algo IOC Aggressiveness Elevation & Immediate-Or-Cancel (IOC) order usage by algos is identical across days & Algorithmic IOC usage increases significantly on Expiry day for urgent execution & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H17} & Expiry Day Order Cancellation Ratio Elevation & Order cancellation-to-execution ratio is identical on Expiry and Control days & Order cancellation ratio is significantly higher on Expiry day due to fleeting liquidity & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H18} & High-Frequency Quote Modification Intensity & Order modification frequency per minute is unchanged on Expiry day & Quote modification frequency is significantly elevated on Expiry day & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H19} & Iceberg Order Hidden Volume Contribution & Hidden iceberg order volume is identical on Expiry and Control days & Hidden iceberg order volume is significantly higher on Expiry day & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H20} & Bloomberg Roll Direction Predicts Cash VWAP Drift & Bloomberg roll pressure direction has no predictive power over terminal VWAP drift ($<$50\% accuracy) & Bloomberg roll direction correctly predicts the sign of cash VWAP drift ($>$50\% accuracy) & Binomial Test (H0: p=0.5) \\
+\addlinespace[3pt]
+\textbf{H21} & Roll Intensity Correlation with Magnitude of Cash VWAP Drift & No correlation exists between roll intensity and magnitude of cash VWAP drift & Roll intensity is positively correlated with absolute cash VWAP terminal drift & Spearman Rank Correlation \\
+\addlinespace[3pt]
+\textbf{H22} & Roll Direction Predicts Final CLOB Book Asymmetry & Bloomberg roll direction does not predict final limit order book imbalance ($<$50\% accuracy) & Bloomberg roll direction predicts whether final CLOB imbalance is bid-heavy or ask-heavy & Binomial Test (H0: p=0.5) \\
+\addlinespace[3pt]
+\textbf{H23} & Cost of Carry Mispricing Correlation with Cash OFI & No correlation exists between basis mispricing and Cash Order Flow Imbalance & Absolute cost-of-carry mispricing correlates positively with Cash OFI & Spearman Rank Correlation \\
+\addlinespace[3pt]
+\textbf{H24} & Cash VWAP Terminal Acceleration & VWAP drift is linear across the 30-minute settlement window & VWAP drift accelerates significantly in the final 10 minutes (15:20-15:30 IST) & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H25} & Futures Volume Concentration in Final 15 Minutes & Futures trading volume is evenly distributed across the 15:00-15:30 window & Futures volume concentrates significantly in the 15:15-15:30 IST window & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H26} & Expiry Day Turnover Elevation & Combined Cash and Futures INR turnover is identical on Expiry and Control days & Combined INR turnover is significantly elevated on Expiry day & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H27} & Cross-Market Spread Convergence at 15:30 IST & Futures-Cash basis spread at 15:30 IST is identical on Expiry and Control days & Futures-Cash basis converges closer to zero at 15:30 IST on Expiry day & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H28} & Algorithmic Share of Trade Volume Elevation & Algo share of executed trade volume is unchanged on Expiry day & Algorithmic execution volume share increases significantly on Expiry day & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H29} & Order Book Imbalance Persistence & Intraday autocorrelation of OFI is identical on Expiry and Control days & OFI autocorrelation is significantly stronger on Expiry day due to directional push & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\textbf{H30} & Expiry Day Intraday Price Reversal Post-15:15 IST & Price movement post-15:15 is independent of 15:00-15:15 movement & Prices exhibit significant mean-reverting reversal post-15:15 IST on Expiry day & Paired t-test \& Wilcoxon Signed-Rank \\
+\addlinespace[3pt]
+\end{longtable}
+\end{document}
