@@ -117,7 +117,7 @@ def parse_cash_trades_duckdb(date_str: str) -> None:
         date_str=date_str,
         category="cash_trades",
         schema=CM_TRADES_SCHEMA,
-        sym_pos=36,
+        sym_pos=37,
         type_pos=47,
         type_len=2,
         type_val=CASH_SERIES_FILTER,
