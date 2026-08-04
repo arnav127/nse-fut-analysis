@@ -39,11 +39,8 @@ def _build_select_exprs(schema: List[FieldSchema]) -> str:
 
 
 def _get_symbols_sql_list() -> str:
-    symbols = set()
-    for sym in TARGET_SYMBOLS_RAW:
-        symbols.add(sym.strip())
-        symbols.add(sym)
-    return ", ".join(f"'{s}'" for s in sorted(symbols))
+    symbols_quoted = [f"'{sym.strip()}'" for sym in TARGET_SYMBOLS_RAW]
+    return ", ".join(symbols_quoted)
 
 
 def parse_file_with_duckdb(
@@ -89,7 +86,7 @@ def parse_file_with_duckdb(
     SELECT 
         {select_sql}
     FROM read_csv({file_spec}, header=False, sep='\\n', columns={{'line': 'VARCHAR'}}, auto_detect=False)
-    WHERE (TRIM(SUBSTRING(line, {sym_pos}, 10)) IN ({symbols_sql}) OR SUBSTRING(line, {sym_pos}, 10) IN ({symbols_sql}))
+    WHERE TRIM(SUBSTRING(line, {sym_pos}, 10)) IN ({symbols_sql})
       AND TRIM(SUBSTRING(line, {type_pos}, {type_len})) = '{type_val}'
     """
 
