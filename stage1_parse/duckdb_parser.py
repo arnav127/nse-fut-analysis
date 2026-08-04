@@ -27,7 +27,9 @@ def _build_select_exprs(schema: List[FieldSchema]) -> str:
     for field_name, start, length, dtype in schema:
         pos = start + 1  # DuckDB SUBSTRING is 1-indexed
         if dtype == "str":
-            if field_name in ("symbol", "series", "instrument", "option_type"):
+            if field_name == "symbol":
+                exprs.append(f"REGEXP_EXTRACT(SUBSTRING(line, {pos}, {length}), '[A-Z0-9-]+') AS symbol")
+            elif field_name in ("series", "instrument", "option_type"):
                 exprs.append(f"TRIM(SUBSTRING(line, {pos}, {length})) AS {field_name}")
             else:
                 exprs.append(f"SUBSTRING(line, {pos}, {length}) AS {field_name}")
@@ -86,7 +88,7 @@ def parse_file_with_duckdb(
     SELECT 
         {select_sql}
     FROM read_csv({file_spec}, header=False, sep='\\n', columns={{'line': 'VARCHAR'}}, auto_detect=False)
-    WHERE TRIM(SUBSTRING(line, {sym_pos}, 10)) IN ({symbols_sql})
+    WHERE REGEXP_EXTRACT(SUBSTRING(line, {sym_pos}, 10), '[A-Z0-9-]+') IN ({symbols_sql})
       AND TRIM(SUBSTRING(line, {type_pos}, {type_len})) = '{type_val}'
     """
 
