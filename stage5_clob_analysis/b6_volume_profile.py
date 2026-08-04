@@ -22,8 +22,8 @@ def _gini_coefficient(x: np.ndarray) -> float:
 
 
 def run_b6_volume_profile() -> pd.DataFrame:
-    pattern = str(Path(CLOB_DATA_DIR) / "*" / "date=*" / "snapshots.parquet").replace("\\", "/")
-    files = glob.glob(pattern)
+    pattern = str(Path(CLOB_DATA_DIR) / "**" / "*.parquet").replace("\\", "/")
+    files = glob.glob(pattern, recursive=True)
     out_csv = Path(RESULTS_DIR) / "b6_volume_profile.csv"
 
     if not files:
@@ -35,14 +35,14 @@ def run_b6_volume_profile() -> pd.DataFrame:
 
     query = f"""
     SELECT 
-        symbol,
+        TRIM(symbol) AS symbol,
         trade_date,
-        (strftime(CAST(trade_date AS DATE), '%d%m%Y') IN ({expiry_list})) AS is_expiry,
+        (trade_date IN ({expiry_list})) AS is_expiry,
         seconds_from_1500,
         AVG(total_bid_volume + total_ask_volume) AS tot_vol
     FROM read_parquet('{pattern}')
     WHERE total_bid_volume IS NOT NULL
-    GROUP BY symbol, trade_date, is_expiry, seconds_from_1500
+    GROUP BY TRIM(symbol), trade_date, is_expiry, seconds_from_1500
     ORDER BY symbol, trade_date, seconds_from_1500
     """
 
@@ -61,8 +61,8 @@ def run_b6_volume_profile() -> pd.DataFrame:
                 "trade_date": trade_date,
                 "is_expiry": is_expiry,
                 "volume_gini": gini_val,
-                "peak_to_trough_ratio": np.max(vol_vals) / (np.min(vol_vals) + 1e-5),
-                "final_min_share": vol_vals[-1] / (np.sum(vol_vals) + 1e-5),
+                "peak_to_trough_ratio": float(np.max(vol_vals) / (np.min(vol_vals) + 1e-5)),
+                "final_min_share": float(vol_vals[-1] / (np.sum(vol_vals) + 1e-5)),
             })
 
         res_df = pd.DataFrame(metrics)

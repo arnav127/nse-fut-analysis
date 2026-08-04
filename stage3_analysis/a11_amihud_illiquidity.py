@@ -1,4 +1,4 @@
-"""Amihud Illiquidity Ratio Analysis across settlement windows (Stage 3 A11, H27)."""
+"""Amihud illiquidity metric calculation (Stage 3 A11, H27)."""
 
 import glob
 from pathlib import Path
@@ -11,36 +11,39 @@ from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR
 
 def run_a11_amihud_illiquidity() -> pd.DataFrame:
     cash_path = str(Path(ENRICHED_DATA_DIR) / "cash_trades").replace("\\", "/")
-    if not glob.glob(f"{cash_path}/*/*.parquet"):
+    if not glob.glob(f"{cash_path}/**/*.parquet", recursive=True):
         print("[WARN] Enriched trades missing for A11 analysis.")
         return pd.DataFrame()
 
-    print("[ANALYSIS A11] Calculating Amihud Illiquidity Ratio (H27)...")
+    print("[ANALYSIS A11] Calculating Amihud Illiquidity Metric...")
 
     query = f"""
-    WITH min_agg AS (
+    WITH min_data AS (
         SELECT 
-            symbol, trade_date, time_bucket, is_expiry, is_settlement_window,
-            FIRST(trade_price ORDER BY txn_time_jiffies) AS first_price,
-            LAST(trade_price ORDER BY txn_time_jiffies) AS last_price,
-            SUM(trade_price * trade_quantity) AS traded_value
-        FROM read_parquet('{cash_path}/*/*.parquet')
-        GROUP BY symbol, trade_date, time_bucket, is_expiry, is_settlement_window
+            TRIM(symbol) AS symbol, trade_date, time_bucket, is_expiry, is_settlement_window,
+            SUM(trade_price * trade_quantity) AS volume_inr,
+            SUM(trade_price * trade_quantity) / SUM(trade_quantity) AS vwap_price,
+            ABS(LN((SUM(trade_price * trade_quantity) / SUM(trade_quantity)) / 
+                   LAG(SUM(trade_price * trade_quantity) / SUM(trade_quantity)) 
+                   OVER (PARTITION BY TRIM(symbol), trade_date ORDER BY time_bucket))) AS abs_return
+        FROM read_parquet('{cash_path}/**/*.parquet')
+        GROUP BY TRIM(symbol), trade_date, time_bucket, is_expiry, is_settlement_window
     ),
-    amihud_min AS (
+    amihud_calc AS (
         SELECT 
-            symbol, trade_date, time_bucket, is_expiry, is_settlement_window,
-            ABS((last_price - first_price) / (first_price + 1e-5)) / (traded_value + 1.0) AS amihud_ratio
-        FROM min_agg
+            symbol, trade_date, is_expiry,
+            AVG(CASE WHEN is_settlement_window = True THEN abs_return / (volume_inr / 1e6 + 1e-5) ELSE NULL END) AS amihud_settlement,
+            AVG(CASE WHEN is_settlement_window = False THEN abs_return / (volume_inr / 1e6 + 1e-5) ELSE NULL END) AS amihud_presettlement
+        FROM min_data
+        WHERE abs_return IS NOT NULL AND volume_inr > 0
+        GROUP BY symbol, trade_date, is_expiry
     )
     SELECT 
         symbol, trade_date, is_expiry,
-        AVG(CASE WHEN is_settlement_window = True THEN amihud_ratio END) AS amihud_settlement,
-        AVG(CASE WHEN is_settlement_window = False THEN amihud_ratio END) AS amihud_pre_settlement,
-        AVG(CASE WHEN is_settlement_window = True THEN amihud_ratio END) / 
-            (AVG(CASE WHEN is_settlement_window = False THEN amihud_ratio END) + 1e-12) AS amihud_uplift
-    FROM amihud_min
-    GROUP BY symbol, trade_date, is_expiry
+        amihud_settlement,
+        amihud_presettlement,
+        (amihud_settlement - amihud_presettlement) / (amihud_presettlement + 1e-8) AS amihud_uplift
+    FROM amihud_calc
     ORDER BY symbol, trade_date
     """
 
@@ -49,7 +52,7 @@ def run_a11_amihud_illiquidity() -> pd.DataFrame:
             res_pd = conn.execute(query).df()
         out_csv = Path(RESULTS_DIR) / "a11_amihud_illiquidity.csv"
         res_pd.to_csv(out_csv, index=False)
-        print(f"[DONE-DUCKDB] Saved A11 Amihud Illiquidity results to {out_csv}")
+        print(f"[DONE-DUCKDB] Saved A11 results ({len(res_pd)} rows) to {out_csv}")
         return res_pd
     except Exception as exc:
         print(f"[ERROR-DUCKDB] A11 Amihud Illiquidity failed: {exc}")

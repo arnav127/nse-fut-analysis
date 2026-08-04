@@ -1,4 +1,4 @@
-"""Trade size distribution and concentration metrics (Stage 3 A9, H25)."""
+"""Trade clustering and Herfindahl-Hirschman Index (HHI) concentration (Stage 3 A9, H25)."""
 
 import glob
 from pathlib import Path
@@ -11,26 +11,36 @@ from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR
 
 def run_a9_trade_clustering() -> pd.DataFrame:
     cash_path = str(Path(ENRICHED_DATA_DIR) / "cash_trades").replace("\\", "/")
-    if not glob.glob(f"{cash_path}/*/*.parquet"):
+    if not glob.glob(f"{cash_path}/**/*.parquet", recursive=True):
         print("[WARN] Enriched trades missing for A9 analysis.")
         return pd.DataFrame()
 
-    print("[ANALYSIS A9] Analyzing Trade Size Concentration & Clustering (H25)...")
+    print("[ANALYSIS A9] Analyzing Trade Concentration (HHI) & Clustering...")
 
     query = f"""
+    WITH bucket_vol AS (
+        SELECT 
+            TRIM(symbol) AS symbol, trade_date, time_bucket, is_expiry,
+            SUM(trade_quantity) AS bucket_volume
+        FROM read_parquet('{cash_path}/**/*.parquet')
+        WHERE is_settlement_window = True
+        GROUP BY TRIM(symbol), trade_date, time_bucket, is_expiry
+    ),
+    day_vol AS (
+        SELECT 
+            symbol, trade_date,
+            SUM(bucket_volume) AS total_settlement_volume
+        FROM bucket_vol
+        GROUP BY symbol, trade_date
+    )
     SELECT 
-        symbol, trade_date, is_expiry,
-        SUM(trade_quantity) AS tot_vol,
-        COUNT(*) AS trade_cnt,
-        MAX(trade_quantity) AS max_trade_qty,
-        AVG(trade_quantity) AS avg_trade_qty,
-        SUM(trade_quantity * trade_quantity) AS sum_sq_qty,
-        SUM(trade_quantity * trade_quantity) * 1.0 / (SUM(trade_quantity) * SUM(trade_quantity) + 1e-5) AS hhi_concentration,
-        MAX(trade_quantity) * 1.0 / (AVG(trade_quantity) + 1e-5) AS max_to_avg_ratio
-    FROM read_parquet('{cash_path}/*/*.parquet')
-    WHERE is_settlement_window = True
-    GROUP BY symbol, trade_date, is_expiry
-    ORDER BY symbol, trade_date
+        b.symbol, b.trade_date, b.is_expiry,
+        SUM(POWER((b.bucket_volume * 1.0 / d.total_settlement_volume), 2)) AS hhi_concentration,
+        MAX(b.bucket_volume) * 1.0 / d.total_settlement_volume AS max_bucket_share
+    FROM bucket_vol b
+    JOIN day_vol d ON b.symbol = d.symbol AND b.trade_date = d.trade_date
+    GROUP BY b.symbol, b.trade_date, b.is_expiry
+    ORDER BY b.symbol, b.trade_date
     """
 
     try:

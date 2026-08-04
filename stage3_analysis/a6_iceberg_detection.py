@@ -11,7 +11,7 @@ from config.settings import ENRICHED_DATA_DIR, LIQUID_SYMBOLS, RESULTS_DIR
 
 def run_a6_iceberg_detection() -> pd.DataFrame:
     orders_path = str(Path(ENRICHED_DATA_DIR) / "cash_orders").replace("\\", "/")
-    if not glob.glob(f"{orders_path}/*/*.parquet"):
+    if not glob.glob(f"{orders_path}/**/*.parquet", recursive=True):
         print("[WARN] Enriched orders missing for A6 analysis.")
         return pd.DataFrame()
 
@@ -21,8 +21,8 @@ def run_a6_iceberg_detection() -> pd.DataFrame:
     query = f"""
     WITH base AS (
         SELECT 
-            symbol, trade_date, is_expiry,
-            CASE WHEN symbol IN ({liq_list}) THEN 'Liquid' ELSE 'Illiquid' END AS liquidity_group,
+            TRIM(symbol) AS symbol, trade_date, is_expiry,
+            CASE WHEN TRIM(symbol) IN ({liq_list}) THEN 'Liquid' ELSE 'Illiquid' END AS liquidity_group,
             participant_type,
             (volume_disclosed > 0 AND volume_disclosed < volume_original) AS is_iceberg,
             CASE 
@@ -31,7 +31,7 @@ def run_a6_iceberg_detection() -> pd.DataFrame:
                 ELSE 0 
             END AS hidden_vol,
             volume_original
-        FROM read_parquet('{orders_path}/*/*.parquet')
+        FROM read_parquet('{orders_path}/**/*.parquet')
         WHERE is_settlement_window = True AND activity_type = 1
     )
     SELECT 

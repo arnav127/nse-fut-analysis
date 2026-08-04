@@ -11,7 +11,7 @@ from config.settings import ENRICHED_DATA_DIR, RESULTS_DIR
 
 def run_a7_ioc_aggressiveness() -> pd.DataFrame:
     orders_path = str(Path(ENRICHED_DATA_DIR) / "cash_orders").replace("\\", "/")
-    if not glob.glob(f"{orders_path}/*/*.parquet"):
+    if not glob.glob(f"{orders_path}/**/*.parquet", recursive=True):
         print("[WARN] Enriched orders missing for A7 analysis.")
         return pd.DataFrame()
 
@@ -20,11 +20,11 @@ def run_a7_ioc_aggressiveness() -> pd.DataFrame:
     query = f"""
     WITH base AS (
         SELECT 
-            symbol, trade_date, time_bucket, is_expiry,
+            TRIM(symbol) AS symbol, trade_date, time_bucket, is_expiry,
             CASE WHEN EXTRACT(MINUTE FROM txn_datetime) >= 25 THEN 'Late' ELSE 'Early' END AS sub_window,
             (ioc_flag = 'Y') AS is_ioc,
             (mkt_order_flag = 'Y') AS is_mkt
-        FROM read_parquet('{orders_path}/*/*.parquet')
+        FROM read_parquet('{orders_path}/**/*.parquet')
         WHERE is_settlement_window = True AND activity_type = 1
     )
     SELECT 
