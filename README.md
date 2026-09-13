@@ -152,6 +152,30 @@ queue-priority loss it entails. The settlement-window slice is flattened into
 `data/clob_snapshots/` with the column names the stage-5 analyses read, including hidden
 size at every level.
 
+### Typesetting somewhere else
+
+A compute node rarely has LaTeX, and a laptop cannot hold the tick data. The report splits at
+that seam: the analysis runs where the data is and records the quantities it computed, and
+the typesetting runs where LaTeX is.
+
+```bash
+# wherever the data is - run.sh does this automatically if pdflatex is absent
+python scripts/paper_bundle.py export
+
+# on a machine with LaTeX
+python scripts/paper_bundle.py import paper_bundle.tar.gz
+python run_all.py --stage paper
+```
+
+The bundle is a few megabytes: result tables, the recorded quantities with their units and
+provenance, and the universe selection. No parquet. Figures and macros are rebuilt on the
+receiving side from those same result files, so a bundle cannot carry a figure that disagrees
+with the numbers printed beside it.
+
+`--stage paper` does not recompute anything, which is deliberate: recollecting on a machine
+with no parsed data would overwrite every sample count with a zero, and the document would
+report a study of nothing in perfectly good faith.
+
 ## Choosing the securities
 
 Three groups, derived from the tape rather than hand-picked:
