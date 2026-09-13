@@ -1,0 +1,12 @@
+# Shell scripts must keep LF endings whatever the checkout platform does.
+#
+# This repository is developed on Windows with core.autocrlf=true, which rewrites text files
+# to CRLF on checkout. A shell script that gets a carriage return on its shebang line fails
+# on Linux with "bad interpreter: /usr/bin/env bash^M", which is a confusing way to discover
+# a line-ending problem on a cluster.
+*.sh text eol=lf
+
+# The LaTeX sources are edited on both platforms; normalise them in the repository.
+*.tex text
+*.py text
+*.md text

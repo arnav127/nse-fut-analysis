@@ -32,6 +32,22 @@ Raw `.DAT.gz` files go in `data/raw/`, named as NSE ships them
 ## Running it
 
 ```bash
+./run.sh
+```
+
+Edit the `SETTINGS` block at the top of `run.sh` - where the raw files are, where the output
+goes, how many sessions at once - and run it. It checks its prerequisites, builds the
+universe if that has not been done, runs the pipeline and compiles the report, logging to
+`logs/run-<timestamp>.log`.
+
+Anything already in the environment wins over the settings in the file, so a one-off change
+needs no edit: `JOBS=8 ./run.sh`. Arguments are forwarded to the pipeline, so
+`./run.sh --stage report` does one stage. On a SLURM cluster the same file submits as a job:
+`sbatch run.sh`.
+
+The steps underneath, if you would rather drive them yourself:
+
+```bash
 python run_all.py
 ```
 
