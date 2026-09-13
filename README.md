@@ -50,8 +50,15 @@ Logs are written per stage under `logs/`, results to `data/results/`.
 ### Running on a cluster
 
 ```bash
+export NSE_RAW_DIR=/shared/nse/raw                # sequential reads of large .gz - network is fine
+export NSE_DATA_DIR=/local/scratch/$SLURM_JOB_ID  # thousands of small partitions - keep local
 python run_all.py --jobs 4
 ```
+
+`NSE_RAW_DIR` and `NSE_DATA_DIR` set the two roots independently because they want different
+storage, and the raw corpus is shared with the BlockCrosser project so one copy is enough.
+Neither directory is created when missing: raw data is an input, and silently creating an
+empty one turns an unmounted share into a run that reports no raw file for every session.
 
 Sessions are independent, so `--jobs` runs several at once. The memory and thread budget is
 divided among the workers rather than left to each of them, which matters more than it

@@ -7,21 +7,24 @@ is 64 GB and 32 cores, and every library that sizes itself from `os.cpu_count()`
 
 Both tools this pipeline drives do exactly that. nsetick sizes its memory limit from total
 system memory - measured at roughly a quarter of it - and DuckDB defaults to a large fraction
-of the same number. Run four of either concurrently and the arithmetic does not work: four
-workers each claiming a quarter of the node's memory is the whole node, and four claiming
-sixty per cent of it is nearly two and a half times what exists. Neither will notice until
+of the same number. Run four sessions concurrently and the arithmetic does not work: four
+workers each claiming a quarter of the machine is the whole of it, and nothing notices until
 the allocator fails.
 
 So the budget is resolved here, once, and divided explicitly among workers.
 
 Resolution order, most specific first:
 
-  1. `PIPELINE_MEMORY_MB` / `PIPELINE_CPUS` - an operator override, which is also the escape
-     hatch when the detection below is wrong.
+  1. `PIPELINE_MEMORY_MB` / `PIPELINE_CPUS` - an operator override, and the escape hatch when
+     the detection below is wrong.
   2. The scheduler's own variables (SLURM today; others follow the same shape).
   3. The cgroup limit, which is what the kernel will actually enforce and therefore what
-     matters if the scheduler variables are absent.
+     matters when the scheduler variables are absent.
   4. The machine's totals, for a workstation.
+
+This module is duplicated in the BlockCrosser repository. The two pipelines share nothing
+but nsetick, which is a parser rather than a job-control library, so a copy is cheaper than
+a shared package; keep them in step.
 """
 
 from __future__ import annotations
@@ -31,8 +34,8 @@ from pathlib import Path
 from typing import Optional
 
 # Left for the operating system, page cache and the parent process. The page cache matters
-# here: the stages read what the previous stage wrote, and squeezing it out to give a worker
-# a larger heap trades a cached read for a disk read.
+# here: each stage reads what the previous one wrote, and squeezing it out to give a worker a
+# larger heap trades a cached read for a disk read.
 RESERVE_FRACTION = 0.20
 
 # Used when nothing can be detected. Low enough not to provoke an out-of-memory kill on a
@@ -71,17 +74,38 @@ def _cgroup_memory_mb() -> Optional[int]:
     return None
 
 
-def _system_memory_mb() -> Optional[int]:
+def _windows_memory_mb() -> Optional[int]:
+    """Installed memory on Windows, where sysconf does not exist."""
     try:
-        import psutil
+        import ctypes
 
-        return int(psutil.virtual_memory().total // (1024 * 1024))
+        class _MemStatus(ctypes.Structure):
+            _fields_ = [
+                ("dwLength", ctypes.c_ulong),
+                ("dwMemoryLoad", ctypes.c_ulong),
+                ("ullTotalPhys", ctypes.c_ulonglong),
+                ("ullAvailPhys", ctypes.c_ulonglong),
+                ("ullTotalPageFile", ctypes.c_ulonglong),
+                ("ullAvailPageFile", ctypes.c_ulonglong),
+                ("ullTotalVirtual", ctypes.c_ulonglong),
+                ("ullAvailVirtual", ctypes.c_ulonglong),
+                ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+            ]
+
+        status = _MemStatus()
+        status.dwLength = ctypes.sizeof(_MemStatus)
+        ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status))
+        return int(status.ullTotalPhys // (1024 * 1024))
     except Exception:
-        pass
+        return None
+
+
+def _system_memory_mb() -> Optional[int]:
     try:
         return int(os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") // (1024 * 1024))
     except (AttributeError, ValueError, OSError):
-        return None
+        pass
+    return _windows_memory_mb()
 
 
 def available_memory_mb() -> int:
@@ -129,8 +153,8 @@ def worker_budget(jobs: int) -> tuple:
     """Memory in MB and threads for each of `jobs` concurrent workers.
 
     Dividing rather than letting each worker size itself is the entire point of this module.
-    Both numbers are floored at something usable: a worker given 512 MB or zero threads will
-    fail in a way that looks like a bug in the stage rather than a bad split.
+    Both numbers are floored at something usable: a worker given 512 MB or zero threads fails
+    in a way that looks like a bug in the stage rather than a bad split.
     """
     jobs = max(1, jobs)
     memory = max(2048, available_memory_mb() // jobs)
@@ -152,9 +176,8 @@ def suggested_jobs() -> int:
     """A starting point for `--jobs`, from the smaller of the two constraints.
 
     Memory is normally what binds. The per-session stages hold a book for every symbol in the
-    session, and eight gigabytes per worker is the figure that has been observed to be enough
-    for a full cross-section; below that the book build and the DuckDB aggregations start
-    spilling.
+    session, and eight gigabytes per worker is the figure observed to be enough for a full
+    cross-section; below that the book build and the DuckDB aggregations start spilling.
     """
     by_memory = max(1, available_memory_mb() // 8192)
     by_cpu = max(1, available_cpus() // 4)
