@@ -21,8 +21,8 @@ def run_a12_order_lifespan() -> pd.DataFrame:
     WITH order_lifecycle AS (
         SELECT 
             TRIM(symbol) AS symbol, trade_date, is_expiry, order_number, participant_type, algo_type,
-            MIN(CASE WHEN activity_type = 1 THEN txn_time_jiffies ELSE NULL END) AS entry_jiffies,
-            MIN(CASE WHEN activity_type = 3 THEN txn_time_jiffies ELSE NULL END) AS cancel_jiffies
+            MIN(CASE WHEN activity_type = 1 THEN txn_datetime ELSE NULL END) AS entry_time,
+            MIN(CASE WHEN activity_type = 3 THEN txn_datetime ELSE NULL END) AS cancel_time
         FROM read_parquet('{orders_path}/**/*.parquet')
         WHERE is_settlement_window = True
         GROUP BY TRIM(symbol), trade_date, is_expiry, order_number, participant_type, algo_type
@@ -30,9 +30,12 @@ def run_a12_order_lifespan() -> pd.DataFrame:
     lifespan_calc AS (
         SELECT 
             symbol, trade_date, is_expiry, participant_type, algo_type,
-            (cancel_jiffies - entry_jiffies) / 65536.0 AS lifespan_seconds
+            -- Timestamps, not jiffies: nsetick converts during the decode. The divisor
+            -- used to be 65536 because the column held jiffies; applying it to a
+            -- microsecond difference would have understated every lifespan 15-fold.
+            date_diff('microsecond', entry_time, cancel_time) / 1e6 AS lifespan_seconds
         FROM order_lifecycle
-        WHERE entry_jiffies IS NOT NULL AND cancel_jiffies IS NOT NULL AND cancel_jiffies >= entry_jiffies
+        WHERE entry_time IS NOT NULL AND cancel_time IS NOT NULL AND cancel_time >= entry_time
     )
     SELECT 
         symbol, trade_date, is_expiry, participant_type, algo_type,

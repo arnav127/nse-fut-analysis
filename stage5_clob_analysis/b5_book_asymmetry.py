@@ -7,17 +7,25 @@ import duckdb
 import pandas as pd
 
 from config.settings import CLOB_DATA_DIR, EXPIRY_THURSDAYS_DDMMYYYY, RESULTS_DIR
+from utils.paths import session_to_iso
 
 
 def run_b5_book_asymmetry() -> pd.DataFrame:
-    pattern = str(Path(CLOB_DATA_DIR) / "**" / "*.parquet").replace("\\", "/")
+    # Addresses the snapshot partitions explicitly rather than globbing the whole tree.
+    # A recursive glob would also pick up any output left by an earlier layout and union
+    # two different schemas into the same query.
+    pattern = (Path(CLOB_DATA_DIR) / "date=*" / "sym=*" / "*.parquet").as_posix()
     files = glob.glob(pattern, recursive=True)
     if not files:
         print("[WARN] No CLOB snapshot files found for B5 analysis.")
         return pd.DataFrame()
 
     print("[ANALYSIS B5] Analyzing Directional Book Pressure & Asymmetry...")
-    expiry_list = ", ".join(f"'{d}'" for d in EXPIRY_THURSDAYS_DDMMYYYY)
+    # The snapshot layer stores `trade_date` as ISO, derived from the record timestamp.
+    # The expiry calendar is written the way NSE names its files, so it is converted here;
+    # comparing the two spellings directly matched nothing and reported every session as a
+    # control day.
+    expiry_list = ", ".join(f"'{session_to_iso(d)}'" for d in EXPIRY_THURSDAYS_DDMMYYYY)
 
     query = f"""
     WITH base AS (

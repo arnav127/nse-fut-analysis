@@ -1,9 +1,17 @@
+# nsetick is the parser and order book engine. It is a compiled Rust extension built from
+# the sibling repository (https://github.com/arnav127/nsetick) with maturin; install the
+# wheel it produces rather than expecting it from PyPI:
+#   cd ../nsetick && maturin build --release -m crates/nsetick-py/Cargo.toml
+#   pip install ../nsetick/target/wheels/nsetick-*.whl
+nsetick>=0.1.0
+
 duckdb>=1.0.0
 pandas>=2.0
-matplotlib>=3.7
-seaborn>=0.12
 pyarrow>=14.0
-sortedcontainers>=2.4
+numpy>=1.24
 scipy>=1.11
 statsmodels>=0.14
+matplotlib>=3.7
+seaborn>=0.12
+tqdm>=4.66
 pymupdf>=1.23.0

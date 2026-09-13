@@ -1,131 +1,120 @@
 # Expiry Day Dynamics & VWAP Settlement Anomalies
 
-Empirical market microstructure analysis pipeline for NSE tick-level order/trade data and Bloomberg Terminal roll/spread metrics.
+Market microstructure analysis of NSE expiry Thursdays against matched control days, built
+from Level 3 order-by-order tick data and Bloomberg roll/basis metrics.
 
-Built with PySpark, PyArrow, and a high-performance C++/Numba Limit Order Book engine.
-
----
-
-## Directory Structure
-
-```
-ProjectCourse/
-├── config/
-│   ├── settings.py              # Constants, paths, target symbols, dates, Spark config
-│   └── schema_definitions.py    # Fixed-width record layouts for CM/FAO Orders & Trades
-├── utils/
-│   ├── spark_session.py         # Local PySpark session builder
-│   ├── jiffies_converter.py     # Jiffies (65536/sec) to Datetime conversion
-│   └── price_converter.py       # Paise to Rupees conversion
-├── stage1_parse/
-│   ├── parse_cash_orders.py     # Parse CASH_Orders_DDMMYYYY.DAT.gz -> Parquet
-│   ├── parse_cash_trades.py     # Parse CASH_Trades_DDMMYYYY.DAT.gz -> Parquet
-│   ├── parse_fao_orders.py      # Parse FAO_Orders_DDMMYYYY_nn.DAT.gz -> Parquet
-│   ├── parse_fao_trades.py      # Parse FAO_Trades_DDMMYYYY_nn.DAT.gz -> Parquet
-│   └── run_parse_all.py         # Stage 1 orchestrator
-├── stage2_enrich/
-│   ├── enrich_cash.py           # Add datetime, rupee prices, flags, labels to CASH
-│   ├── enrich_fao.py            # Add datetime, rupee prices, flags, labels to FAO
-│   └── run_enrich_all.py        # Stage 2 orchestrator
-├── stage3_analysis/
-│   ├── a1_vwap_trajectory.py    # Minute-by-minute cumulative VWAP & basis trajectory
-│   ├── a2_basis_divergence.py   # Basis volatility & divergence stats (H1, H2)
-│   ├── a3_participant_profile.py# Participant segmentation: Custodian, Prop, NCNP (H3, H4)
-│   ├── a4_algo_segmentation.py  # Algo vs Non-Algo order flow & aggressiveness (H5, H6)
-│   ├── a5_cancellation_patterns.py# Cancel-to-entry ratios & spoofing signals (H7, H8)
-│   ├── a6_iceberg_detection.py  # Disclosed quantity & hidden volume analysis (H9)
-│   ├── a7_ioc_aggressiveness.py # IOC & Market order urgency (H10, H11)
-│   └── run_all_analysis.py      # Stage 3 orchestrator
-├── stage4_clob/
-│   ├── order_book.py            # Limit Order Book class (auto C++ PyBind11 / Numba fallback)
-│   ├── clob_builder.py          # Chronological order event replay & 1s snapshot engine
-│   ├── clob_schemas.py          # Snapshot schema definitions
-│   ├── run_clob_all.py          # Multiprocessing parallel CLOB runner
-│   └── cpp/
-│       ├── order_book_cpp.cpp   # C++ OrderBook PyBind11 engine source
-│       ├── setup.py             # MSVC & MinGW build script
-│       └── build_mingw.py       # Standalone MinGW (g++) compiler helper
-├── stage5_clob_analysis/
-│   ├── b1_spread_dynamics.py    # Bid-Ask spread dynamics & expansion (H12, H13)
-│   ├── b2_depth_erosion.py      # Order book depth & asymmetric erosion (H14, H15)
-│   ├── b3_order_flow_imbalance.py# Order Flow Imbalance (OFI) (H16)
-│   ├── b4_price_impact.py       # Per-trade price impact (H17)
-│   ├── b5_book_asymmetry.py     # Directional book pressure & persistence (H18, H19)
-│   └── run_clob_analysis.py     # Stage 5 orchestrator
-├── stage6_bloomberg/
-│   ├── bloomberg_data_guide.md  # Terminal export guide
-│   ├── load_bloomberg_data.py   # Bloomberg CSV loader
-│   ├── c1_roll_pressure.py      # Long/Short roll direction classification
-│   ├── c2_cost_of_carry.py      # Theoretical fair basis & mispricing (H23)
-│   ├── c3_directional_validation.py# Cross-referencing roll pressure vs VWAP drift (H20-H22)
-│   └── run_bloomberg_analysis.py# Stage 6 orchestrator
-├── stage7_report/
-│   ├── stat_tests.py            # Consolidated hypothesis testing engine (H1-H23)
-│   ├── generate_charts.py       # Publication-quality figure generation
-│   └── generate_report.py       # Final markdown research report compiler
-├── data/
-│   ├── raw/                     # Place raw .DAT.gz files here
-│   ├── parsed/                  # Stage 1 Parquet outputs
-│   ├── enriched/                # Stage 2 Parquet outputs
-│   ├── clob_snapshots/          # Stage 4 CLOB snapshot Parquets
-│   ├── bloomberg/               # Exported Bloomberg CSVs
-│   └── results/                 # Analysis CSV outputs, PNG figures, and final report
-├── main.py                      # Master pipeline entrypoint
-├── requirements.txt             # Dependencies
-└── README.md
-```
+Twelve expiry sessions and twelve controls from 2022, ten equities split into a liquid and
+an illiquid group, and thirty hypotheses about what happens to the book between 15:00 and
+15:30 when the futures settlement VWAP is being set.
 
 ---
 
-## Quick Start
+## Requirements
 
-### 1. Requirements & Setup
+Parsing and order book reconstruction are done by [nsetick](https://github.com/arnav127/nsetick),
+a Rust library that reads the NSE fixed-width feeds. It is not on PyPI; build the wheel from
+the sibling checkout and install it:
 
-Install dependencies:
+```bash
+cd ../nsetick && maturin build --release -m crates/nsetick-py/Cargo.toml
+pip install ../nsetick/target/wheels/nsetick-*.whl
+```
+
+Then the rest:
+
 ```bash
 pip install -r requirements.txt
 ```
 
-#### *(Optional)* Compile C++ OrderBook Extension for Ultra-Fast Reconstruction
+Raw `.DAT.gz` files go in `data/raw/`, named as NSE ships them
+(`CASH_Orders_27012022.DAT.gz`, `FAO_Trades_27012022_01.DAT.gz`, and so on).
 
-If using **MinGW (`g++`)**:
+## Running it
+
 ```bash
-python stage4_clob/cpp/build_mingw.py
-```
-Or:
-```bash
-python stage4_clob/cpp/setup.py build_ext --compiler=mingw32 --inplace
+python main.py
 ```
 
-If using **MSVC (Visual Studio Build Tools)**:
+That is the whole pipeline. Stages 1, 2 and 4 check for their own output before doing
+anything, so an interrupted run resumes where it stopped rather than starting over.
+
 ```bash
-python stage4_clob/cpp/setup.py build_ext --inplace
+python main.py --stage parse          # one stage; see --help for the list
+python main.py --date 27012022        # one session through the data stages
+python main.py --force                # redo work already on disk
+python main.py --all-symbols          # enrich the whole EQ cross-section
 ```
 
-*(If uncompiled, the pipeline automatically falls back to the fast Python/Numba engine).*
+Logs are written per stage under `logs/`, results to `data/results/`.
 
 ---
 
-### 2. Execution Options
+## Stages
 
-Run the full pipeline end-to-end:
-```bash
-python main.py --stage all
+| | Stage | Reads | Writes |
+|---|---|---|---|
+| 1 | Parse | `data/raw/*.DAT.gz` | `data/parsed/<feed>/date=<session>/symbol=*/` |
+| 2 | Enrich | parsed | `data/enriched/<feed>/date=<session>/sym=*/` |
+| 3 | Trade analysis (A1–A12) | enriched | `data/results/a*.csv` |
+| 4 | Book reconstruction | parsed orders | `data/clob_books/`, `data/clob_snapshots/` |
+| 5 | Book analysis (B1–B7) | snapshots, enriched | `data/results/b*.csv` |
+| 6 | Bloomberg (C1–C4) | `data/bloomberg/*.csv` | `data/results/c*.csv` |
+| 7 | Report | all results | `data/results/final_research_paper.{md,tex,pdf}` |
+
+### Stage 1 — parse
+
+`nsetick.parse` decodes each feed against its versioned layout, selecting the record version
+by date and validating it against the observed record length. Symbol padding is stripped,
+prices are kept as integer paise, and jiffies become real timestamps, all in the single
+decode pass. Output is one directory per feed, partitioned by symbol.
+
+The whole `EQ` / `FUTSTK` cross-section is parsed by default, not just the ten study
+symbols: the filter costs almost nothing, and it means widening the study later does not
+mean re-reading every compressed session. Pass `--universe-only` to narrow it.
+
+### Stage 2 — enrich
+
+Turns exchange codes into the variables the hypotheses are written in - participant class,
+algo class, activity kind - converts paise to rupees, and stamps each row with its session,
+window and expiry flag. Narrowed to `TARGET_SYMBOLS`, one session at a time.
+
+Every row carries both date spellings: `session` (`27012022`, the NSE file's own name, which
+the expiry calendar uses) and `trade_date` (ISO, derived from the timestamp).
+
+### Stage 4 — book reconstruction
+
+`nsetick.build_books` replays the parsed order events into a per-symbol limit order book and
+snapshots it every second at 20 levels, honouring disclosed-quantity replenishment and the
+queue-priority loss it entails. The settlement-window slice is flattened into
+`data/clob_snapshots/` with the column names the stage-5 analyses read, including hidden
+size at every level.
+
+---
+
+## Where the byte layouts live
+
+In nsetick, under `spec/layouts/*.toml`, and nowhere else. This repository used to carry a
+second transcription of the NSE offsets in `config/schema_definitions.py`, and its git
+history is five consecutive commits repairing a symbol offset that had drifted from the
+specification - each of which produced output that looked entirely valid. Deleting the
+second copy is what makes that class of bug impossible rather than merely unlikely.
+
+## Layout
+
 ```
-
-Or run stage-by-stage:
-```bash
-python main.py --stage parse        # Stage 1: Parse fixed-width .DAT.gz files to Parquet
-python main.py --stage enrich       # Stage 2: Add timestamps, prices, flags, labels
-python main.py --stage analyze      # Stage 3: Trade-level analysis (H1-H11)
-python main.py --stage clob         # Stage 4: Replay CLOB & take 1s snapshots
-python main.py --stage clob-analyze # Stage 5: CLOB-based microstructure analysis (H12-H19)
-python main.py --stage bloomberg    # Stage 6: Bloomberg roll pressure integration (H20-H23)
-python main.py --stage report       # Stage 7: Run hypothesis tests & generate report + charts
-```
-
-Run a specific date or symbol:
-```bash
-python main.py --stage parse --date 27012022
-python main.py --stage clob --symbol RELIANCE --date 27012022
+config/
+  settings.py          paths, universe, session calendar, window and book parameters
+  categories.py        the four feeds and their nsetick layouts and filters
+utils/
+  paths.py             layer paths and the session/ISO date conversions
+  logger.py            per-stage file and console logging
+  progress.py          progress display for the long Rust calls
+stage1_parse/          tick_parser.py, run_parse_all.py
+stage2_enrich/         enricher.py, run_enrich_all.py
+stage3_analysis/       a1..a12 plus run_all_analysis.py
+stage4_clob/           clob_builder.py, run_clob_all.py
+stage5_clob_analysis/  b1..b7 plus run_clob_analysis.py
+stage6_bloomberg/      c1..c4, load_bloomberg_data.py, run_bloomberg_analysis.py
+stage7_report/         stat_tests.py, generate_charts.py, generate_report.py
+main.py                entry point
 ```
