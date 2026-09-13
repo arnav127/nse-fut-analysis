@@ -38,8 +38,9 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-import duckdb
 import nsetick
+
+from utils.duck import connect
 
 from config.settings import (
     CLOB_BOOKS_DIR,
@@ -50,6 +51,7 @@ from config.settings import (
     CLOB_SNAPSHOT_INTERVAL_SECONDS,
     EXPIRY_THURSDAYS_DDMMYYYY,
     NSETICK_THREADS,
+    PARQUET_COMPRESSION,
     SETTLEMENT_WINDOW_END,
     SETTLEMENT_WINDOW_START,
     TARGET_SYMBOLS,
@@ -67,7 +69,8 @@ def books_dir(session: str) -> Path:
     return CLOB_BOOKS_DIR / f"date={session}"
 
 
-def build_books(session: str, symbols: Optional[List[str]] = None, force: bool = False) -> Optional[Path]:
+def build_books(session: str, symbols: Optional[List[str]] = None, force: bool = False,
+                threads: Optional[int] = None) -> Optional[Path]:
     """Replay the session's orders into per-symbol books and write L2 snapshots."""
     src = parsed_dir("cash_orders", session)
     out = books_dir(session)
@@ -99,8 +102,8 @@ def build_books(session: str, symbols: Optional[List[str]] = None, force: bool =
                 interval_secs=CLOB_SNAPSHOT_INTERVAL_SECONDS,
                 levels=CLOB_DEPTH_LEVELS,
                 symbols=symbols,
-                threads=NSETICK_THREADS,
-                compression="snappy",
+                threads=threads or NSETICK_THREADS,
+                compression=PARQUET_COMPRESSION,
             )
         partitions = promote_hive_partitions(staging, out)
     finally:
@@ -167,7 +170,9 @@ def _snapshot_projection(levels: int) -> str:
     """
 
 
-def flatten_snapshots(session: str, force: bool = False) -> Optional[Path]:
+def flatten_snapshots(session: str, force: bool = False,
+                      memory_limit_mb: Optional[int] = None,
+                      threads: Optional[int] = None) -> Optional[Path]:
     """Project the raw book output into the snapshot table stage 5 reads.
 
     Restricted to the settlement window. The book itself is replayed from the session open -
@@ -204,10 +209,10 @@ def flatten_snapshots(session: str, force: bool = False) -> Optional[Path]:
           BETWEEN TIME '{SETTLEMENT_WINDOW_START}' AND TIME '{SETTLEMENT_WINDOW_END}'
     """
 
-    with duckdb.connect() as conn:
+    with connect(memory_limit_mb, threads) as conn:
         conn.execute(
             f"COPY ({query}) TO '{staging.as_posix()}' "
-            f"(FORMAT PARQUET, COMPRESSION 'SNAPPY', PARTITION_BY (sym), OVERWRITE_OR_IGNORE 1)"
+            f"(FORMAT PARQUET, COMPRESSION '{PARQUET_COMPRESSION.upper()}', PARTITION_BY (sym), OVERWRITE_OR_IGNORE 1)"
         )
         rows = conn.execute(
             f"SELECT count(*) FROM read_parquet('{(staging / '**' / '*.parquet').as_posix()}')"
@@ -220,6 +225,9 @@ def flatten_snapshots(session: str, force: bool = False) -> Optional[Path]:
     return out_dir
 
 
-def build_clob_for_session(session: str, symbols: Optional[List[str]] = None, force: bool = False) -> None:
-    if build_books(session, symbols=symbols, force=force) is not None:
-        flatten_snapshots(session, force=force)
+def build_clob_for_session(session: str, symbols: Optional[List[str]] = None,
+                           force: bool = False, memory_limit_mb: Optional[int] = None,
+                           threads: Optional[int] = None) -> None:
+    if build_books(session, symbols=symbols, force=force, threads=threads) is not None:
+        flatten_snapshots(session, force=force, memory_limit_mb=memory_limit_mb,
+                          threads=threads)

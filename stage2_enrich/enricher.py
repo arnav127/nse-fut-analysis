@@ -29,13 +29,14 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-import duckdb
+from utils.duck import connect
 
 from config.categories import CATEGORIES
 from config.settings import (
     ALL_TARGET_DATES,
     EXPIRY_THURSDAYS_DDMMYYYY,
     SETTLEMENT_WINDOW_END,
+    PARQUET_COMPRESSION,
     SETTLEMENT_WINDOW_START,
     TARGET_SYMBOLS,
 )
@@ -123,6 +124,8 @@ def enrich_session(
     category_name: str,
     symbols: Optional[List[str]] = None,
     force: bool = False,
+    memory_limit_mb: Optional[int] = None,
+    threads: Optional[int] = None,
 ) -> Optional[Path]:
     """Enrich one feed for one session. Returns the output directory, or None if skipped."""
     src = parsed_dir(category_name, session)
@@ -138,7 +141,7 @@ def enrich_session(
     pattern = (src / "symbol=*" / "*.parquet").as_posix()
     elapsed = Elapsed()
 
-    with duckdb.connect() as conn:
+    with connect(memory_limit_mb, threads) as conn:
         # `symbol` is not a column inside the files - nsetick partitions on it, so it lives
         # in the path. Hive partitioning is requested explicitly, here and in the query
         # below, rather than left to DuckDB's auto-detection; the old CLOB stage relied on
@@ -184,7 +187,7 @@ def enrich_session(
         shutil.rmtree(staging, ignore_errors=True)
         conn.execute(
             f"COPY ({query}) TO '{staging.as_posix()}' "
-            f"(FORMAT PARQUET, COMPRESSION 'SNAPPY', PARTITION_BY (sym), OVERWRITE_OR_IGNORE 1)"
+            f"(FORMAT PARQUET, COMPRESSION '{PARQUET_COMPRESSION.upper()}', PARTITION_BY (sym), OVERWRITE_OR_IGNORE 1)"
         )
         rows = conn.execute(
             f"SELECT count(*) FROM read_parquet('{(staging / '**' / '*.parquet').as_posix()}')"
@@ -202,6 +205,8 @@ def run_enrich(
     single_date: Optional[str] = None,
     symbols: Optional[List[str]] = None,
     force: bool = False,
+    memory_limit_mb: Optional[int] = None,
+    threads: Optional[int] = None,
 ) -> None:
     """Enrich every feed for the configured sessions.
 
@@ -219,7 +224,8 @@ def run_enrich(
     for session in sessions:
         for name in CATEGORIES:
             try:
-                enrich_session(session, name, symbols=symbols, force=force)
+                enrich_session(session, name, symbols=symbols, force=force,
+                               memory_limit_mb=memory_limit_mb, threads=threads)
             except Exception as exc:
                 logger.error(f"[FAILED] enrich {name} {session}: {exc}")
     logger.info(f"[COMPLETE] stage 2 finished in {time.time() - started:.1f}s")
