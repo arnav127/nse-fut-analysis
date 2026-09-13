@@ -1,293 +1,298 @@
-"""Final academic research paper generator compiling findings into Markdown, LaTeX, and compiled PDF paper."""
+"""Stage 7: assemble and compile the manuscript.
 
-import os
+The order matters and is the whole design:
+
+  1. run the hypothesis tests
+  2. record every quantity the text cites, with its unit and provenance
+  3. turn those into LaTeX macros
+  4. assemble the document, whose prose cites macros and contains no typed figure
+  5. audit - fail if the text cites something never recorded, or carries a hand-typed number
+  6. compile
+
+Step 5 is what makes steps 2 and 3 worth having. Without it a macro could quietly go
+missing and the document would either fail to build for an opaque reason or typeset nothing
+where a result should be.
+"""
+
+from __future__ import annotations
+
 import shutil
 import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
+
+import numpy as np
+import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-import pandas as pd
-from config.settings import RESULTS_DIR
-from stage7_report.generate_charts import generate_all_charts
-from stage7_report.stat_tests import run_all_hypothesis_tests
+from config.settings import RESULTS_DIR  # noqa: E402
+from stage7_report import manuscript  # noqa: E402
+from stage7_report.audit_macros import audit  # noqa: E402
+from stage7_report.build_macros import build as build_macros  # noqa: E402
+from stage7_report.build_macros import macro_name, tex_escape  # noqa: E402
+from stage7_report.collect_metrics import collect_all  # noqa: E402
+from stage7_report.generate_charts import generate_all_charts  # noqa: E402
+from stage7_report.stat_tests import run_all_hypothesis_tests  # noqa: E402
+from utils.logger import setup_logger  # noqa: E402
+from utils.provenance import load_metrics, reset as reset_metrics  # noqa: E402
+
+logger = setup_logger("Report", "stage7_report.log")
+
+FIGURES = [
+    ("fig1_vwap_basis_trajectory.png",
+     "Cumulative cash VWAP and cash-futures basis across the settlement window."),
+    ("fig2_basis_volatility_boxplot.png",
+     "Basis volatility by liquidity group, expiry against control."),
+    ("fig3_participant_profile.png",
+     "Settlement-window traded volume by participant classification."),
+    ("fig4_algo_ioc_rate.png",
+     "Immediate-or-cancel submission rate by routing classification."),
+    ("fig5_cancellation_ratio_timeline.png",
+     "Cancel-to-entry ratio by minute across the settlement window."),
+    ("fig6_iceberg_hidden_volume.png",
+     "Share of entered volume held back from display, by liquidity group."),
+    ("fig7_spread_dynamics.png",
+     "Quoted spread by liquidity group, expiry against control."),
+    ("fig8_order_flow_imbalance.png",
+     "Net submitted order flow by minute across the settlement window."),
+    ("fig9_price_impact_bps.png",
+     "Median absolute trade-to-trade price change, expiry against control."),
+    ("fig10_hypothesis_forest_plot.png",
+     "Paired effect sizes with 95\\% intervals. Hypotheses without inputs are marked."),
+]
+
+# The descriptive quantities Table 1 reports, as (label, recorded key stem, unit hint).
+STYLISED_ROWS = [
+    ("Quoted spread (bps)", "spread.mean_bps"),
+    ("Widest spread (bps)", "spread.max_bps"),
+    ("Visible bid depth (shares)", "depth.bid"),
+    ("Visible ask depth (shares)", "depth.ask"),
+    ("Absolute book imbalance", "depth.abs_imbalance"),
+    ("Orders with concealed size (\\%)", "ice.ratio"),
+    ("Volume held from display (\\%)", "ice.hidden_share"),
+    ("Cancellations per entry", "cancel.ratio"),
+    ("Immediate-or-cancel share (\\%)", "ioc.ratio"),
+    ("IOC share, final five minutes (\\%)", "ioc.late_ratio"),
+    ("Orders resting under one second (\\%)", "life.phantom_rate"),
+    ("Median price impact (bps)", "impact.median_bps"),
+    ("Kyle's lambda", "impact.kyle_lambda"),
+    ("Settlement variance rate ratio", "vol.rv_ratio"),
+    ("Volume Gini across the window", "profile.gini"),
+    ("Final-minute volume share (\\%)", "profile.final_min_share"),
+    ("Spread-widening episodes", "resil.shocks"),
+    ("Median recovery (seconds)", "resil.recovery_sec"),
+]
 
 
-def _df_to_markdown(df: pd.DataFrame) -> str:
-    if df.empty:
-        return "*No data available*"
-    cols = list(df.columns)
+def _headline(summary: pd.DataFrame) -> str:
+    """One sentence stating the outcome, recorded rather than asserted."""
+    tested = summary[summary.p_value.notna()] if "p_value" in summary else summary.iloc[0:0]
+    rejected = (summary[summary.significant_fdr.astype(bool)]
+                if "significant_fdr" in summary else summary.iloc[0:0])
+    if not len(tested):
+        return ("No hypothesis could be evaluated on the data available to this run; the "
+                "inputs each one requires were absent or empty.")
+    if not len(rejected):
+        return (f"Of the {len(tested)} hypotheses evaluated, none survives control of the "
+                f"false discovery rate. We report the per-test statistics and effect sizes "
+                f"rather than a set of findings.")
+    ids = ", ".join(rejected.hypothesis_id.astype(str))
+    return (f"Of the {len(tested)} hypotheses evaluated, {len(rejected)} are rejected under "
+            f"false discovery rate control ({ids}); effect sizes and per-test statistics "
+            f"are reported in full.")
+
+
+def _stylised_table() -> str:
+    metrics = load_metrics()
+
+    def cell(stem: str, suffix: str) -> str:
+        name = macro_name(f"{stem}_{suffix}")
+        return rf"\{name}{{}}" if f"{stem}_{suffix}" in metrics else "---"
+
     lines = [
-        "| " + " | ".join(cols) + " |",
-        "| " + " | ".join(["---"] * len(cols)) + " |",
+        r"\begin{table}[htbp]",
+        r"\centering",
+        r"\caption{Settlement-window descriptives, averaged across securities and sessions. "
+        r"A dash marks a quantity whose input was not produced by this run.}",
+        r"\label{tab:stylised}",
+        r"\small",
+        r"\begin{tabular}{lrrr}",
+        r"\toprule",
+        r"Quantity & Expiry & Control & Difference \\",
+        r"\midrule",
     ]
-    for row in df.itertuples(index=False):
-        lines.append("| " + " | ".join(str(val) for val in row) + " |")
+    for label, stem in STYLISED_ROWS:
+        if not any(k.startswith(stem) for k in metrics):
+            continue
+        lines.append(
+            f"{label} & {cell(stem, 'expiry')} & {cell(stem, 'control')} "
+            f"& {cell(stem, 'diff')} \\\\")
+    lines += [r"\bottomrule", r"\end{tabular}", r"\end{table}"]
     return "\n".join(lines)
 
 
-def _bloomberg_available() -> bool:
-    """True only if stage 6 produced at least one real roll direction."""
-    path = Path(RESULTS_DIR) / "c1_roll_pressure.csv"
-    if not path.exists():
-        return False
-    try:
-        df = pd.read_csv(path)
-    except Exception:
-        return False
-    if df.empty or "predicted_punch_direction" not in df.columns:
-        return False
-    return bool(df["predicted_punch_direction"].isin(["UP", "DOWN"]).any())
-
-
-def _findings(summary_df: pd.DataFrame) -> dict:
-    """Facts about what was actually tested, for text that would otherwise be asserted.
-
-    The discussion section used to state that roll pressure is a primary driver of
-    settlement dislocation regardless of what the tests returned - including when no
-    Bloomberg data was present and the roll hypotheses had not been evaluated at all. A
-    generated paper must not claim a result its own run did not produce.
-    """
-    tested = summary_df[summary_df["p_value"].notna()] if "p_value" in summary_df else summary_df.iloc[0:0]
-    fdr = summary_df[summary_df.get("significant_fdr", False) == True] if len(summary_df) else summary_df
-    untested = summary_df[summary_df["p_value"].isna()] if "p_value" in summary_df else summary_df
-    return {
-        # Usable content, not a file on disk. Stage 6 writes a full grid of rows whether or
-        # not any Bloomberg export was present, filling the direction with "UNKNOWN", so
-        # testing for the file's existence would have the abstract claim an integration
-        # that did not happen.
-        "has_bloomberg": _bloomberg_available(),
-        "n_total": len(summary_df),
-        "n_tested": len(tested),
-        "n_significant": len(fdr),
-        "significant_ids": ", ".join(fdr["hypothesis_id"].astype(str)) if len(fdr) else "none",
-        "untested_ids": ", ".join(untested["hypothesis_id"].astype(str)) if len(untested) else "none",
-    }
-
-
-def _abstract(f: dict) -> str:
-    """Abstract text describing the run that produced this document.
-
-    The data-source clause is conditional. Asserting that the study integrates Bloomberg
-    calendar spread, open interest and cost-of-carry metrics is false whenever those files
-    are absent, which is the state stage 6 degrades to rather than failing.
-    """
-    sources = ("high-frequency tick-level NSE cash and derivatives order and trade data"
-               + (", together with Bloomberg Terminal calendar spread, open interest "
-                  "migration and cost-of-carry metrics" if f["has_bloomberg"] else ""))
-    return (
-        "We examine the market microstructure of 10 NSE equities (5 liquid, 5 illiquid) and "
-        "their FUTSTK contracts during the final 30-minute settlement window, across 12 "
-        "monthly expiry Thursdays and 12 matched control sessions in 2022. Drawing on "
-        + sources +
-        f", we specify {f['n_total']} hypotheses (H1-H30) on basis volatility, algorithmic "
-        "execution urgency, order flow imbalance, limit order book depth erosion and roll "
-        f"pressure. {f['n_tested']} were evaluated on the data available to this run, of "
-        f"which {f['n_significant']} were rejected at a 5 per cent false discovery rate."
-    )
-
-
-def _discussion_sentences(f: dict) -> list:
-    """Plain statements of the outcome, in the order a reader needs them."""
-    out = [
-        f"Of the {f['n_total']} hypotheses specified, {f['n_tested']} could be evaluated "
-        f"from the data available to this run, and {f['n_significant']} were rejected at a "
-        f"Benjamini-Hochberg false discovery rate of 5 per cent."
-    ]
-    if f["n_significant"]:
-        out.append(f"The hypotheses rejected were: {f['significant_ids']}. "
-                   f"Effect sizes and per-test p-values are given in the table above.")
-    else:
-        out.append("No hypothesis was rejected once the false discovery rate was controlled. "
-                   "Individual p-values are reported above and should be read with that in mind.")
-    if f["n_tested"] < f["n_total"]:
-        out.append(f"The following were not evaluated because their inputs were absent or "
-                   f"empty, and no claim is made about them: {f['untested_ids']}.")
-    return out
-
-
-def compile_latex_paper(summary_df: pd.DataFrame) -> Optional[Path]:
-    results_dir = Path(RESULTS_DIR)
-    tex_path = results_dir / "final_research_paper.tex"
-    pdf_path = results_dir / "final_research_paper.pdf"
-
-    print(f"[LATEX] Generating LaTeX Research Paper at {tex_path} ...")
-
+def _tests_table(summary: pd.DataFrame) -> str:
     lines = [
-        r"\documentclass[11pt,a4paper]{article}",
-        r"\usepackage[utf8]{inputenc}",
-        r"\usepackage[top=1in,bottom=1in,left=0.8in,right=0.8in]{geometry}",
-        r"\usepackage{booktabs}",
-        r"\usepackage{longtable}",
-        r"\usepackage{graphicx}",
-        r"\usepackage{xcolor}",
-        r"\usepackage{enumitem}",
-        r"\usepackage{hyperref}",
-        r"\definecolor{deepnavy}{RGB}{26,54,93}",
-        r"\definecolor{sectionblue}{RGB}{43,108,176}",
-        r"\hypersetup{colorlinks=true,linkcolor=deepnavy,urlcolor=sectionblue}",
-        r"\title{\Huge \textbf{\color{deepnavy} Expiry Day Dynamics \& VWAP Settlement Anomalies:\\ An Empirical Study of the National Stock Exchange of India}}",
-        r"\author{\textbf{Quantitative Microstructure Research Group}}",
-        r"\date{\today}",
-        r"\begin{document}",
-        r"\maketitle",
-        r"\begin{abstract}",
-        _abstract(_findings(summary_df)),
-        r"\end{abstract}",
-        r"\vspace{0.4cm}",
-        r"\section{Introduction \& Institutional Background}",
-        r"The NSE settlement price for equity derivatives is calculated as the volume-weighted average price (VWAP) of the underlying cash market "
-        r"during the final 30 minutes of trading (15:00 to 15:30 IST). This settlement design creates strong financial incentives for market participants "
-        r"holding large futures or options positions to influence the cash market closing VWAP.",
-        r"\vspace{0.3cm}",
-        r"\section{Empirical Methodology \& Hypothesis Testing (H1 -- H30)}",
-        r"Below is the complete summary of all 30 formal statistical hypotheses evaluated across 12 monthly expiry cycles in 2022.",
-        r"\vspace{0.3cm}",
-        r"\begin{longtable}{p{0.8cm} p{4.2cm} p{2.2cm} p{1.8cm} p{1.8cm} p{1.8cm}}",
+        r"\begin{longtable}{p{0.7cm} p{5.4cm} r r r r}",
+        r"\caption{Paired tests of each hypothesis: expiry sessions against matched controls. "
+        r"$n$ is the number of security-session pairs. Rejection is under Benjamini-Hochberg "
+        r"control of the false discovery rate.}\label{tab:tests}\\",
         r"\toprule",
-        r"\textbf{ID} & \textbf{Hypothesis Description} & \textbf{Test Name} & \textbf{Test Stat} & \textbf{p-Value} & \textbf{Cohen's d} \\",
+        r"ID & Hypothesis & $n$ & $t$ & $p$ & $d$ \\",
         r"\midrule",
         r"\endfirsthead",
         r"\toprule",
-        r"\textbf{ID} & \textbf{Hypothesis Description} & \textbf{Test Name} & \textbf{Test Stat} & \textbf{p-Value} & \textbf{Cohen's d} \\",
+        r"ID & Hypothesis & $n$ & $t$ & $p$ & $d$ \\",
         r"\midrule",
         r"\endhead",
         r"\bottomrule",
         r"\endfoot",
         r"\bottomrule",
-        r"\endlastfoot"
+        r"\endlastfoot",
     ]
-
-    for row in summary_df.itertuples(index=False):
-        h_id = str(getattr(row, "hypothesis_id", ""))
-        desc = str(getattr(row, "description", "")).replace("&", r"\&").replace("%", r"\%").replace("_", r"\_")
-        t_name = str(getattr(row, "test_name", "")).replace("&", r"\&")
-        
-        t_stat = getattr(row, "test_stat", float("nan"))
-        p_val = getattr(row, "p_value", float("nan"))
-        cohen_d = getattr(row, "effect_size_cohen_d", float("nan"))
-
-        t_stat_str = f"{t_stat:.3f}" if pd.notna(t_stat) else "N/A"
-        p_val_str = f"{p_val:.4f}" if pd.notna(p_val) else "N/A"
-        cohen_str = f"{cohen_d:.3f}" if pd.notna(cohen_d) else "N/A"
-
-        lines.append(rf"\textbf{{{h_id}}} & {desc} & {t_name} & {t_stat_str} & {p_val_str} & {cohen_str} \\")
-        lines.append(r"\addlinespace[2pt]")
-
+    for row in summary.itertuples(index=False):
+        h_id = str(row.hypothesis_id)
+        desc = tex_escape(str(row.description))
+        if pd.isna(getattr(row, "p_value", np.nan)):
+            lines.append(rf"\textbf{{{h_id}}} & {desc} & \multicolumn{{4}}{{c}}{{"
+                         rf"\textit{{not evaluated - inputs absent}}}} \\")
+            continue
+        stem = f"h.{h_id.lower()}"
+        marker = r"$^{\ast}$" if getattr(row, "significant_fdr", False) else ""
+        lines.append(
+            rf"\textbf{{{h_id}}}{marker} & {desc} "
+            rf"& \{macro_name(stem + '.n_pairs')}{{}} "
+            rf"& \{macro_name(stem + '.test_stat')}{{}} "
+            rf"& \{macro_name(stem + '.p_value')}{{}} "
+            rf"& \{macro_name(stem + '.effect_size_cohen_d')}{{}} \\")
     lines.append(r"\end{longtable}")
-    lines.append(r"\vspace{0.4cm}")
-    lines.append(r"\section{Publication Figures \& Microstructure Plots}")
+    lines.append(r"\noindent\footnotesize $^{\ast}$ rejected at a false discovery rate of "
+                 r"$\alpha = \TestAlpha{}$.\normalsize")
+    return "\n".join(lines)
 
-    figure_files = [
-        ("fig1_vwap_basis_trajectory.png", "1-Minute Cash-Futures Basis Trajectory during Settlement Window (15:00-15:30 IST)."),
-        ("fig2_basis_volatility_boxplot.png", "Basis Volatility Distribution across Stock Liquidity Groups."),
-        ("fig3_participant_profile.png", "Settlement Volume by Participant Identity (Custodian, Prop, Client)."),
-        ("fig4_algo_ioc_rate.png", "IOC Order Submission Rate by Algo Classification."),
-        ("fig5_cancellation_ratio_timeline.png", "Cancel-to-Entry Ratio Timeline across 15:00-15:30 IST."),
-        ("fig6_iceberg_hidden_volume.png", "Hidden Iceberg Order Volume Contribution."),
-        ("fig7_spread_dynamics.png", "Bid-Ask Spread Dynamics across Expiry vs. Control Days."),
-        ("fig8_order_flow_imbalance.png", "Order Flow Imbalance (OFI) Timeline."),
-        ("fig9_price_impact_bps.png", "Per-Trade Midpoint Price Impact (bps)."),
-        ("fig10_hypothesis_forest_plot.png", "Hypothesis Effect Sizes (Cohen's d) across H1--H30 Formal Tests."),
-    ]
 
-    for fig_filename, fig_caption in figure_files:
-        fig_path = results_dir / fig_filename
-        if fig_path.exists():
-            lines.extend([
-                r"\begin{figure}[htbp]",
-                r"  \centering",
-                rf"  \includegraphics[width=0.85\textwidth]{{{fig_filename}}}",
-                rf"  \caption{{{fig_caption}}}",
-                r"\end{figure}",
-            ])
+def _figures_block(results_dir: Path) -> str:
+    blocks: List[str] = []
+    for filename, caption in FIGURES:
+        if not (results_dir / filename).exists():
+            continue
+        blocks += [
+            r"\begin{figure}[htbp]",
+            r"  \centering",
+            rf"  \includegraphics[width=0.82\textwidth]{{{filename}}}",
+            rf"  \caption{{{caption}}}",
+            r"\end{figure}",
+        ]
+    if not blocks:
+        return ""
+    return "\\section{Figures}\n" + "\n".join(blocks)
 
-    lines.append(r"\section{Results}")
-    lines.extend(_discussion_sentences(_findings(summary_df)))
-    lines.append(r"\end{document}")
 
-    with open(tex_path, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
+def _authored_text() -> str:
+    """The prose, for the hand-typed-number audit. Tables are generated, so excluded."""
+    return "\n".join([
+        manuscript.ABSTRACT, manuscript.INTRODUCTION, manuscript.BACKGROUND,
+        manuscript.DATA, manuscript.DESIGN, manuscript.METHOD,
+        manuscript.RESULTS_INTRO, manuscript.LIMITATIONS, manuscript.REPRODUCIBILITY,
+    ])
 
-    pdflatex_exe = shutil.which("pdflatex") or r"C:\Users\arnav\AppData\Roaming\TinyTeX\bin\windows\pdflatex.exe"
 
-    if Path(pdflatex_exe).exists():
-        print(f"[COMPILE] Compiling LaTeX to PDF via {pdflatex_exe} ...")
-        t_compile = time.time()
-        try:
-            for _ in range(2):
-                subprocess.run(
-                    [pdflatex_exe, "-interaction=nonstopmode", "-output-directory", str(results_dir), str(tex_path)],
-                    cwd=results_dir,
-                    check=True,
-                    stdout=subprocess.DEVNULL
-                )
-            print(f"[TIMING] PDF compilation finished in {time.time() - t_compile:.2f}s")
-            print(f"[SUCCESS] Compiled research paper PDF successfully: {pdf_path}")
-            return pdf_path
-        except Exception as exc:
-            print(f"[WARN] Error compiling LaTeX paper PDF: {exc}")
-            return None
-    else:
-        print(f"[WARN] pdflatex compiler not found at {pdflatex_exe}")
+def assemble(summary: pd.DataFrame, results_dir: Path) -> str:
+    provenance = results_dir / "provenance.tex"
+    return "\n\n".join(filter(None, [
+        manuscript.PREAMBLE,
+        r"\begin{document}",
+        r"\maketitle",
+        manuscript.ABSTRACT,
+        manuscript.INTRODUCTION,
+        manuscript.BACKGROUND,
+        manuscript.DATA,
+        manuscript.DESIGN,
+        manuscript.METHOD,
+        manuscript.RESULTS_INTRO,
+        _stylised_table(),
+        _tests_table(summary),
+        _figures_block(results_dir),
+        manuscript.LIMITATIONS,
+        manuscript.REPRODUCIBILITY,
+        r"\input{provenance}" if provenance.exists() else "",
+        r"\end{document}",
+    ]))
+
+
+def _compile(tex_path: Path, results_dir: Path) -> Optional[Path]:
+    pdflatex = shutil.which("pdflatex") or str(
+        Path.home() / "AppData/Roaming/TinyTeX/bin/windows/pdflatex.exe")
+    if not Path(pdflatex).exists():
+        logger.warning(f"[COMPILE] pdflatex not found ({pdflatex}); the .tex is written but "
+                       f"not compiled")
         return None
+
+    logger.info(f"[COMPILE] {pdflatex}")
+    started = time.time()
+    # Twice: the longtable and the cross-references need a second pass to settle.
+    for pass_number in (1, 2):
+        result = subprocess.run(
+            [pdflatex, "-interaction=nonstopmode", "-halt-on-error",
+             "-output-directory", str(results_dir), str(tex_path)],
+            cwd=results_dir, capture_output=True, text=True)
+        if result.returncode != 0:
+            tail = "\n".join(result.stdout.splitlines()[-25:])
+            logger.error(f"[COMPILE] pdflatex failed on pass {pass_number}:\n{tail}")
+            return None
+
+    pdf = results_dir / "final_research_paper.pdf"
+    logger.info(f"[COMPILE] {pdf} in {time.time() - started:.1f}s")
+    return pdf if pdf.exists() else None
 
 
 def generate_report() -> None:
-    print("\n=== STAGE 7: CONSOLIDATED RESEARCH PAPER GENERATION ===")
-    t_start = time.time()
+    results_dir = Path(RESULTS_DIR)
+    logger.info("=== STAGE 7: MANUSCRIPT ===")
+    started = time.time()
 
-    t_stat = time.time()
-    summary_df = run_all_hypothesis_tests()
-    print(f"[TIMING] Statistical hypothesis testing finished in {time.time() - t_stat:.2f}s")
+    # Cleared first. A metric whose recorder was removed would otherwise persist in the
+    # store and keep appearing in the document - the hand-typed-number problem by another
+    # route.
+    reset_metrics()
 
-    t_chart = time.time()
+    summary = run_all_hypothesis_tests()
+    collect_all()
+
+    from utils.provenance import Run
+    with Run("stage7.generate_report") as run:
+        run.record("results.headline", _headline(summary), "",
+                   "one-sentence statement of the outcome, derived from the test results")
+
+    build_macros()
     generate_all_charts()
-    print(f"[TIMING] Chart generation finished in {time.time() - t_chart:.2f}s")
 
-    report_md = Path(RESULTS_DIR) / "final_research_paper.md"
+    document = assemble(summary, results_dir)
+    problems, fallbacks = audit(document, _authored_text(), results_dir / "macros.tex")
+    if fallbacks:
+        # Appended so the document still builds and the gaps are visible on the page as ??
+        # rather than stopping the compile with an opaque LaTeX error.
+        macros_path = results_dir / "macros.tex"
+        macros_path.write_text(
+            macros_path.read_text(encoding="utf-8")
+            + "\n% Cited but never recorded - see the audit output.\n" + fallbacks + "\n",
+            encoding="utf-8")
+    for problem in problems:
+        logger.error(f"[AUDIT] {problem}")
+    if not problems:
+        logger.info("[AUDIT] every cited quantity is recorded; no hand-typed numbers")
 
-    with open(report_md, "w", encoding="utf-8") as f:
-        f.write("# Expiry Day Dynamics & VWAP Settlement Anomalies: An Empirical Study of the National Stock Exchange of India\n\n")
-        f.write("**Abstract**\n")
-        f.write(_abstract(_findings(summary_df)) + "\n\n")
+    tex_path = results_dir / "final_research_paper.tex"
+    tex_path.write_text(document, encoding="utf-8")
+    logger.info(f"[MANUSCRIPT] {tex_path}")
 
-        f.write("## 1. Introduction & Institutional Background\n")
-        f.write("The NSE settlement price for equity derivatives is calculated as the volume-weighted average price (VWAP) of the underlying cash market ")
-        f.write("during the final 30 minutes of trading (15:00 to 15:30 IST). This settlement design creates strong financial incentives for market participants ")
-        f.write("holding large futures or options positions to influence the cash market closing VWAP.\n\n")
-
-        f.write("## 2. Comprehensive Hypothesis Testing Results (H1 – H30)\n\n")
-        f.write(_df_to_markdown(summary_df))
-        f.write("\n\n")
-
-        f.write("## 3. Publication Figures & Visual Artifacts\n\n")
-        f.write("- ![Figure 1: VWAP Basis Trajectory](fig1_vwap_basis_trajectory.png)\n")
-        f.write("- ![Figure 2: Basis Volatility](fig2_basis_volatility_boxplot.png)\n")
-        f.write("- ![Figure 3: Participant Profile](fig3_participant_profile.png)\n")
-        f.write("- ![Figure 4: Algo IOC Rate](fig4_algo_ioc_rate.png)\n")
-        f.write("- ![Figure 5: Cancellation Ratio](fig5_cancellation_ratio_timeline.png)\n")
-        f.write("- ![Figure 6: Iceberg Hidden Volume](fig6_iceberg_hidden_volume.png)\n")
-        f.write("- ![Figure 7: Spread Dynamics](fig7_spread_dynamics.png)\n")
-        f.write("- ![Figure 8: Order Flow Imbalance](fig8_order_flow_imbalance.png)\n")
-        f.write("- ![Figure 9: Price Impact](fig9_price_impact_bps.png)\n")
-        f.write("- ![Figure 10: Hypothesis Forest Plot](fig10_hypothesis_forest_plot.png)\n\n")
-
-        f.write("## 4. Results\n\n")
-        for sentence in _discussion_sentences(_findings(summary_df)):
-            f.write(sentence + "\n\n")
-
-    print(f"[DONE] Markdown research paper written to {report_md}")
-
-    # Compile LaTeX Research Paper PDF
-    compile_latex_paper(summary_df)
-
-    print(f"\n[COMPLETE] Stage 7 Report Generation finished in {time.time() - t_start:.2f}s")
+    _compile(tex_path, results_dir)
+    logger.info(f"[COMPLETE] stage 7 in {time.time() - started:.1f}s")
 
 
 if __name__ == "__main__":

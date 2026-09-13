@@ -133,9 +133,16 @@ def generate_all_charts() -> None:
     df9 = _safe_read_csv(results_path / "b4_price_impact.csv")
     if not df9.empty and "is_expiry" in df9.columns and "median_price_impact_bps" in df9.columns:
         fig, ax = plt.subplots(figsize=(9, 6))
-        sns.boxplot(data=df9, x="is_expiry", y="median_price_impact_bps", palette=[color_control, color_expiry], ax=ax)
+        # `hue` rather than a bare palette list: seaborn deprecated the latter, and it also
+        # assigned colours by draw order rather than by the value they stand for, so the
+        # expiry and control colours could swap when one group was absent.
+        order = [False, True]
+        sns.boxplot(data=df9, x="is_expiry", y="median_price_impact_bps", order=order,
+                    hue="is_expiry", hue_order=order, legend=False,
+                    palette={False: color_control, True: color_expiry}, ax=ax)
         ax.set_title("Figure 9: Per-Trade Midpoint Price Impact (bps)")
-        ax.set_xticklabels(["Control Day", "Expiry Day"])
+        ax.set_xticks(range(len(order)))
+        ax.set_xticklabels(["Control session", "Expiry session"])
         plt.tight_layout()
         fig.savefig(results_path / "fig9_price_impact_bps.png", dpi=300)
         plt.close(fig)
