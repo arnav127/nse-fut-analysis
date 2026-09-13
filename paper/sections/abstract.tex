@@ -8,9 +8,14 @@ window of cash trading. This report asks what the order book does in that window
 We use order-by-order data, which records every entry, modification and cancellation
 separately, and reconstruct the limit order book second by second. Each of
 \DesignExpirySessions{} expiry Thursdays in 2022 is compared against a matched control
-session in the same month, across \DesignSymbols{} securities. The sample is
-\SampleOrderEventsMillions{} million order events and \SampleTradesMillions{} million
-trades, from which \SampleSnapshots{} book reconstructions are built.
+session in the same month, across \DesignSymbols{} securities in three groups: the most and
+least traded derivatives underlyings, which face the same settlement incentive at very
+different costs, and a matched set of securities with no expiring derivative at all. The
+third group is what separates a settlement effect from a last-Thursday-of-the-month effect.
+Membership is derived from the tape, ranked on control sessions only so that grouping does
+not depend on the behaviour under study. The sample is \SampleOrderEventsMillions{} million
+order events and \SampleTradesMillions{} million trades, from which \SampleSnapshots{} book
+reconstructions are built.
 
 We compute the settlement price itself, which lets us ask how far it ends up from the
 opening mid and from the close, and we separate two explanations for what changes in the

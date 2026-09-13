@@ -55,8 +55,23 @@ left the central question---does the settlement end up somewhere unusual---unask
 Section~\ref{sec:results} reports how far it sits from the mid at the window's open, from
 the closing price, and from the final minute's own average.
 
-Section~\ref{sec:background} describes the settlement mechanism.
-Section~\ref{sec:data} covers the data and the book reconstruction, Section~\ref{sec:method}
-the measures and the tests, and Section~\ref{sec:results} the findings.
+\subsection*{Separating the settlement from the calendar}
+
+An expiry Thursday is also the last Thursday of the month, when index rebalancing, month-end
+flows and index option expiry all fall due. Comparing an expiry session against a control
+session in the same month removes the market environment but not the day: whatever is
+special about the last Thursday applies to the expiry session and not to its control.
+
+The study therefore includes a third group of securities that have no expiring
+derivative---nothing settles against their closing half hour---but which are subject to
+everything else that happens on that date. If the same effects appear there, they belong to
+the calendar. This comparison is what turns "the settlement window is different" into a
+statement about the settlement mechanism, and Section~\ref{sec:design} sets out how the
+groups were built and matched.
+
+Section~\ref{sec:background} describes the settlement mechanism and
+Section~\ref{sec:data} the data and the book reconstruction. Section~\ref{sec:design} covers
+the three-group design and how the securities were selected, and Section~\ref{sec:method}
+the measures and the tests. Section~\ref{sec:results} reports the findings,
 Section~\ref{sec:discussion} reads them together, and Section~\ref{sec:limitations} sets out
 what this design cannot establish.

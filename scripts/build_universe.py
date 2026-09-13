@@ -68,19 +68,18 @@ from config.settings import (  # noqa: E402
     CONTROL_DAYS_DDMMYYYY,
     EXPIRY_THURSDAYS_DDMMYYYY,
 )
-from config.universe import DERIVED_PATH, GROUP_SIZE  # noqa: E402
+from config.universe import (  # noqa: E402
+    DERIVED_PATH,
+    GROUP_SIZE,
+    MAX_RANK_SPAN,
+    MIN_TRADES_PER_SESSION,
+)
 from utils.logger import setup_logger  # noqa: E402
 from utils.paths import parsed_dir, session_to_iso  # noqa: E402
 
 logger = setup_logger("Universe", "universe.log")
 CONFIG_DIR = PROJECT_ROOT / "config"
 FO_LIST = CONFIG_DIR / "fo_underlyings_2022.txt"
-
-# A security whose monthly turnover rank spans more than this fraction of the cross-section
-# is not reliably in either group. Loose enough to keep a name that drifted, tight enough to
-# drop one that was in the top decile one month and the bottom half the next.
-MAX_RANK_SPAN = 0.35
-
 
 def load_fo_underlyings() -> Optional[Set[str]]:
     if not FO_LIST.exists():
@@ -188,7 +187,7 @@ def _balance(frame: pd.DataFrame, members: dict) -> pd.DataFrame:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Select the study universe from the tape")
     parser.add_argument("--group-size", type=int, default=GROUP_SIZE)
-    parser.add_argument("--min-trades", type=float, default=250.0,
+    parser.add_argument("--min-trades", type=float, default=MIN_TRADES_PER_SESSION,
                         help="minimum median trades per control session")
     parser.add_argument("--max-rank-span", type=float, default=MAX_RANK_SPAN)
     args = parser.parse_args()

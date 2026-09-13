@@ -94,6 +94,55 @@ def build_universe_table() -> None:
     _write("universe", lines)
 
 
+def build_selection_table() -> None:
+    """The filter cascade, so the reader can see what each criterion removed.
+
+    Reporting only the securities that survived leaves the criteria unfalsifiable: a filter
+    whose effect is not shown is a researcher degree of freedom the reader cannot audit.
+    """
+    filters = META.get("filters") or {}
+    if not filters:
+        _write("selection", [
+            r"\textit{The universe for this run was not derived from the tape, so there is "
+            r"no selection cascade to report. See Section~\ref{sec:limitations}.}"])
+        return
+
+    steps = [
+        ("Traded in the parsed sessions", "symbols_traded",
+         "every equity-series security with at least one trade"),
+        ("Present in every session", "after_present_in_all_sessions",
+         "a security absent for a month cannot contribute that month's matched pair"),
+        ("Above the activity floor", "after_activity_floor",
+         "below it a one-second snapshot sees nothing happen between observations"),
+        ("Stable turnover rank", "after_rank_stability",
+         "a security that moves between groups during the year belongs to neither"),
+    ]
+    lines = [
+        r"\begin{table}[H]", r"\centering",
+        r"\caption{Selection cascade. Each row reports the securities remaining after the "
+        r"criterion in that row is applied, and why the criterion exists.}",
+        r"\label{tab:selection}", r"\small",
+        r"\begin{tabular}{lrp{7.4cm}}", r"\toprule",
+        r"Criterion & Remaining & Reason \\", r"\midrule",
+    ]
+    previous = None
+    for label, key, reason in steps:
+        value = filters.get(key)
+        if value is None:
+            continue
+        removed = "" if previous is None else rf" \small($-${previous - value:,})\normalsize"
+        lines.append(rf"{label} & {value:,}{removed} & \small {reason} \\")
+        previous = value
+    size = META.get("group_size")
+    if size:
+        lines.append(r"\midrule")
+        lines.append(rf"Selected & {3 * size:,} & \small {size} most traded and {size} least "
+                     rf"traded derivatives underlyings, plus {size} matched securities with "
+                     rf"no derivative \\")
+    lines += [r"\bottomrule", r"\end{tabular}", r"\end{table}"]
+    _write("selection", lines)
+
+
 def build_balance_table() -> None:
     """How alike the groups are on what the matching was meant to equalise.
 
@@ -262,6 +311,7 @@ def build_out_of_scope_table() -> None:
 
 def build_all_tables() -> None:
     build_universe_table()
+    build_selection_table()
     build_balance_table()
     build_descriptives_table()
     build_tests_table()

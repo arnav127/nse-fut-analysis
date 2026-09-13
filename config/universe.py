@@ -43,6 +43,23 @@ DERIVED_PATH = CONFIG_DIR / "universe_2022.json"
 # first run of those contrasts showed.
 GROUP_SIZE = 50
 
+# Selection criteria, applied by scripts/build_universe.py.
+#
+# They live here rather than in the script because they are parameters of the design, not of
+# a command invocation: the report states them whether or not the builder has been run, and
+# a criterion the report describes but the code takes from a command-line default is one the
+# reader cannot check.
+
+# Minimum median trades in a control session. A measurement criterion rather than a size
+# cut-off: below roughly this level a one-second book snapshot sees nothing happen between
+# consecutive observations, so the microstructure quantities are not identified.
+MIN_TRADES_PER_SESSION = 250.0
+
+# Largest permitted interdecile span of a security's within-session turnover rank, as a
+# fraction of the cross-section. A security in the top decile one month and the bottom half
+# the next is not reliably in either group.
+MAX_RANK_SPAN = 0.35
+
 
 @dataclass(frozen=True)
 class Group:

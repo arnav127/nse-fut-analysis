@@ -19,7 +19,15 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from config.settings import RESULTS_DIR  # noqa: E402
-from config.universe import GROUPS, is_derived_universe  # noqa: E402
+from config.settings import CONTROL_DAYS_DDMMYYYY  # noqa: E402
+from config.universe import (  # noqa: E402
+    GROUP_SIZE,
+    GROUPS,
+    MAX_RANK_SPAN,
+    META,
+    MIN_TRADES_PER_SESSION,
+    is_derived_universe,
+)
 from stage6_insights.s2_pressure_or_activity import VR_HORIZON_SECONDS  # noqa: E402
 from stage6_insights.s4_marking_cost import PROBE_NOTIONAL_CR  # noqa: E402
 from utils.logger import setup_logger  # noqa: E402
@@ -94,9 +102,42 @@ def collect_insight_metrics() -> None:
                    "long horizon of the variance ratio")
         run.record("universe.derived", "yes" if is_derived_universe() else "no", "",
                    "whether group membership was derived from the tape or taken from the "
-                   "checked-in fallback lists")
+                   "development list")
         for group in GROUPS.values():
             run.record(f"group.{group.key}_n", len(group.symbols), "securities", group.label)
+
+        # The selection cascade, so the report can state how many securities each criterion
+        # removed rather than only how many survived. A filter whose effect is not reported
+        # is a researcher degree of freedom the reader cannot see.
+        filters = META.get("filters") or {}
+        run.record("select.traded", filters.get("symbols_traded"), "securities",
+                   "securities that traded at all in the parsed sessions")
+        run.record("select.complete", filters.get("after_present_in_all_sessions"), "securities",
+                   "of those, present in every session")
+        run.record("select.active", filters.get("after_activity_floor"), "securities",
+                   "of those, above the activity floor")
+        run.record("select.stable", filters.get("after_rank_stability"), "securities",
+                   "of those, with a stable turnover rank across the year")
+        # Criteria fall back to the configured values: they describe the procedure, which
+        # is defined whether or not it has been run on this machine.
+        run.record("select.min_trades",
+                   filters.get("min_trades_per_session", MIN_TRADES_PER_SESSION), "trades",
+                   "activity floor, median trades per control session")
+        run.record("select.max_rank_span",
+                   filters.get("max_rank_span", MAX_RANK_SPAN), "fraction",
+                   "largest permitted interdecile span of a security's turnover rank")
+        run.record("select.group_size", META.get("group_size", GROUP_SIZE),
+                   "securities", "securities per group")
+        run.record("select.control_sessions",
+                   META.get("control_sessions", len(CONTROL_DAYS_DDMMYYYY)), "sessions",
+                   "sessions used to rank securities; expiry sessions are excluded")
+        run.record("select.fo_verified",
+                   "yes" if META.get("fo_verified") else "no", "",
+                   "whether derivatives eligibility was checked against a published list")
+        overlap = META.get("placebo_adv_overlap") or {}
+        for name, share in overlap.items():
+            run.record(f"select.placebo_overlap_{name}", float(share), "fraction",
+                       f"share of the {name} group inside the placebo group's turnover range")
 
         settlement = _csv("s1_settlement_price.csv")
         _pair(run, "abs.drift_bps", settlement, "abs_drift_bps", "basis points",
