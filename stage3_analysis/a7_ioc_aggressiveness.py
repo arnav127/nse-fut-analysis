@@ -22,8 +22,8 @@ def run_a7_ioc_aggressiveness() -> pd.DataFrame:
         SELECT 
             TRIM(symbol) AS symbol, trade_date, time_bucket, is_expiry,
             CASE WHEN EXTRACT(MINUTE FROM txn_datetime) >= 25 THEN 'Late' ELSE 'Early' END AS sub_window,
-            (ioc_flag = 'Y') AS is_ioc,
-            (mkt_order_flag = 'Y') AS is_mkt
+            ioc_flag AS is_ioc,
+            mkt_order_flag AS is_mkt
         FROM read_parquet('{orders_path}/**/*.parquet')
         WHERE is_settlement_window = True AND activity_type = 1
     )

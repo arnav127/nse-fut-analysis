@@ -1,26 +1,41 @@
-"""Central configuration for NSE expiry day microstructure pipeline."""
+"""Central configuration for the NSE expiry-day microstructure pipeline."""
+
+from __future__ import annotations
 
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-# System paths
-PROJECT_ROOT = Path(r"c:\sandbox\ProjectCourse")
+# System paths. Derived from this file's own location rather than hard-coded, so the
+# repository can be cloned anywhere - the previous absolute `c:\sandbox\ProjectCourse`
+# made every path in the pipeline wrong on any other machine.
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
 RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
 PARSED_DATA_DIR = PROJECT_ROOT / "data" / "parsed"
 ENRICHED_DATA_DIR = PROJECT_ROOT / "data" / "enriched"
 CLOB_DATA_DIR = PROJECT_ROOT / "data" / "clob_snapshots"
+# Raw nsetick book output, kept apart from the flattened snapshots the analyses read: the
+# stage-5 queries glob the snapshot root recursively, and a second schema underneath it
+# would be unioned into every one of them.
+CLOB_BOOKS_DIR = PROJECT_ROOT / "data" / "clob_books"
 BLOOMBERG_DATA_DIR = PROJECT_ROOT / "data" / "bloomberg"
 RESULTS_DIR = PROJECT_ROOT / "data" / "results"
+LOG_DIR = PROJECT_ROOT / "logs"
 
-for path in (RAW_DATA_DIR, PARSED_DATA_DIR, ENRICHED_DATA_DIR, CLOB_DATA_DIR, BLOOMBERG_DATA_DIR, RESULTS_DIR):
+for path in (RAW_DATA_DIR, PARSED_DATA_DIR, ENRICHED_DATA_DIR, CLOB_DATA_DIR,
+             CLOB_BOOKS_DIR, BLOOMBERG_DATA_DIR, RESULTS_DIR, LOG_DIR):
     path.mkdir(parents=True, exist_ok=True)
 
-# Target equity universe
-TARGET_SYMBOLS_RAW: List[str] = [
-    "  RELIANCE", "       TCS", " ICICIBANK", "  HDFCBANK", "      INFY",
-    "   DIVISLAB", "     CIPLA", " EICHERMOT", "      BPCL", "APOLLOHOSP",
+# Target equity universe.
+#
+# Plain symbols, no padding. NSE right-aligns the 10-byte symbol field with 'b' (0x62)
+# padding, and the previous configuration carried pre-padded literals such as "  RELIANCE"
+# so that a SUBSTRING comparison would match. That coupling between the universe and the
+# byte layout is what five successive commits in this repository's history were trying to
+# repair. nsetick strips the padding during decode, so the filter now compares symbols.
+TARGET_SYMBOLS: List[str] = [
+    "RELIANCE", "TCS", "ICICIBANK", "HDFCBANK", "INFY",
+    "DIVISLAB", "CIPLA", "EICHERMOT", "BPCL", "APOLLOHOSP",
 ]
-TARGET_SYMBOLS: List[str] = [symbol.strip() for symbol in TARGET_SYMBOLS_RAW]
 LIQUID_SYMBOLS: List[str] = ["RELIANCE", "TCS", "ICICIBANK", "HDFCBANK", "INFY"]
 ILLIQUID_SYMBOLS: List[str] = ["DIVISLAB", "CIPLA", "EICHERMOT", "BPCL", "APOLLOHOSP"]
 
@@ -38,7 +53,7 @@ BLOOMBERG_TICKERS: Dict[str, Tuple[str, str, str]] = {
     "APOLLOHOSP": ("APHS1! IN Equity",   "APHS2! IN Equity",   "APOLLOHOSP IN Equity"),
 }
 
-# Target date pairs (Expiry Thursdays and paired Control days)
+# Target sessions, named as NSE names its files: DDMMYYYY.
 EXPIRY_THURSDAYS_DDMMYYYY: List[str] = [
     "27012022", "24022022", "31032022", "28042022",
     "26052022", "30062022", "28072022", "25082022",
@@ -55,12 +70,8 @@ EXPIRY_CONTROL_PAIRS: List[Tuple[str, str]] = list(zip(EXPIRY_THURSDAYS_DDMMYYYY
 BLOOMBERG_START_DATE = "2022-01-17"
 BLOOMBERG_END_DATE = "2022-12-30"
 
-# NSE Tick Jiffies epoch conversion
-JIFFIES_PER_SECOND = 65536
-JIFFIES_EPOCH = "1980-01-01 00:00:00"
-EPOCH_OFFSET_SECONDS = 315532800
-
-# Trading session windows (IST)
+# Trading session windows (IST). NSE timestamps are IST wall clock with no zone attached,
+# so these are compared against the time-of-day component directly.
 SETTLEMENT_WINDOW_START = "15:00:00"
 SETTLEMENT_WINDOW_END = "15:30:00"
 MARKET_OPEN = "09:15:00"
@@ -69,7 +80,19 @@ MARKET_CLOSE = "15:30:00"
 CASH_SERIES_FILTER = "EQ"
 FUTURES_INSTRUMENT_FILTER = "FUTSTK"
 
-# CLOB parameters
-CLOB_SNAPSHOT_INTERVAL_SECONDS = 1
-CLOB_DEPTH_LEVELS = 10
-CLOB_PARALLEL_WORKERS = 6
+# Limit order book reconstruction.
+#
+# Twenty levels rather than ten. Depth erosion during settlement is the point of stage 5,
+# and on a thin name the visible book empties past level five well before 15:30 - a
+# ten-level snapshot records that as a floor of zeros and cannot distinguish a book that is
+# merely thin from one that has gone. The extra levels cost one column triple each.
+CLOB_SNAPSHOT_INTERVAL_SECONDS = 1.0
+CLOB_DEPTH_LEVELS = 20
+
+# Levels carried into the flattened snapshot the stage-5 analyses read. Kept at ten so the
+# existing `bid_depth_1..10` contract is unchanged; the deeper levels remain available in
+# the raw nsetick snapshots alongside it.
+CLOB_REPORTED_LEVELS = 10
+
+# Threads handed to the Rust parser and book builder. None lets nsetick size to the machine.
+NSETICK_THREADS: int | None = None

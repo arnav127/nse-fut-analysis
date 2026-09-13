@@ -22,10 +22,10 @@ def run_a4_algo_segmentation() -> pd.DataFrame:
         TRIM(symbol) AS symbol, trade_date, is_expiry, is_settlement_window, algo_type,
         COUNT(*) AS total_orders,
         SUM(volume_original) AS total_volume,
-        SUM(CASE WHEN ioc_flag = 'Y' THEN 1 ELSE 0 END) AS ioc_orders,
-        SUM(CASE WHEN mkt_order_flag = 'Y' THEN 1 ELSE 0 END) AS market_orders,
-        SUM(CASE WHEN ioc_flag = 'Y' THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS ioc_rate,
-        SUM(CASE WHEN mkt_order_flag = 'Y' THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS mkt_rate
+        SUM(CASE WHEN ioc_flag THEN 1 ELSE 0 END) AS ioc_orders,
+        SUM(CASE WHEN mkt_order_flag THEN 1 ELSE 0 END) AS market_orders,
+        SUM(CASE WHEN ioc_flag THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS ioc_rate,
+        SUM(CASE WHEN mkt_order_flag THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS mkt_rate
     FROM read_parquet('{orders_path}/**/*.parquet')
     WHERE activity_type = 1
     GROUP BY TRIM(symbol), trade_date, is_expiry, is_settlement_window, algo_type

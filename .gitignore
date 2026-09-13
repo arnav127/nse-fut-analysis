@@ -19,6 +19,7 @@ data/raw/
 data/parsed/
 data/enriched/
 data/clob_snapshots/
+data/clob_books/
 data/spark_tmp/
 data/results/*.csv
 data/results/*.png
@@ -35,6 +36,7 @@ data/results/*.pdf
 .DS_Store
 Thumbs.db
 scratch/
+logs/
 *.aux
 *.log
 *.out
