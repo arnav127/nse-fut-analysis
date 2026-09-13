@@ -27,6 +27,18 @@ with the corresponding caveat.
 
 \input{generated/tables/universe}
 
+Group membership is not hand-picked. It is derived from the tape by ranking securities on
+turnover measured over the control sessions only: ranking on expiry-day turnover would make
+the group variable a function of the behaviour being studied. Securities must trade in every
+session, clear an activity floor below which a one-second book snapshot sees nothing happen
+between observations, and hold a stable turnover rank across the year. The placebo group is
+matched to the illiquid group by nearest neighbour on both turnover and price level---price
+matters because a quoted spread in basis points depends on the tick size relative to the
+price, so a systematically cheaper placebo group would show wider spreads for a reason that
+has nothing to do with expiry. Table~\ref{tab:balance} reports how well the matching worked.
+
+\input{generated/tables/balance}
+
 \subsection{Measures}
 
 \paragraph{The settlement price.} The settlement VWAP is computed from the window's trades.

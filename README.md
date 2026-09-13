@@ -94,6 +94,42 @@ queue-priority loss it entails. The settlement-window slice is flattened into
 `data/clob_snapshots/` with the column names the stage-5 analyses read, including hidden
 size at every level.
 
+## Choosing the securities
+
+Three groups, derived from the tape rather than hand-picked:
+
+| Group | Derivatives | What it is for |
+|---|---|---|
+| `liquid` | yes | most traded underlyings; moving the settlement is expensive |
+| `illiquid` | yes | least traded underlyings; the same incentive, far cheaper to act on |
+| `placebo` | no | no contract settles against these, so an expiry effect here is a calendar effect |
+
+```bash
+python run_all.py --stage parse --parse-all-eq    # keeps every EQ symbol
+python scripts/build_universe.py --group-size 50
+python run_all.py                                 # the study, on the derived universe
+```
+
+The placebo group is what separates a settlement effect from a last-Thursday-of-the-month
+effect. Without it every result stays open to the second explanation, and the report says so.
+
+Four things the selection gets right that a hand-picked list does not. Turnover is measured
+on the **control sessions only**, so group membership does not depend on the expiry-day
+behaviour being studied. Securities must trade in every session, clear an activity floor, and
+hold a **stable turnover rank** across the year. The placebo group is matched to the illiquid
+group on turnover **and price level**, because a spread in basis points depends on the tick
+size relative to the price and a cheaper placebo group would show wider spreads for reasons
+unrelated to expiry.
+
+Derivatives eligibility cannot be read off the cash tape. Put the NSE list of F&O underlyings
+in `config/fo_underlyings_2022.txt`, one symbol per line; that file documents where to get it.
+Without it the builder produces the two derivative groups on turnover alone and no placebo
+group, records `fo_verified: false`, and the report states the limitation.
+
+Until the builder runs, `config/universe.py` falls back to a ten-name **development
+universe** with no placebo group. It exists so the pipeline runs end to end; anything produced
+on it is a smoke test, and the report says which universe it used.
+
 ### Stage 6 - settlement-window analysis
 
 The measures that make the study more than a description of a busy half hour.

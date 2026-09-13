@@ -12,6 +12,17 @@ index rebalancing, month-end flows and index option expiry all occur. The placeb
 in Table~\ref{tab:contrasts} exists to separate these from the settlement mechanism, and it
 is the single most important robustness check in the study.
 
+\paragraph{How the universe was chosen.} Group membership is derived from the tape rather
+than from an index: securities are ranked on turnover measured over the control sessions
+only, so the grouping does not depend on the expiry-day behaviour being studied. Two
+qualifications remain. Derivatives eligibility comes from a list of F\&O underlyings whose
+vintage the pipeline cannot verify, and a list downloaded today describes today---the effect
+is to misclassify a few names at the edges of both derivative groups and, more seriously, to
+risk placing a security that did have derivatives in 2022 into the placebo group. And the
+placebo group can only be matched to the illiquid group: a security traded as heavily as the
+liquid group and carrying no derivative is close to a contradiction in terms, so the placebo
+comparison speaks to the illiquid group and is silent about the liquid one.
+
 \paragraph{Sample size.} \DesignSymbols{} securities over \DesignSessions{} sessions is
 enough to detect a difference between expiry and control days and not enough to characterise
 how that difference varies across the cross-section. The difference-in-differences that would
