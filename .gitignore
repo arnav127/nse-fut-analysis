@@ -20,6 +20,7 @@ data/parsed/
 data/enriched/
 data/clob_snapshots/
 data/clob_books/
+data/results_pre_nsetick_*/
 data/spark_tmp/
 data/results/*.csv
 data/results/*.png

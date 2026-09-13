@@ -14,19 +14,20 @@ logger = setup_logger("Stage1", "stage1_parse.log")
 
 def run_parse(
     single_date: Optional[str] = None,
-    universe_only: bool = False,
+    all_eq: bool = False,
     force: bool = False,
 ) -> None:
     """Parse raw NSE files for the configured sessions.
 
-    Parses the whole EQ / FUTSTK cross-section by default rather than only the ten target
-    symbols. The extra cost is small - nsetick's filter is a bucketed set lookup, and the
-    universe is what determines output size, not decode time - and it means adding a symbol
-    to the study does not require re-reading every compressed session from the start.
-    Pass `universe_only` to restrict the parse when disk is the binding constraint.
+    Restricted to `TARGET_SYMBOLS` by default. Decoding is the same cost either way -
+    nsetick reads every record regardless and the filter is a bucketed set lookup - but the
+    output is not: a session holds roughly 1,900 EQ symbols and the study uses ten, so
+    keeping them all writes about two orders of magnitude more Parquet than anything
+    downstream reads. Pass `all_eq` when the extra symbols will actually be used; widening
+    the study later then costs one reparse rather than being free.
     """
     sessions: List[str] = [single_date] if single_date else ALL_TARGET_DATES
-    symbols = TARGET_SYMBOLS if universe_only else None
+    symbols = None if all_eq else TARGET_SYMBOLS
 
     logger.info(f"=== STAGE 1: PARSE ({len(sessions)} sessions) ===")
     started = time.time()

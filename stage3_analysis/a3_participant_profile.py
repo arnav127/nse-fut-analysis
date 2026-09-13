@@ -17,30 +17,37 @@ def run_a3_participant_profile() -> pd.DataFrame:
 
     print("[ANALYSIS A3] Profiling Participant Segment Activity...")
 
+    # One scan, not two.
+    #
+    # Every trade names both counterparties, so the buy and sell profiles are two
+    # projections of the same row. Aggregating them as separate CTEs over the same
+    # `read_parquet` meant reading and decoding the whole trade layer twice; unnesting a
+    # two-element list per row produces the same output from a single pass.
     query = f"""
-    WITH buy_side AS (
-        SELECT 
-            TRIM(symbol) AS symbol, trade_date, is_expiry, is_settlement_window,
-            buy_participant_type AS participant_type,
-            SUM(trade_quantity) AS volume,
-            COUNT(*) AS trades,
-            'BUY' AS side
+    WITH tape AS (
+        SELECT
+            symbol, trade_date, is_expiry, is_settlement_window, trade_quantity,
+            trade_price,
+            [ {{'side': 'BUY',  'participant_type': buy_participant_type}},
+              {{'side': 'SELL', 'participant_type': sell_participant_type}} ] AS sides
         FROM read_parquet('{cash_path}/**/*.parquet')
-        GROUP BY TRIM(symbol), trade_date, is_expiry, is_settlement_window, buy_participant_type
+        WHERE is_regular_market
     ),
-    sell_side AS (
-        SELECT 
-            TRIM(symbol) AS symbol, trade_date, is_expiry, is_settlement_window,
-            sell_participant_type AS participant_type,
-            SUM(trade_quantity) AS volume,
-            COUNT(*) AS trades,
-            'SELL' AS side
-        FROM read_parquet('{cash_path}/**/*.parquet')
-        GROUP BY TRIM(symbol), trade_date, is_expiry, is_settlement_window, sell_participant_type
+    sided AS (
+        SELECT
+            symbol, trade_date, is_expiry, is_settlement_window, trade_quantity, trade_price,
+            UNNEST(sides) AS s
+        FROM tape
     )
-    SELECT * FROM buy_side
-    UNION ALL
-    SELECT * FROM sell_side
+    SELECT
+        symbol, trade_date, is_expiry, is_settlement_window,
+        s.participant_type AS participant_type,
+        s.side AS side,
+        SUM(trade_quantity) AS volume,
+        SUM(trade_price * trade_quantity) AS value_inr,
+        COUNT(*) AS trades
+    FROM sided
+    GROUP BY symbol, trade_date, is_expiry, is_settlement_window, s.participant_type, s.side
     ORDER BY symbol, trade_date, side, participant_type
     """
 

@@ -27,6 +27,11 @@ def run_a11_amihud_illiquidity() -> pd.DataFrame:
                    LAG(SUM(trade_price * trade_quantity) / SUM(trade_quantity)) 
                    OVER (PARTITION BY TRIM(symbol), trade_date ORDER BY time_bucket))) AS abs_return
         FROM read_parquet('{cash_path}/**/*.parquet')
+        -- Regular-market records only. Pre-open auction trades sit in the same file; the
+        -- first continuous-session bucket would otherwise be differenced against the
+        -- auction price, booking the whole overnight move as one pre-settlement minute of
+        -- realised variance.
+        WHERE is_regular_market
         GROUP BY TRIM(symbol), trade_date, time_bucket, is_expiry, is_settlement_window
     ),
     amihud_calc AS (

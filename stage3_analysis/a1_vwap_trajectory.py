@@ -23,23 +23,43 @@ def run_a1_vwap_trajectory() -> pd.DataFrame:
     liq_list = ", ".join(f"'{s}'" for s in LIQUID_SYMBOLS)
 
     if fao_files:
+        # Near-month contract only.
+        #
+        # Several expiries of the same underlying trade on any given session, and this used
+        # to average all of them into one "futures price" - blending the near contract with
+        # a far one that carries several more months of carry. The resulting basis is a
+        # weighted mixture of two different spreads, which is not the quantity H1-H2 are
+        # about. The near contract is the one being settled and the one the cash VWAP is
+        # compared against, so it is selected per symbol and session as the earliest expiry
+        # still trading.
         fao_cte = f""",
-        fao_min AS (
-            SELECT 
-                TRIM(symbol) AS symbol, trade_date, time_bucket,
-                SUM(trade_price * trade_quantity) / SUM(trade_quantity) AS futures_avg_price
+        fao_near AS (
+            SELECT symbol, trade_date, MIN(expiry_date) AS near_expiry
             FROM read_parquet('{fao_path}/**/*.parquet')
-            WHERE is_settlement_window = True
-            GROUP BY TRIM(symbol), trade_date, time_bucket
+            WHERE is_settlement_window AND is_regular_market
+            GROUP BY symbol, trade_date
+        ),
+        fao_min AS (
+            SELECT
+                f.symbol, f.trade_date, f.time_bucket,
+                SUM(f.trade_price * f.trade_quantity) / SUM(f.trade_quantity) AS futures_avg_price,
+                SUM(f.trade_quantity) AS futures_volume
+            FROM read_parquet('{fao_path}/**/*.parquet') f
+            JOIN fao_near n
+              ON f.symbol = n.symbol AND f.trade_date = n.trade_date
+             AND f.expiry_date = n.near_expiry
+            WHERE f.is_settlement_window AND f.is_regular_market
+            GROUP BY f.symbol, f.trade_date, f.time_bucket
         )"""
     else:
-        fao_cte = f""",
+        fao_cte = """,
         fao_min AS (
-            SELECT 
-                CAST(NULL AS VARCHAR) AS symbol, 
-                CAST(NULL AS VARCHAR) AS trade_date, 
-                CAST(NULL AS VARCHAR) AS time_bucket, 
-                CAST(NULL AS DOUBLE) AS futures_avg_price 
+            SELECT
+                CAST(NULL AS VARCHAR) AS symbol,
+                CAST(NULL AS VARCHAR) AS trade_date,
+                CAST(NULL AS VARCHAR) AS time_bucket,
+                CAST(NULL AS DOUBLE) AS futures_avg_price,
+                CAST(NULL AS BIGINT) AS futures_volume
             WHERE 1=0
         )"""
 
@@ -62,7 +82,7 @@ def run_a1_vwap_trajectory() -> pd.DataFrame:
                 ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW
             ) AS cum_cash_volume
         FROM read_parquet('{cash_path}/**/*.parquet')
-        WHERE is_settlement_window = True
+        WHERE is_settlement_window AND is_regular_market
         GROUP BY TRIM(symbol), trade_date, time_bucket, is_expiry
     ){fao_cte}
     SELECT 
@@ -78,6 +98,7 @@ def run_a1_vwap_trajectory() -> pd.DataFrame:
         c.cum_cash_volume,
         c.cum_cash_value / c.cum_cash_volume AS cash_cum_vwap,
         f.futures_avg_price,
+        f.futures_volume,
         CASE WHEN f.futures_avg_price IS NOT NULL THEN ((f.futures_avg_price - (c.cum_cash_value / c.cum_cash_volume)) / (c.cum_cash_value / c.cum_cash_volume)) * 10000.0 ELSE NULL END AS basis_bps,
         CASE WHEN c.symbol IN ({liq_list}) THEN 'Liquid' ELSE 'Illiquid' END AS liquidity_group
     FROM cash_min c

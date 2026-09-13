@@ -32,17 +32,17 @@ Raw `.DAT.gz` files go in `data/raw/`, named as NSE ships them
 ## Running it
 
 ```bash
-python main.py
+python run_all.py
 ```
 
 That is the whole pipeline. Stages 1, 2 and 4 check for their own output before doing
 anything, so an interrupted run resumes where it stopped rather than starting over.
 
 ```bash
-python main.py --stage parse          # one stage; see --help for the list
-python main.py --date 27012022        # one session through the data stages
-python main.py --force                # redo work already on disk
-python main.py --all-symbols          # enrich the whole EQ cross-section
+python run_all.py --stage parse          # one stage; see --help for the list
+python run_all.py --date 27012022        # one session through the data stages
+python run_all.py --force                # redo work already on disk
+python run_all.py --parse-all-eq         # keep every EQ symbol, not just the ten studied
 ```
 
 Logs are written per stage under `logs/`, results to `data/results/`.
@@ -68,9 +68,10 @@ by date and validating it against the observed record length. Symbol padding is 
 prices are kept as integer paise, and jiffies become real timestamps, all in the single
 decode pass. Output is one directory per feed, partitioned by symbol.
 
-The whole `EQ` / `FUTSTK` cross-section is parsed by default, not just the ten study
-symbols: the filter costs almost nothing, and it means widening the study later does not
-mean re-reading every compressed session. Pass `--universe-only` to narrow it.
+Narrowed to `TARGET_SYMBOLS`. Decoding costs the same either way - every record is read
+regardless and the symbol filter is a bucketed set lookup - but the output does not: a
+session carries roughly 1,900 EQ symbols and the study uses ten. `--parse-all-eq` keeps
+them all, at roughly two orders of magnitude more Parquet.
 
 ### Stage 2 — enrich
 
@@ -116,5 +117,5 @@ stage4_clob/           clob_builder.py, run_clob_all.py
 stage5_clob_analysis/  b1..b7 plus run_clob_analysis.py
 stage6_bloomberg/      c1..c4, load_bloomberg_data.py, run_bloomberg_analysis.py
 stage7_report/         stat_tests.py, generate_charts.py, generate_report.py
-main.py                entry point
+run_all.py             entry point
 ```

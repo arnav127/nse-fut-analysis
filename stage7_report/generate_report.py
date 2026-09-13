@@ -31,6 +31,86 @@ def _df_to_markdown(df: pd.DataFrame) -> str:
     return "\n".join(lines)
 
 
+def _bloomberg_available() -> bool:
+    """True only if stage 6 produced at least one real roll direction."""
+    path = Path(RESULTS_DIR) / "c1_roll_pressure.csv"
+    if not path.exists():
+        return False
+    try:
+        df = pd.read_csv(path)
+    except Exception:
+        return False
+    if df.empty or "predicted_punch_direction" not in df.columns:
+        return False
+    return bool(df["predicted_punch_direction"].isin(["UP", "DOWN"]).any())
+
+
+def _findings(summary_df: pd.DataFrame) -> dict:
+    """Facts about what was actually tested, for text that would otherwise be asserted.
+
+    The discussion section used to state that roll pressure is a primary driver of
+    settlement dislocation regardless of what the tests returned - including when no
+    Bloomberg data was present and the roll hypotheses had not been evaluated at all. A
+    generated paper must not claim a result its own run did not produce.
+    """
+    tested = summary_df[summary_df["p_value"].notna()] if "p_value" in summary_df else summary_df.iloc[0:0]
+    fdr = summary_df[summary_df.get("significant_fdr", False) == True] if len(summary_df) else summary_df
+    untested = summary_df[summary_df["p_value"].isna()] if "p_value" in summary_df else summary_df
+    return {
+        # Usable content, not a file on disk. Stage 6 writes a full grid of rows whether or
+        # not any Bloomberg export was present, filling the direction with "UNKNOWN", so
+        # testing for the file's existence would have the abstract claim an integration
+        # that did not happen.
+        "has_bloomberg": _bloomberg_available(),
+        "n_total": len(summary_df),
+        "n_tested": len(tested),
+        "n_significant": len(fdr),
+        "significant_ids": ", ".join(fdr["hypothesis_id"].astype(str)) if len(fdr) else "none",
+        "untested_ids": ", ".join(untested["hypothesis_id"].astype(str)) if len(untested) else "none",
+    }
+
+
+def _abstract(f: dict) -> str:
+    """Abstract text describing the run that produced this document.
+
+    The data-source clause is conditional. Asserting that the study integrates Bloomberg
+    calendar spread, open interest and cost-of-carry metrics is false whenever those files
+    are absent, which is the state stage 6 degrades to rather than failing.
+    """
+    sources = ("high-frequency tick-level NSE cash and derivatives order and trade data"
+               + (", together with Bloomberg Terminal calendar spread, open interest "
+                  "migration and cost-of-carry metrics" if f["has_bloomberg"] else ""))
+    return (
+        "We examine the market microstructure of 10 NSE equities (5 liquid, 5 illiquid) and "
+        "their FUTSTK contracts during the final 30-minute settlement window, across 12 "
+        "monthly expiry Thursdays and 12 matched control sessions in 2022. Drawing on "
+        + sources +
+        f", we specify {f['n_total']} hypotheses (H1-H30) on basis volatility, algorithmic "
+        "execution urgency, order flow imbalance, limit order book depth erosion and roll "
+        f"pressure. {f['n_tested']} were evaluated on the data available to this run, of "
+        f"which {f['n_significant']} were rejected at a 5 per cent false discovery rate."
+    )
+
+
+def _discussion_sentences(f: dict) -> list:
+    """Plain statements of the outcome, in the order a reader needs them."""
+    out = [
+        f"Of the {f['n_total']} hypotheses specified, {f['n_tested']} could be evaluated "
+        f"from the data available to this run, and {f['n_significant']} were rejected at a "
+        f"Benjamini-Hochberg false discovery rate of 5 per cent."
+    ]
+    if f["n_significant"]:
+        out.append(f"The hypotheses rejected were: {f['significant_ids']}. "
+                   f"Effect sizes and per-test p-values are given in the table above.")
+    else:
+        out.append("No hypothesis was rejected once the false discovery rate was controlled. "
+                   "Individual p-values are reported above and should be read with that in mind.")
+    if f["n_tested"] < f["n_total"]:
+        out.append(f"The following were not evaluated because their inputs were absent or "
+                   f"empty, and no claim is made about them: {f['untested_ids']}.")
+    return out
+
+
 def compile_latex_paper(summary_df: pd.DataFrame) -> Optional[Path]:
     results_dir = Path(RESULTS_DIR)
     tex_path = results_dir / "final_research_paper.tex"
@@ -57,11 +137,7 @@ def compile_latex_paper(summary_df: pd.DataFrame) -> Optional[Path]:
         r"\begin{document}",
         r"\maketitle",
         r"\begin{abstract}",
-        r"We examine the market microstructure of 10 Nifty 50 stocks (5 liquid, 5 illiquid) and their corresponding FUTSTK contracts "
-        r"on the National Stock Exchange (NSE) during the final 30-minute settlement window across 12 monthly expiry Thursdays "
-        r"and 12 matched control trading days in 2022. Integrating high-frequency tick-level cash and derivatives data with Bloomberg Terminal "
-        r"calendar spread, open interest migration, and cost-of-carry metrics, we test 30 formal hypotheses (H1--H30) regarding basis volatility, "
-        r"algorithmic execution urgency, Order Flow Imbalance (OFI), limit order book depth erosion, and roll pressure directional validation.",
+        _abstract(_findings(summary_df)),
         r"\end{abstract}",
         r"\vspace{0.4cm}",
         r"\section{Introduction \& Institutional Background}",
@@ -131,12 +207,9 @@ def compile_latex_paper(summary_df: pd.DataFrame) -> Optional[Path]:
                 r"\end{figure}",
             ])
 
-    lines.extend([
-        r"\section{Discussion \& Policy Implications}",
-        r"Our empirical findings demonstrate significant structural shifts during the 15:00-15:30 settlement window on expiry days compared to control days. "
-        r"The cross-validation of Bloomberg roll direction with cash VWAP drift confirms that roll pressure is a primary driver of settlement window dislocation.",
-        r"\end{document}"
-    ])
+    lines.append(r"\section{Results}")
+    lines.extend(_discussion_sentences(_findings(summary_df)))
+    lines.append(r"\end{document}")
 
     with open(tex_path, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
@@ -182,11 +255,7 @@ def generate_report() -> None:
     with open(report_md, "w", encoding="utf-8") as f:
         f.write("# Expiry Day Dynamics & VWAP Settlement Anomalies: An Empirical Study of the National Stock Exchange of India\n\n")
         f.write("**Abstract**\n")
-        f.write("We examine the market microstructure of 10 Nifty 50 stocks (5 liquid, 5 illiquid) and their corresponding FUTSTK contracts ")
-        f.write("on the National Stock Exchange (NSE) during the final 30-minute settlement window across 12 monthly expiry Thursdays ")
-        f.write("and 12 matched control trading days in 2022. Integrating high-frequency tick-level cash and derivatives data with Bloomberg Terminal ")
-        f.write("calendar spread, open interest migration, and cost-of-carry metrics, we test 30 formal hypotheses (H1–H30) regarding basis volatility, ")
-        f.write("algorithmic execution urgency, Order Flow Imbalance (OFI), limit order book depth erosion, and roll pressure directional validation.\n\n")
+        f.write(_abstract(_findings(summary_df)) + "\n\n")
 
         f.write("## 1. Introduction & Institutional Background\n")
         f.write("The NSE settlement price for equity derivatives is calculated as the volume-weighted average price (VWAP) of the underlying cash market ")
@@ -209,9 +278,9 @@ def generate_report() -> None:
         f.write("- ![Figure 9: Price Impact](fig9_price_impact_bps.png)\n")
         f.write("- ![Figure 10: Hypothesis Forest Plot](fig10_hypothesis_forest_plot.png)\n\n")
 
-        f.write("## 4. Discussion & Policy Implications\n")
-        f.write("Our empirical findings demonstrate significant structural shifts during the 15:00-15:30 settlement window on expiry days compared to control days. ")
-        f.write("The cross-validation of Bloomberg roll direction with cash VWAP drift confirms that roll pressure is a primary driver of settlement window dislocation.\n")
+        f.write("## 4. Results\n\n")
+        for sentence in _discussion_sentences(_findings(summary_df)):
+            f.write(sentence + "\n\n")
 
     print(f"[DONE] Markdown research paper written to {report_md}")
 
