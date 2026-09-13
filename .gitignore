@@ -53,3 +53,6 @@ logs/
 *.aux
 *.log
 *.out
+
+# Built by scripts/paper_bundle.py; regenerate it rather than committing it.
+paper_bundle*.tar.gz

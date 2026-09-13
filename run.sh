@@ -5,6 +5,7 @@
 #   ./run.sh                 run it
 #   ./run.sh --status        ask what is already done, change nothing
 #   ./run.sh --stage report  one stage (any run_all.py flag is forwarded)
+#   ./run.sh --stage paper   typeset only, from quantities already computed elsewhere
 #   sbatch run.sh            submit it, using the directives below
 #
 # Edit the block marked SETTINGS and run. Anything already exported in the environment wins
@@ -133,7 +134,21 @@ fi
 say "pipeline"
 "$PYTHON" run_all.py --jobs "$JOBS" 2>&1 | tee -a "$RUN_LOG"
 
+# A compute node rarely has LaTeX. Everything except the typesetting is already done at this
+# point, so the inputs are packaged here rather than making you come back for them: copy the
+# archive to a machine with LaTeX, import it, and build the document there.
+if ! command -v pdflatex >/dev/null 2>&1; then
+  say "no pdflatex here - packaging the report's inputs"
+  "$PYTHON" scripts/paper_bundle.py export 2>&1 | tee -a "$RUN_LOG"
+fi
+
 elapsed=$(( SECONDS - started ))
 say "done in $(( elapsed / 3600 ))h $(( (elapsed % 3600) / 60 ))m"
-printf '  report    %s\n' "$NSE_DATA_DIR/results/final_research_paper.pdf"
+if command -v pdflatex >/dev/null 2>&1; then
+  printf '  report    %s\n' "$NSE_DATA_DIR/results/final_research_paper.pdf"
+else
+  printf '  bundle    %s\n' "paper_bundle.tar.gz"
+  printf '            copy it over, then: python scripts/paper_bundle.py import paper_bundle.tar.gz\n'
+  printf '                                python run_all.py --stage paper\n'
+fi
 printf '  log       %s\n' "$RUN_LOG"

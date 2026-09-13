@@ -93,8 +93,17 @@ def _compile() -> Optional[Path]:
     pdflatex = shutil.which("pdflatex") or str(
         Path.home() / "AppData/Roaming/TinyTeX/bin/windows/pdflatex.exe")
     if not Path(pdflatex).exists():
-        logger.warning(f"[COMPILE] pdflatex not found at {pdflatex}; the LaTeX source is "
-                       f"written but not compiled")
+        # Expected on a compute node, which is why this says what to do rather than only
+        # what went wrong. Everything except the typesetting has already been written.
+        logger.warning(
+            "[COMPILE] pdflatex not found (%s). Everything else is written: macros, tables "
+            "and figures are in paper/, and the quantities behind them in %s.\n"
+            "  To typeset on another machine, here:\n"
+            "      python scripts/paper_bundle.py export\n"
+            "  then there:\n"
+            "      python scripts/paper_bundle.py import paper_bundle.tar.gz\n"
+            "      python run_all.py --stage paper",
+            pdflatex, Path(RESULTS_DIR) / "metrics.json")
         return None
 
     started = time.time()
@@ -118,22 +127,45 @@ def _compile() -> Optional[Path]:
     return destination
 
 
-def generate_report() -> None:
-    logger.info("=== STAGE 8: REPORT ===")
+def generate_report(collect: bool = True) -> None:
+    """Compute the report's quantities, then typeset it.
+
+    `collect=False` skips the computing and builds from what is already in the metrics store.
+    That is the half that needs no data: the cluster does the analysis and writes
+    `metrics.json` and the result CSVs, and a machine with LaTeX installed turns those into
+    the document. Splitting it this way is what makes the compute host and the typesetting
+    host separable, which matters because the two rarely have the same software.
+
+    The store is deliberately *not* cleared in that mode. Clearing it and then recomputing on
+    a machine that has no parsed data would replace every sample count with a zero and the
+    document would report a study of nothing, in good faith.
+    """
+    logger.info(f"=== STAGE 8: {'REPORT' if collect else 'TYPESET'} ===")
     started = time.time()
 
-    # Cleared first: a quantity whose recorder was removed would otherwise persist in the
-    # store and keep appearing in the document, which is the typed-number problem by another
-    # route.
-    reset_metrics()
+    if collect:
+        # Cleared first: a quantity whose recorder was removed would otherwise persist in
+        # the store and keep appearing in the document, which is the typed-number problem by
+        # another route.
+        reset_metrics()
 
-    summary = run_all_hypothesis_tests()
-    collect_all()
-    collect_insight_metrics()
+        summary = run_all_hypothesis_tests()
+        collect_all()
+        collect_insight_metrics()
 
-    with Run("stage8.generate_report") as run:
-        run.record("results.headline", _headline(summary), "",
-                   "one-sentence statement of the outcome, derived from the test results")
+        with Run("stage8.generate_report") as run:
+            run.record("results.headline", _headline(summary), "",
+                       "one-sentence statement of the outcome, derived from the test results")
+    else:
+        from utils.provenance import METRICS_PATH, load_metrics
+
+        if not load_metrics():
+            raise SystemExit(
+                f"no recorded quantities at {METRICS_PATH}. Typesetting builds from what the "
+                f"analysis produced; run the pipeline here, or copy a bundle over with "
+                f"scripts/paper_bundle.py import <archive>.")
+        summary = pd.read_csv(Path(RESULTS_DIR) / "hypothesis_testing_summary.csv")
+        logger.info(f"[TYPESET] building from {len(load_metrics())} recorded quantities")
 
     build_macros()
     build_all_tables()
@@ -158,4 +190,9 @@ def generate_report() -> None:
 
 
 if __name__ == "__main__":
-    generate_report()
+    import argparse
+
+    ap = argparse.ArgumentParser(description="Build the report")
+    ap.add_argument("--typeset-only", action="store_true",
+                    help="build from the existing metrics store, computing nothing")
+    generate_report(collect=not ap.parse_args().typeset_only)

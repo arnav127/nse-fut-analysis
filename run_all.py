@@ -43,7 +43,10 @@ logger = setup_logger("Pipeline", "pipeline.log")
 
 # Stages 1, 2 and 4 run once per session; the rest run once over everything.
 PER_SESSION_STAGES = ["parse", "enrich", "clob"]
-AGGREGATE_STAGES = ["analyze", "clob-analyze", "insights", "bloomberg", "report"]
+AGGREGATE_STAGES = ["analyze", "clob-analyze", "insights", "bloomberg", "report",
+                    # `paper` typesets from the metrics store without recomputing
+                    # anything, so it runs on a machine that has LaTeX but no data.
+                    "paper"]
 ALL_STAGES = PER_SESSION_STAGES + AGGREGATE_STAGES
 
 # The universe builder ranks securities on turnover, trade counts and price level, all of
@@ -254,7 +257,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                                ("clob-analyze", run_clob_analysis),
                                ("insights", run_insights),
                                ("bloomberg", run_bloomberg),
-                               ("report", generate_report)):
+                               ("report", generate_report),
+                               ("paper", lambda: generate_report(collect=False))):
             if name in wanted:
                 logger.info(f"=== {name} ===")
                 _run(name, function, outcomes)
