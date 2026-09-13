@@ -313,6 +313,22 @@ def _tests(run: Run) -> None:
     run.record("test.rejected_bonferroni",
                int(summary.significant_bonferroni.astype(bool).sum())
                if "significant_bonferroni" in summary else 0, "hypotheses", "")
+
+    # Rejected and supported are not the same thing. The test is two-sided, so a small
+    # p-value says the quantity moved, not that it moved the way the hypothesis claimed.
+    supported = summary[summary.supported.astype(bool)] if "supported" in summary else summary.iloc[0:0]
+    contradicted = (summary[summary.contradicted.astype(bool)]
+                    if "contradicted" in summary else summary.iloc[0:0])
+    run.record("test.supported", len(supported), "hypotheses",
+               "rejected, with the effect pointing the way the hypothesis stated")
+    run.record("test.supported_ids", ", ".join(supported.hypothesis_id.astype(str)) or "none", "", "")
+    run.record("test.contradicted", len(contradicted), "hypotheses",
+               "rejected, with the effect pointing against the stated direction")
+    run.record("test.contradicted_ids",
+               ", ".join(contradicted.hypothesis_id.astype(str)) or "none", "", "")
+    run.record("test.not_rejected",
+               int(len(tested) - len(supported) - len(contradicted)), "hypotheses",
+               "evaluated but not distinguishable from no difference")
     # Recorded unconditionally, zero included. A quantity that appears only when some
     # tests ran leaves the manuscript citing a macro that does not exist on a partial run,
     # which is a build failure rather than a sentence reading "0".
@@ -337,6 +353,13 @@ def _tests(run: Run) -> None:
                            unit, str(row.description))
         if hasattr(row, "significant_fdr"):
             run.record(f"{stem}.significant", "yes" if bool(row.significant_fdr) else "no", "", "")
+        if hasattr(row, "supported"):
+            verdict = ("supported" if bool(row.supported) else
+                       "contradicted" if bool(getattr(row, "contradicted", False)) else
+                       "not rejected" if not pd.isna(getattr(row, "p_value", np.nan)) else
+                       "not evaluated")
+            run.record(f"{stem}.verdict", verdict, "",
+                       "rejection combined with the direction the hypothesis stated")
 
 
 def collect_all() -> None:

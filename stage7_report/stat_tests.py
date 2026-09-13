@@ -23,6 +23,7 @@ a smaller p-value un-rejected.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -34,45 +35,69 @@ from config.settings import EXPIRY_CONTROL_PAIRS, RESULTS_DIR
 
 ALPHA = 0.05
 
-# (id, description, results file, column, reducer[, (filter column, value)]).
-#
-# The reducer matters. A count column summed and a rate column averaged are different
-# quantities, and taking the mean of a count across minute buckets answers a different
-# question from taking the total. The optional filter narrows the rows a hypothesis is
-# measured on, for the ones stated about part of the window rather than all of it.
-HYPOTHESES: List[tuple] = [
-    ("H1",  "Basis volatility higher on expiry", "a2_basis_divergence.csv", "basis_std_dev", "mean"),
-    ("H2",  "Basis divergence worse for illiquid stocks", "a2_basis_divergence.csv", "basis_range", "mean"),
-    ("H3",  "Proprietary desk volume share higher on expiry", "a3_participant_profile.csv", "volume", "sum"),
-    ("H4",  "Custodian trade counts shift on expiry", "a3_participant_profile.csv", "trades", "sum"),
-    ("H5",  "Algo volume share higher on expiry", "a4_algo_segmentation.csv", "total_volume", "sum"),
-    ("H6",  "Algo order IOC rate higher on expiry", "a4_algo_segmentation.csv", "ioc_rate", "mean"),
-    ("H7",  "Cancel-to-entry ratio spikes on expiry", "a5_cancellation_patterns.csv", "cancel_to_entry_ratio", "mean"),
-    ("H8",  "Cancellations concentrated in prop/algo flow", "a5_cancellation_patterns.csv", "cancellations", "sum"),
-    ("H9",  "Iceberg order ratio higher on expiry", "a6_iceberg_detection.csv", "iceberg_ratio", "mean"),
-    ("H10", "Aggressive order ratio higher on expiry", "a7_ioc_aggressiveness.csv", "aggressive_ratio", "mean"),
+@dataclass(frozen=True)
+class Hypothesis:
+    """One hypothesis and how to measure it.
+
+    `direction` is what the hypothesis claims: "+" for higher on expiry, "-" for lower,
+    "two" when the statement is only that the quantity differs. It exists because a paired
+    t-test is two-sided, so a small p-value says the quantity moved, not that it moved the
+    way the hypothesis said. Three of these turn out to move the other way, and without the
+    stated direction recorded the paper would report them as confirmations.
+
+    `reduce` matters too: a count summed and a rate averaged are different quantities, and
+    the mean of a count across minute buckets answers a different question from the total.
+    `row_filter` narrows the rows for a hypothesis stated about part of the window.
+    """
+
+    hid: str
+    description: str
+    source: str
+    column: str
+    reduce: str
+    direction: str = "+"
+    row_filter: Optional[Tuple[str, Any]] = None
+
+
+H = Hypothesis
+HYPOTHESES: List[Hypothesis] = [
+    H("H1",  "Basis volatility higher on expiry", "a2_basis_divergence.csv", "basis_std_dev", "mean"),
+    H("H2",  "Basis divergence worse for illiquid stocks", "a2_basis_divergence.csv", "basis_range", "mean"),
+    H("H3",  "Proprietary desk volume share higher on expiry", "a3_participant_profile.csv", "volume", "sum"),
+    # "Shift" names no direction, so this one is genuinely two-sided.
+    H("H4",  "Custodian trade counts shift on expiry", "a3_participant_profile.csv", "trades", "sum", "two"),
+    H("H5",  "Algo volume share higher on expiry", "a4_algo_segmentation.csv", "total_volume", "sum"),
+    H("H6",  "Algo order IOC rate higher on expiry", "a4_algo_segmentation.csv", "ioc_rate", "mean"),
+    H("H7",  "Cancel-to-entry ratio spikes on expiry", "a5_cancellation_patterns.csv", "cancel_to_entry_ratio", "mean"),
+    H("H8",  "Cancellations concentrated in prop/algo flow", "a5_cancellation_patterns.csv", "cancellations", "sum"),
+    H("H9",  "Iceberg order ratio higher on expiry", "a6_iceberg_detection.csv", "iceberg_ratio", "mean"),
+    H("H10", "Aggressive order ratio higher on expiry", "a7_ioc_aggressiveness.csv", "aggressive_ratio", "mean"),
     # H11 is about the *final* five minutes, so it is measured on the late sub-window only.
-    # It used to average every minute from 15:00, which tests H10 again under another name.
-    ("H11", "Aggressiveness accelerates in the final 5 minutes", "a7_ioc_aggressiveness.csv", "ioc_ratio", "mean", ("sub_window", "Late")),
-    ("H12", "Bid-ask spread widens on expiry", "b1_spread_dynamics.csv", "mean_spread_bps", "mean"),
-    ("H13", "Spread widening worse for illiquid stocks", "b1_spread_dynamics.csv", "max_spread_bps", "mean"),
-    ("H14", "Order book depth erosion on expiry", "b2_depth_erosion.csv", "avg_bid_depth", "mean"),
-    ("H15", "Depth erosion is asymmetric", "b2_depth_erosion.csv", "abs_imbalance", "mean"),
-    ("H16", "Order flow imbalance higher on expiry", "b3_order_flow_imbalance.csv", "cash_ofi", "mean"),
-    ("H17", "Price impact higher on expiry", "b4_price_impact.csv", "median_price_impact_bps", "mean"),
-    ("H18", "Book pressure persistence higher on expiry", "b5_book_asymmetry.csv", "book_pressure_persistence", "mean"),
-    ("H19", "Book pressure magnitude higher on expiry", "b5_book_asymmetry.csv", "mean_log_pressure", "mean"),
-    ("H20", "VWAP drift direction matches roll pressure", "c3_directional_validation.csv", "match_vwap", "mean"),
-    ("H21", "VWAP drift magnitude tracks roll intensity", "c3_directional_validation.csv", "roll_intensity", "mean"),
-    ("H22", "Book asymmetry aligns with roll direction", "c3_directional_validation.csv", "match_book", "mean"),
-    ("H23", "Basis mispricing larger on high roll intensity", "c2_cost_of_carry.csv", "mispricing_bps", "mean"),
-    ("H24", "Settlement realised variance rate higher on expiry", "a8_volatility_regime.csv", "rv_ratio", "mean"),
-    ("H25", "Trade concentration (HHI) higher on expiry", "a9_trade_clustering.csv", "hhi_concentration", "mean"),
-    ("H26", "Futures returns Granger-cause cash returns on expiry", "a10_lead_lag.csv", "granger_f_stat", "mean"),
-    ("H27", "Amihud illiquidity uplift higher on expiry", "a11_amihud_illiquidity.csv", "amihud_uplift", "mean"),
-    ("H28", "Phantom order rate (<1s) higher on expiry", "a12_order_lifespan.csv", "phantom_order_rate", "mean"),
-    ("H29", "Settlement volume Gini higher on expiry", "b6_volume_profile.csv", "volume_gini", "mean"),
-    ("H30", "Post-shock recovery time differs on expiry", "b7_market_resilience.csv", "mean_recovery_time_sec", "mean"),
+    # Averaging every minute from the window's open tests H10 again under another name.
+    H("H11", "Aggressiveness accelerates in the final 5 minutes", "a7_ioc_aggressiveness.csv", "ioc_ratio", "mean",
+      "+", ("sub_window", "Late")),
+    H("H12", "Bid-ask spread widens on expiry", "b1_spread_dynamics.csv", "mean_spread_bps", "mean"),
+    H("H13", "Spread widening worse for illiquid stocks", "b1_spread_dynamics.csv", "max_spread_bps", "mean"),
+    # Erosion means less depth, so the stated direction is negative.
+    H("H14", "Order book depth erosion on expiry", "b2_depth_erosion.csv", "avg_bid_depth", "mean", "-"),
+    H("H15", "Depth erosion is asymmetric", "b2_depth_erosion.csv", "abs_imbalance", "mean"),
+    H("H16", "Order flow imbalance higher on expiry", "b3_order_flow_imbalance.csv", "cash_ofi", "mean"),
+    H("H17", "Price impact higher on expiry", "b4_price_impact.csv", "median_price_impact_bps", "mean"),
+    H("H18", "Book pressure persistence higher on expiry", "b5_book_asymmetry.csv", "book_pressure_persistence", "mean"),
+    H("H19", "Book pressure magnitude higher on expiry", "b5_book_asymmetry.csv", "mean_log_pressure", "mean"),
+    H("H20", "VWAP drift direction matches roll pressure", "c3_directional_validation.csv", "match_vwap", "mean"),
+    H("H21", "VWAP drift magnitude tracks roll intensity", "c3_directional_validation.csv", "roll_intensity", "mean"),
+    H("H22", "Book asymmetry aligns with roll direction", "c3_directional_validation.csv", "match_book", "mean"),
+    H("H23", "Basis mispricing larger on high roll intensity", "c2_cost_of_carry.csv", "mispricing_bps", "mean"),
+    H("H24", "Settlement realised variance rate higher on expiry", "a8_volatility_regime.csv", "rv_ratio", "mean"),
+    H("H25", "Trade concentration (HHI) higher on expiry", "a9_trade_clustering.csv", "hhi_concentration", "mean"),
+    H("H26", "Futures returns Granger-cause cash returns on expiry", "a10_lead_lag.csv", "granger_f_stat", "mean"),
+    H("H27", "Amihud illiquidity uplift higher on expiry", "a11_amihud_illiquidity.csv", "amihud_uplift", "mean"),
+    H("H28", "Phantom order rate (<1s) higher on expiry", "a12_order_lifespan.csv", "phantom_order_rate", "mean"),
+    H("H29", "Settlement volume Gini higher on expiry", "b6_volume_profile.csv", "volume_gini", "mean"),
+    # "Differs" names no direction.
+    H("H30", "Post-shock recovery time differs on expiry", "b7_market_resilience.csv", "mean_recovery_time_sec",
+      "mean", "two"),
 ]
 
 
@@ -100,14 +125,16 @@ def _session_level(
     return frame.groupby(["symbol", "trade_date"], as_index=False)[column].agg(how)
 
 
-def _evaluate(
-    h_id: str,
-    desc: str,
-    file_name: str,
-    column: str,
-    how: str,
-    row_filter: Optional[Tuple[str, Any]] = None,
-) -> Optional[Dict[str, Any]]:
+def _consistent(direction: str, effect: float) -> bool:
+    """Does the observed effect point the way the hypothesis said it would?"""
+    if direction == "two":
+        return True
+    return effect > 0 if direction == "+" else effect < 0
+
+
+def _evaluate(h: Hypothesis) -> Optional[Dict[str, Any]]:
+    h_id, desc, file_name, column, how = h.hid, h.description, h.source, h.column, h.reduce
+    row_filter = h.row_filter
     path = Path(RESULTS_DIR) / file_name
     if not path.exists():
         return None
@@ -161,6 +188,7 @@ def _evaluate(
             "test_stat": np.nan, "p_value": np.nan, "effect_size_cohen_d": 0.0,
             "n_pairs": int(exp_arr.size), "n_months": months,
             "mean_expiry": float(exp_arr.mean()), "mean_control": float(ctl_arr.mean()),
+            "stated_direction": h.direction, "direction_consistent": True,
             "note": "no variation in paired differences",
         }
 
@@ -185,6 +213,8 @@ def _evaluate(
         "n_months": months,
         "mean_expiry": float(exp_arr.mean()),
         "mean_control": float(ctl_arr.mean()),
+        "stated_direction": h.direction,
+        "direction_consistent": _consistent(h.direction, float(diffs.mean())),
         "note": "",
     }
 
@@ -212,18 +242,17 @@ def run_all_hypothesis_tests() -> pd.DataFrame:
     print("[REPORT] Running paired hypothesis tests H1-H30...")
 
     rows: List[Dict[str, Any]] = []
-    for spec in HYPOTHESES:
-        h_id, desc, fname, column, how = spec[:5]
-        row_filter = spec[5] if len(spec) > 5 else None
-        result = _evaluate(h_id, desc, fname, column, how, row_filter)
+    for h in HYPOTHESES:
+        result = _evaluate(h)
         if result is None:
             rows.append({
-                "hypothesis_id": h_id, "description": desc,
+                "hypothesis_id": h.hid, "description": h.description,
                 "test_name": "Not tested (input missing or empty)",
                 "test_stat": np.nan, "p_value": np.nan, "wilcoxon_p_value": np.nan,
                 "effect_size_cohen_d": np.nan, "n_pairs": 0, "n_months": 0,
                 "mean_expiry": np.nan, "mean_control": np.nan,
-                "note": f"{fname}:{column}",
+                "stated_direction": h.direction, "direction_consistent": False,
+                "note": f"{h.source}:{h.column}",
             })
         else:
             rows.append(result)
@@ -245,10 +274,19 @@ def run_all_hypothesis_tests() -> pd.DataFrame:
         summary.loc[tested, "significant_fdr"] = _benjamini_hochberg(
             summary.loc[tested, "p_value"].to_numpy(), ALPHA)
 
+    # Rejection is not support. The test is two-sided, so a small p-value says the quantity
+    # moved between expiry and control sessions - not that it moved the way the hypothesis
+    # claimed. A directional hypothesis whose effect points the other way has been refuted,
+    # and reporting it among the confirmations would invert its meaning.
+    summary["supported"] = summary.significant_fdr & summary.direction_consistent.astype(bool)
+    summary["contradicted"] = summary.significant_fdr & ~summary.direction_consistent.astype(bool)
+
     out_csv = Path(RESULTS_DIR) / "hypothesis_testing_summary.csv"
     summary.to_csv(out_csv, index=False)
-    print(f"[DONE] {n_tested} of {len(summary)} hypotheses tested "
-          f"({int(summary.significant_fdr.sum())} significant at FDR {ALPHA}). Saved to {out_csv}")
+    print(f"[DONE] {n_tested} of {len(summary)} hypotheses tested; "
+          f"{int(summary.significant_fdr.sum())} differ at FDR {ALPHA} "
+          f"({int(summary.supported.sum())} in the stated direction, "
+          f"{int(summary.contradicted.sum())} against it). Saved to {out_csv}")
     return summary
 
 
