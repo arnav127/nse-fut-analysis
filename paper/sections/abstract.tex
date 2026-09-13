@@ -1,0 +1,24 @@
+\begin{abstract}
+\noindent
+Stock futures on the National Stock Exchange of India settle at the volume-weighted average
+price of the underlying cash market over the last half hour of the expiry session. Anyone
+holding a large expiring position therefore has a financial interest in a known, narrow
+window of cash trading. This report asks what the order book does in that window.
+
+We use order-by-order data, which records every entry, modification and cancellation
+separately, and reconstruct the limit order book second by second. Each of
+\DesignExpirySessions{} expiry Thursdays in 2022 is compared against a matched control
+session in the same month, across \DesignSymbols{} securities. The sample is
+\SampleOrderEventsMillions{} million order events and \SampleTradesMillions{} million
+trades, from which \SampleSnapshots{} book reconstructions are built.
+
+We compute the settlement price itself, which lets us ask how far it ends up from the
+opening mid and from the close, and we separate two explanations for what changes in the
+window: prices being pushed in one direction, and more participants trading in both. Of
+\TestSpecified{} hypotheses, \TestSupported{} are supported and \TestContradicted{} are
+rejected with the effect running the other way.
+
+\ResultsHeadline{}
+\end{abstract}
+
+\vspace{0.5em}

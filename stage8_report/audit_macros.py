@@ -25,7 +25,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from utils.logger import setup_logger  # noqa: E402
 
-logger = setup_logger("Audit", "stage7_report.log")
+logger = setup_logger("Audit", "stage8_report.log")
 
 # A generated macro is a capitalised name of at least four letters called with empty braces.
 # That shape distinguishes them from LaTeX's own commands without maintaining a list of those.
@@ -65,10 +65,23 @@ def defined_macros(macros_tex: Path) -> Set[str]:
     return set(re.findall(r"\\(?:new|provide)command\{\\([A-Za-z]+)\}", body))
 
 
+COMMENT = re.compile(r"(?<!\\)%.*$", re.MULTILINE)
+
+
+def strip_comments(text: str) -> str:
+    """Remove LaTeX comments, respecting an escaped percent sign.
+
+    The manuscript's header comments explain the macro convention by example, and a citation
+    scanner that reads comments reports those examples as quantities that were never
+    computed.
+    """
+    return COMMENT.sub("", text)
+
+
 def cited_macros(*sources: str) -> Set[str]:
     names: Set[str] = set()
     for text in sources:
-        names |= set(CITATION.findall(text))
+        names |= set(CITATION.findall(strip_comments(text)))
     return names
 
 
@@ -114,7 +127,7 @@ def audit(document: str, authored_text: str, macros_tex: Path) -> Tuple[List[str
 
 if __name__ == "__main__":
     from config.settings import RESULTS_DIR
-    from stage7_report.generate_report import _authored_text
+    from stage8_report.generate_report import _authored_text
 
     tex = Path(RESULTS_DIR) / "final_research_paper.tex"
     if not tex.exists():

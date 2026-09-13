@@ -45,6 +45,7 @@ from config.settings import (
     CLOB_BOOKS_DIR,
     CLOB_DATA_DIR,
     CLOB_DEPTH_LEVELS,
+    CLOB_DEPTH_SUM_LEVELS,
     CLOB_REPORTED_LEVELS,
     CLOB_SNAPSHOT_INTERVAL_SECONDS,
     EXPIRY_THURSDAYS_DDMMYYYY,
@@ -117,14 +118,23 @@ def _snapshot_projection(levels: int) -> str:
     whole-book `total_bid_visible`. The stage-5 erosion measure is about the top of the
     book, and a whole-book total would also move whenever a far-away level appeared.
     """
-    bid_qty = [f"COALESCE(bid_qty_{i}, 0)" for i in range(1, levels + 1)]
-    ask_qty = [f"COALESCE(ask_qty_{i}, 0)" for i in range(1, levels + 1)]
+    # Depth totals stay on the first ten levels whatever the snapshot carries: that is what
+    # "top of book depth" has meant throughout, and widening it silently would change the
+    # meaning of every depth result rather than adding to it.
+    summed = min(CLOB_DEPTH_SUM_LEVELS, levels)
+    bid_qty = [f"COALESCE(bid_qty_{i}, 0)" for i in range(1, summed + 1)]
+    ask_qty = [f"COALESCE(ask_qty_{i}, 0)" for i in range(1, summed + 1)]
     depth_cols = [f"COALESCE(bid_qty_{i}, 0) AS bid_depth_{i}" for i in range(1, levels + 1)]
     depth_cols += [f"COALESCE(ask_qty_{i}, 0) AS ask_depth_{i}" for i in range(1, levels + 1)]
     # Hidden size has no counterpart in the old schema; it is what the previous book could
     # not see at all, so it is carried through alongside the visible depth.
     depth_cols += [f"COALESCE(bid_hidden_{i}, 0) AS bid_hidden_{i}" for i in range(1, levels + 1)]
     depth_cols += [f"COALESCE(ask_hidden_{i}, 0) AS ask_hidden_{i}" for i in range(1, levels + 1)]
+    # Level prices, in rupees. Quantity alone describes how much is resting but not where,
+    # and every cost-of-execution measure - what it takes to move the mid, the slope of the
+    # book, the notional behind a walk of N levels - needs the distance from the touch.
+    depth_cols += [f"bid_px_{i} / {PAISE} AS bid_px_{i}" for i in range(1, levels + 1)]
+    depth_cols += [f"ask_px_{i} / {PAISE} AS ask_px_{i}" for i in range(1, levels + 1)]
 
     bid_sum = " + ".join(bid_qty)
     ask_sum = " + ".join(ask_qty)

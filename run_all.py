@@ -38,7 +38,7 @@ logger = setup_logger("Pipeline", "pipeline.log")
 
 # Stage 1, 2 and 4 run once per session; the rest run once over everything.
 PER_SESSION_STAGES = ["parse", "enrich", "clob"]
-AGGREGATE_STAGES = ["analyze", "clob-analyze", "bloomberg", "report"]
+AGGREGATE_STAGES = ["analyze", "clob-analyze", "insights", "bloomberg", "report"]
 ALL_STAGES = PER_SESSION_STAGES + AGGREGATE_STAGES
 
 
@@ -119,8 +119,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     from stage3_analysis.run_all_analysis import run_analysis
     from stage4_clob.clob_builder import build_clob_for_session
     from stage5_clob_analysis.run_clob_analysis import run_clob_analysis
-    from stage6_bloomberg.run_bloomberg_analysis import run_bloomberg
-    from stage7_report.generate_report import generate_report
+    from stage6_insights.run_insights import run_insights
+    from stage7_bloomberg.run_bloomberg_analysis import run_bloomberg
+    from stage8_report.generate_report import generate_report
 
     wanted = ALL_STAGES if args.stage == "all" else [args.stage]
     sessions = [args.date] if args.date else ALL_TARGET_DATES
@@ -154,6 +155,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         for name, fn in (("analyze", run_analysis),
                          ("clob-analyze", run_clob_analysis),
+                         ("insights", run_insights),
                          ("bloomberg", run_bloomberg),
                          ("report", generate_report)):
             if name in wanted:

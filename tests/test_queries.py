@@ -117,7 +117,7 @@ class TestPairedTests:
     def test_pairs_each_symbol_with_itself_once(self, enriched, results, monkeypatch):
         from stage3_analysis import a3_participant_profile
         from stage5_clob_analysis import b4_price_impact
-        from stage7_report import stat_tests
+        from stage8_report import stat_tests
 
         for module in (a3_participant_profile,):
             module.ENRICHED_DATA_DIR = enriched

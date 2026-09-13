@@ -20,7 +20,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from stage7_report.stat_tests import _benjamini_hochberg, _session_level  # noqa: E402
+from stage8_report.stat_tests import _benjamini_hochberg, _session_level  # noqa: E402
 from utils.paths import iso_to_session, session_to_iso  # noqa: E402
 
 

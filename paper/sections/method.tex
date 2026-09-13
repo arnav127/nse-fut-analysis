@@ -1,0 +1,103 @@
+\section{Design, measures and tests}\label{sec:method}
+
+\subsection{Matched sessions}
+
+Each of the \DesignExpirySessions{} expiry Thursdays in 2022 is paired with a control session
+in the same calendar month, giving \DesignSessions{} sessions. Pairing within the month holds
+the broad environment roughly fixed: the same index level, the same rate environment, the
+same participants. Every test is paired at the level of a security and a month, so a
+security that is simply busier than another contributes nothing to the comparison.
+
+\subsection{Securities}
+
+The universe is split into groups by whether a derivative expires on the security and by how
+much it trades. Table~\ref{tab:universe} gives the membership.
+
+The liquid and illiquid groups are both derivatives underlyings. That is the point of the
+contrast: both carry the same settlement incentive, and what differs is the cost of acting
+on it. A comparison between two securities that both happen to be among the most traded on
+the exchange is not a liquidity contrast, whatever their relative size.
+
+The placebo group has no expiring derivative, so the settlement mechanism gives nobody any
+reason to care about its closing half hour. If the same effects appear there, they are
+properties of the last Thursday of the month---index rebalancing, month-end flows, index
+option expiry---and not of the settlement. Without this comparison, every result in
+Section~\ref{sec:results} would be open to that explanation and would have to be reported
+with the corresponding caveat.
+
+\input{generated/tables/universe}
+
+\subsection{Measures}
+
+\paragraph{The settlement price.} The settlement VWAP is computed from the window's trades.
+It is then compared against the mid at the window's open (the \emph{drift}), against the
+closing price (the \emph{reversal}), and against the final minute's own VWAP (the
+\emph{terminal gap}). The reversal is the most informative of the three: a price that is
+pushed and then released leaves the close somewhere other than the settlement.
+
+Tests use absolute values. A participant who is long the future wants the settlement high and
+one who is short wants it low, so across many securities and months the signed drift should
+average to roughly nothing whether or not anyone is pushing. The dispersion carries the
+information.
+
+\paragraph{Pushing or churning.} The variance ratio compares the variance of a
+\VrHorizonSeconds{}-second mid return against \VrHorizonSeconds{} times the variance of a
+one-second return. Under a random walk it is one. Sustained pressure in one direction pushes
+it above one; heavier two-sided trading, which arrives as bid-ask bounce, pushes it below.
+The first-order autocorrelation of signed volume per second asks the same question of order
+flow. Impact is split into the part that survives: for each second carrying substantial
+one-sided flow, the mid move after ten seconds and after sixty is measured, and the ratio is
+the permanent share. Impact is measured on the mid rather than on trade prices, because
+signing trades by the tick rule and then measuring their own subsequent return partly
+measures the bid-ask bounce reverting.
+
+\paragraph{Concealment.} An order is treated as concealing size when its displayed quantity
+is positive and below its total; a displayed quantity of zero means no instruction was given,
+which is the ordinary case. From the book we take the share of resting size that is
+concealed, and the replenishment count per thousand shares matched, which is the rate at
+which concealed size is converted into executions.
+
+\paragraph{The cost of moving the price.} For each snapshot, the displayed book is swept from
+the touch by a fixed notional and the resulting price move recorded. Sweeping a fixed size
+and measuring the move, rather than asking what a fixed move costs, avoids censoring: the
+book carries a finite number of levels, and on a liquid security a ten-basis-point move lies
+beyond all of them. The figure is a lower bound on what marking the settlement would take,
+since the sweep assumes the book neither replenishes nor reacts. It should be read as an
+order of magnitude and as a comparison across groups.
+
+\paragraph{Order behaviour.} The cancel-to-entry ratio, the share of orders cancelled within
+one second of entry, the immediate-or-cancel rate (reported separately for the final five
+minutes), spreads, displayed depth, and the concentration of volume across the window's
+minutes.
+
+\subsection{Tests}
+
+Every hypothesis has the same form: a per-security quantity on an expiry session against the
+same quantity on that month's control session. Each results file is first reduced to one
+value per security and session, so a security contributes one matched pair per month.
+
+Tests are paired $t$-tests with a Wilcoxon signed-rank test alongside, since these
+distributions are heavy-tailed. Effect sizes are Cohen's $d$ on the paired differences.
+\TestSpecified{} hypotheses are tested over \TestPairsTotal{} matched pairs, and significance
+is assessed under Benjamini--Hochberg control of the false discovery rate at
+$\alpha = \TestAlpha{}$.
+
+Rejection and support are reported separately. The paired test is two-sided, so a small
+$p$-value says a quantity differs between expiry and control sessions---not that it differs
+in the direction the hypothesis claims. Each hypothesis therefore carries the direction it
+states, and a rejection running the other way is reported as a refutation rather than a
+confirmation.
+
+\subsection{Difference-in-differences}
+
+The paired tests establish that a quantity differs on expiry Thursdays. They do not establish
+that the settlement mechanism is the reason. Two further contrasts address that, both
+computed on per-security expiry-minus-control differences so that each security contributes
+one observation.
+
+The first compares the derivatives groups against the placebo group: if the placebo moves the
+same way, the effect belongs to the calendar rather than to the settlement. The second
+compares the illiquid group against the liquid group: if the settlement incentive is being
+acted on, the effect should be larger where acting on it is cheaper, which is a prediction
+the alternative explanations mostly do not make. Results are in
+Table~\ref{tab:contrasts}.

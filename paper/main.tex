@@ -1,0 +1,62 @@
+% Expiry-day microstructure and the settlement VWAP.
+%
+% Edit this file and the files under sections/ directly. Everything under generated/ is
+% written by the pipeline (python run_all.py --stage report) and is overwritten on each run:
+% macros.tex holds one \newcommand per computed quantity, tables/ holds the result tables,
+% and ../figures holds the plots.
+%
+% No number is typed into the prose. Cite \SomeQuantity{} instead; the build fails if a
+% cited quantity was never computed, or if a numeral appears in the text.
+%
+% Build:  python run_all.py --stage report
+% or:     cd paper && pdflatex main && pdflatex main
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{xcolor}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+
+\graphicspath{{figures/}{../data/results/}}
+\captionsetup{font=small,labelfont=bf,width=0.92\textwidth}
+\setlength{\emergencystretch}{2em}
+
+% Computed quantities. One \newcommand per number; see generated/macros.tex.
+\input{generated/macros}
+
+\title{\textbf{Expiry-Day Microstructure and the Settlement VWAP}\\[0.3em]
+  \large An order-level study of the National Stock Exchange of India}
+\author{Arnav Dixit}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\input{sections/abstract}
+
+\input{sections/introduction}
+\input{sections/background}
+\input{sections/data}
+\input{sections/method}
+\input{sections/results}
+\input{sections/discussion}
+\input{sections/limitations}
+
+\appendix
+\input{sections/appendix}
+
+\end{document}

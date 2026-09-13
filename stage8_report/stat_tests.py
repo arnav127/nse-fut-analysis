@@ -60,44 +60,113 @@ class Hypothesis:
 
 
 H = Hypothesis
+
+# The set is organised by what each question is about, not by which file answers it.
+#
+# Six of the original thirty are gone. H10 (aggressive order share) restated H6 and H11 on a
+# combined column; H25 (Herfindahl of volume across the window) and H29 (Gini of the same
+# series) are two names for one measure, and the Gini is kept; H19 (book pressure magnitude)
+# overlapped H15 and H18; H4 asked only whether custodian counts "shift", which no direction
+# and no mechanism made falsifiable; H2 and H13 were stated as moderation claims - worse for
+# illiquid securities - but tested as ordinary paired differences on an unrelated column,
+# and moderation is now tested properly in Table 4 rather than pretended at here.
+#
+# What replaces them measures the settlement price itself, which the original design never
+# computed, and separates directional pressure from ordinary congestion, which it could not.
 HYPOTHESES: List[Hypothesis] = [
-    H("H1",  "Basis volatility higher on expiry", "a2_basis_divergence.csv", "basis_std_dev", "mean"),
-    H("H2",  "Basis divergence worse for illiquid stocks", "a2_basis_divergence.csv", "basis_range", "mean"),
-    H("H3",  "Proprietary desk volume share higher on expiry", "a3_participant_profile.csv", "volume", "sum"),
-    # "Shift" names no direction, so this one is genuinely two-sided.
-    H("H4",  "Custodian trade counts shift on expiry", "a3_participant_profile.csv", "trades", "sum", "two"),
-    H("H5",  "Algo volume share higher on expiry", "a4_algo_segmentation.csv", "total_volume", "sum"),
-    H("H6",  "Algo order IOC rate higher on expiry", "a4_algo_segmentation.csv", "ioc_rate", "mean"),
-    H("H7",  "Cancel-to-entry ratio spikes on expiry", "a5_cancellation_patterns.csv", "cancel_to_entry_ratio", "mean"),
-    H("H8",  "Cancellations concentrated in prop/algo flow", "a5_cancellation_patterns.csv", "cancellations", "sum"),
-    H("H9",  "Iceberg order ratio higher on expiry", "a6_iceberg_detection.csv", "iceberg_ratio", "mean"),
-    H("H10", "Aggressive order ratio higher on expiry", "a7_ioc_aggressiveness.csv", "aggressive_ratio", "mean"),
-    # H11 is about the *final* five minutes, so it is measured on the late sub-window only.
-    # Averaging every minute from the window's open tests H10 again under another name.
-    H("H11", "Aggressiveness accelerates in the final 5 minutes", "a7_ioc_aggressiveness.csv", "ioc_ratio", "mean",
-      "+", ("sub_window", "Late")),
-    H("H12", "Bid-ask spread widens on expiry", "b1_spread_dynamics.csv", "mean_spread_bps", "mean"),
-    H("H13", "Spread widening worse for illiquid stocks", "b1_spread_dynamics.csv", "max_spread_bps", "mean"),
-    # Erosion means less depth, so the stated direction is negative.
-    H("H14", "Order book depth erosion on expiry", "b2_depth_erosion.csv", "avg_bid_depth", "mean", "-"),
-    H("H15", "Depth erosion is asymmetric", "b2_depth_erosion.csv", "abs_imbalance", "mean"),
-    H("H16", "Order flow imbalance higher on expiry", "b3_order_flow_imbalance.csv", "cash_ofi", "mean"),
-    H("H17", "Price impact higher on expiry", "b4_price_impact.csv", "median_price_impact_bps", "mean"),
-    H("H18", "Book pressure persistence higher on expiry", "b5_book_asymmetry.csv", "book_pressure_persistence", "mean"),
-    H("H19", "Book pressure magnitude higher on expiry", "b5_book_asymmetry.csv", "mean_log_pressure", "mean"),
-    H("H20", "VWAP drift direction matches roll pressure", "c3_directional_validation.csv", "match_vwap", "mean"),
-    H("H21", "VWAP drift magnitude tracks roll intensity", "c3_directional_validation.csv", "roll_intensity", "mean"),
-    H("H22", "Book asymmetry aligns with roll direction", "c3_directional_validation.csv", "match_book", "mean"),
-    H("H23", "Basis mispricing larger on high roll intensity", "c2_cost_of_carry.csv", "mispricing_bps", "mean"),
-    H("H24", "Settlement realised variance rate higher on expiry", "a8_volatility_regime.csv", "rv_ratio", "mean"),
-    H("H25", "Trade concentration (HHI) higher on expiry", "a9_trade_clustering.csv", "hhi_concentration", "mean"),
-    H("H26", "Futures returns Granger-cause cash returns on expiry", "a10_lead_lag.csv", "granger_f_stat", "mean"),
-    H("H27", "Amihud illiquidity uplift higher on expiry", "a11_amihud_illiquidity.csv", "amihud_uplift", "mean"),
-    H("H28", "Phantom order rate (<1s) higher on expiry", "a12_order_lifespan.csv", "phantom_order_rate", "mean"),
-    H("H29", "Settlement volume Gini higher on expiry", "b6_volume_profile.csv", "volume_gini", "mean"),
-    # "Differs" names no direction.
-    H("H30", "Post-shock recovery time differs on expiry", "b7_market_resilience.csv", "mean_recovery_time_sec",
-      "mean", "two"),
+    # --- the settlement price -------------------------------------------------------
+    H("S1", "Settlement VWAP sits further from the window's opening mid",
+      "s1_settlement_price.csv", "abs_drift_bps", "mean"),
+    H("S2", "Settlement VWAP sits further from the closing price",
+      "s1_settlement_price.csv", "abs_reversal_bps", "mean"),
+    H("S3", "The final minute's VWAP diverges further from the window's",
+      "s1_settlement_price.csv", "terminal_gap_bps", "mean"),
+    H("S4", "Less volume transacts at the running VWAP",
+      "s1_settlement_price.csv", "vwap_tracking_share", "mean", "-"),
+    H("S5", "Volume concentrates into the final minute",
+      "s1_settlement_price.csv", "final_minute_volume_share", "mean"),
+
+    # --- pressure or activity -------------------------------------------------------
+    H("P1", "Prices trend rather than oscillate (variance ratio rises)",
+      "s2_pressure_or_activity.csv", "variance_ratio", "mean"),
+    H("P2", "Signed order flow is more persistent",
+      "s2_pressure_or_activity.csv", "flow_autocorr", "mean"),
+    H("P3", "A larger share of price impact is permanent",
+      "s2_pressure_or_activity.csv", "permanent_share", "mean"),
+    H("P4", "Flow of a given size moves the price further",
+      "s2_pressure_or_activity.csv", "impact_short_bps", "mean"),
+
+    # --- concealment ----------------------------------------------------------------
+    H("C1", "More resting size is concealed",
+      "s3_hidden_liquidity.csv", "concealed_depth_share", "mean"),
+    H("C2", "Concealed parent orders are larger relative to displayed ones",
+      "s3_hidden_liquidity.csv", "concealed_size_multiple", "mean"),
+    H("C3", "Concealed size is replenished more per unit matched",
+      "s3_hidden_liquidity.csv", "replenishment_rate", "mean"),
+    H("C4", "A greater share of submitted volume is concealed",
+      "s3_hidden_liquidity.csv", "concealed_volume_share", "mean"),
+
+    # --- the cost of moving the book ------------------------------------------------
+    H("M1", "A fixed order moves the price further",
+      "s4_marking_cost.csv", "move_bps_0p1", "mean"),
+    H("M2", "Displayed notional in the book falls",
+      "s4_marking_cost.csv", "visible_notional_cr", "mean", "-"),
+
+    # --- liquidity supply (retained from the original design) -----------------------
+    H("H12", "Bid-ask spread widens on expiry",
+      "b1_spread_dynamics.csv", "mean_spread_bps", "mean"),
+    H("H14", "Order book depth erodes on expiry",
+      "b2_depth_erosion.csv", "avg_bid_depth", "mean", "-"),
+    H("H15", "Depth erosion is asymmetric",
+      "b2_depth_erosion.csv", "abs_imbalance", "mean"),
+    H("H17", "Price impact per trade is higher",
+      "b4_price_impact.csv", "median_price_impact_bps", "mean"),
+    H("H18", "Book pressure is more persistent",
+      "b5_book_asymmetry.csv", "book_pressure_persistence", "mean"),
+    H("H30", "Post-shock spread recovery time differs",
+      "b7_market_resilience.csv", "mean_recovery_time_sec", "mean", "two"),
+
+    # --- order behaviour (retained) --------------------------------------------------
+    H("H3", "Proprietary desks take a larger share of volume",
+      "a3_participant_profile.csv", "volume", "sum"),
+    H("H5", "Algorithmic flow takes a larger share of volume",
+      "a4_algo_segmentation.csv", "total_volume", "sum"),
+    H("H6", "Algorithmic orders carry immediate-or-cancel more often",
+      "a4_algo_segmentation.csv", "ioc_rate", "mean"),
+    H("H7", "Cancellations per entry rise",
+      "a5_cancellation_patterns.csv", "cancel_to_entry_ratio", "mean"),
+    H("H8", "Cancellation counts rise",
+      "a5_cancellation_patterns.csv", "cancellations", "sum"),
+    H("H9", "More entered orders carry a disclosed quantity below their total",
+      "a6_iceberg_detection.csv", "iceberg_ratio", "mean"),
+    H("H11", "Immediate-or-cancel submission accelerates in the final five minutes",
+      "a7_ioc_aggressiveness.csv", "ioc_ratio", "mean", "+", ("sub_window", "Late")),
+    H("H16", "Submitted order flow is more one-sided",
+      "b3_order_flow_imbalance.csv", "cash_ofi", "mean"),
+    H("H28", "More orders are cancelled within one second of entry",
+      "a12_order_lifespan.csv", "phantom_order_rate", "mean"),
+    H("H29", "Traded volume is less evenly spread across the window",
+      "b6_volume_profile.csv", "volume_gini", "mean"),
+
+    # --- regime (retained) -----------------------------------------------------------
+    H("H24", "Realised variance per minute is higher",
+      "a8_volatility_regime.csv", "rv_ratio", "mean"),
+    H("H27", "Amihud illiquidity is higher relative to the rest of the session",
+      "a11_amihud_illiquidity.csv", "amihud_uplift", "mean"),
+]
+
+# Questions the design specifies but this data cannot answer. Listed rather than dropped:
+# a reader is entitled to know what was asked and left open, and a hypothesis that silently
+# disappears between the design and the results is the one worth asking about.
+OUT_OF_SCOPE: List[tuple] = [
+    ("X1", "Cash-futures basis volatility is higher on expiry",
+     "requires the FAO feed; no futures files are held"),
+    ("X2", "Futures returns lead cash returns within the window",
+     "requires the FAO feed; no futures files are held"),
+    ("X3", "VWAP drift aligns with the direction of roll pressure",
+     "requires open-interest and calendar-spread data from a terminal"),
+    ("X4", "Basis mispricing scales with roll intensity",
+     "requires cost-of-carry data from a terminal"),
 ]
 
 

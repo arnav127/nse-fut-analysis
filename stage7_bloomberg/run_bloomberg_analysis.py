@@ -2,10 +2,10 @@
 
 import time
 
-from stage6_bloomberg.c1_roll_pressure import run_c1_roll_pressure
-from stage6_bloomberg.c2_cost_of_carry import run_c2_cost_of_carry
-from stage6_bloomberg.c3_directional_validation import run_c3_directional_validation
-from stage6_bloomberg.c4_basis_event_study import run_c4_basis_event_study
+from stage7_bloomberg.c1_roll_pressure import run_c1_roll_pressure
+from stage7_bloomberg.c2_cost_of_carry import run_c2_cost_of_carry
+from stage7_bloomberg.c3_directional_validation import run_c3_directional_validation
+from stage7_bloomberg.c4_basis_event_study import run_c4_basis_event_study
 
 
 def run_bloomberg() -> None:
