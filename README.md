@@ -47,6 +47,10 @@ python run_all.py --parse-all-eq         # keep every EQ symbol, not just the te
 
 Logs are written per stage under `logs/`, results to `data/results/`.
 
+```bash
+python -m pytest tests -q          # 47 tests over the analysis and macro layers
+```
+
 ---
 
 ## Stages
@@ -89,6 +93,30 @@ snapshots it every second at 20 levels, honouring disclosed-quantity replenishme
 queue-priority loss it entails. The settlement-window slice is flattened into
 `data/clob_snapshots/` with the column names the stage-5 analyses read, including hidden
 size at every level.
+
+### Stage 7 - the manuscript
+
+The paper contains no hand-typed number. Each quantity is recorded by the code that computes
+it, with its unit and a note describing the computation, into `data/results/metrics.json`;
+`build_macros.py` turns those into `macros.tex`; the prose in `stage7_report/manuscript.py`
+cites them as macros. Rerunning the pipeline updates every number that changed and leaves
+the rest alone.
+
+`audit_macros.py` runs before the compile and fails the build in either direction: on a
+quantity the text cites but nothing recorded, and on a numeral appearing in the authored
+prose. The first is defined as a visible `??` so the document still builds and the gap shows
+on the page rather than stopping LaTeX with an opaque error.
+
+To add a number to the paper: record it in `collect_metrics.py`, then cite
+`\MacroName{}` in `manuscript.py`. The macro name follows the recorded key, with digits
+spelled out because LaTeX command names cannot contain them - `h.h12.p_value` becomes
+`\HHOneTwoPValue`.
+
+Sample counts come from nsetick's parse manifests rather than from the configuration, so the
+paper reports what was actually read rather than what was asked for.
+
+A provenance appendix in the PDF records the commit of both repositories, the library
+versions and the raw-file manifest behind that particular run.
 
 ---
 
