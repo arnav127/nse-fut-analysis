@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -9,16 +10,31 @@ from typing import Dict, List, Tuple
 # repository can be cloned anywhere - the previous absolute `c:\sandbox\ProjectCourse`
 # made every path in the pipeline wrong on any other machine.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-RAW_DATA_DIR = PROJECT_ROOT / "data" / "raw"
-PARSED_DATA_DIR = PROJECT_ROOT / "data" / "parsed"
-ENRICHED_DATA_DIR = PROJECT_ROOT / "data" / "enriched"
-CLOB_DATA_DIR = PROJECT_ROOT / "data" / "clob_snapshots"
+
+# Where the data lives.
+#
+# Raw and derived data want different storage, so they are set independently.
+#
+# Raw is sequential reads of very large compressed files, which a network filesystem serves
+# well; it is also shared with the other project, so one copy is enough. Derived data is
+# thousands of small symbol partitions per session - an access pattern that is metadata-bound
+# and belongs on a local disk. On a cluster:
+#
+#     export NSE_RAW_DIR=/shared/nse/raw
+#     export NSE_DATA_DIR=/local/scratch/$SLURM_JOB_ID/pc
+#
+# Both default to the repository, which is what a workstation wants.
+DATA_ROOT = Path(os.environ.get("NSE_DATA_DIR") or PROJECT_ROOT / "data")
+RAW_DATA_DIR = Path(os.environ.get("NSE_RAW_DIR") or DATA_ROOT / "raw")
+PARSED_DATA_DIR = DATA_ROOT / "parsed"
+ENRICHED_DATA_DIR = DATA_ROOT / "enriched"
+CLOB_DATA_DIR = DATA_ROOT / "clob_snapshots"
 # Raw nsetick book output, kept apart from the flattened snapshots the analyses read: the
 # stage-5 queries glob the snapshot root recursively, and a second schema underneath it
 # would be unioned into every one of them.
-CLOB_BOOKS_DIR = PROJECT_ROOT / "data" / "clob_books"
-BLOOMBERG_DATA_DIR = PROJECT_ROOT / "data" / "bloomberg"
-RESULTS_DIR = PROJECT_ROOT / "data" / "results"
+CLOB_BOOKS_DIR = DATA_ROOT / "clob_books"
+BLOOMBERG_DATA_DIR = DATA_ROOT / "bloomberg"
+RESULTS_DIR = DATA_ROOT / "results"
 
 # The manuscript is LaTeX source, authored and edited as LaTeX. The pipeline writes only
 # what it computes - macros, tables, figures - into paper/generated and paper/figures, and
@@ -30,10 +46,24 @@ PAPER_GENERATED_DIR = PAPER_DIR / "generated"
 PAPER_FIGURES_DIR = PAPER_DIR / "figures"
 LOG_DIR = PROJECT_ROOT / "logs"
 
-for path in (RAW_DATA_DIR, PARSED_DATA_DIR, ENRICHED_DATA_DIR, CLOB_DATA_DIR,
-             CLOB_BOOKS_DIR, BLOOMBERG_DATA_DIR, RESULTS_DIR, LOG_DIR,
+# Outputs are created; the raw directory is not.
+#
+# Raw data is an input. Creating it means that a network mount which is not there yet, or an
+# NSE_RAW_DIR with a typo in it, produces an empty directory and a run that reports "no raw
+# file matching CASH_Orders_27012022*" for all twenty-four sessions. That is a true statement
+# and entirely the wrong diagnosis.
+for path in (PARSED_DATA_DIR, ENRICHED_DATA_DIR, CLOB_DATA_DIR, CLOB_BOOKS_DIR,
+             BLOOMBERG_DATA_DIR, RESULTS_DIR, LOG_DIR,
              PAPER_GENERATED_DIR, PAPER_FIGURES_DIR):
     path.mkdir(parents=True, exist_ok=True)
+
+if not RAW_DATA_DIR.is_dir():
+    import warnings
+
+    warnings.warn(
+        f"raw data directory does not exist: {RAW_DATA_DIR}. Set NSE_RAW_DIR to where the "
+        f".DAT.gz files are, or mount it. Stages that only read derived data will still run.",
+        stacklevel=2)
 
 # Target equity universe.
 #
