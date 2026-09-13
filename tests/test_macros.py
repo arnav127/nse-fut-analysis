@@ -132,3 +132,23 @@ class TestManuscriptIsClean:
                          if isinstance(v, str) and not k.startswith("__"))
         for name in cited_macros(text):
             assert name.isalpha() and name[0].isupper(), name
+
+
+class TestPValueRendering:
+    """A p-value below 1e-4 is math-mode content cited from text-mode table cells."""
+
+    def test_small_p_values_are_safe_outside_math_mode(self):
+        from stage7_report.build_macros import _p_value
+        rendered = _p_value(1.7e-5)
+        # A bare \times outside maths is a fatal LaTeX error, not a formatting wobble.
+        assert rendered.startswith(r"\ensuremath{"), rendered
+        assert r"\times" in rendered
+
+    def test_ordinary_p_values_are_plain_decimals(self):
+        from stage7_report.build_macros import _p_value
+        assert _p_value(0.0312) == "0.0312"
+        assert _p_value(0.9) == "0.9000"
+
+    def test_exponent_is_preserved(self):
+        from stage7_report.build_macros import _p_value
+        assert "10^{-12}" in _p_value(3.2e-12)

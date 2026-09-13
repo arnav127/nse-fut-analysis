@@ -272,8 +272,44 @@ economically interesting amount from those that merely differ reliably.
 Table~\ref{tab:tests} reports all \TestSpecified{} hypotheses. \TestEvaluated{} were
 evaluated; the remainder lacked inputs and are marked as untested rather than as null
 results, since the two are not the same thing and a reader cannot distinguish them from a
-blank cell. \TestRejectedFdr{} hypotheses are rejected under false discovery rate control
-and \TestRejectedBonferroni{} under the Bonferroni threshold.
+blank cell. \TestRejectedFdr{} are rejected under false discovery rate control and
+\TestRejectedBonferroni{} under the Bonferroni threshold.
+
+Rejection and support are reported separately, because they are not the same thing. The
+paired test is two-sided: a small $p$-value says the quantity differs between expiry and
+control sessions, not that it differs in the direction the hypothesis claims.
+\TestSupported{} hypotheses are rejected with the effect pointing as stated
+(\TestSupportedIds{}). \TestContradicted{} are rejected with the effect pointing the other
+way (\TestContradictedIds{}) - these have been refuted, not confirmed, and counting them
+among the confirmations would invert their meaning. The remaining \TestNotRejected{}
+evaluated hypotheses are not distinguishable from no difference.
+
+\subsection{Reading the effect sizes}
+
+Effect sizes are the quantity to read here, not the $p$-values. With \TestPairsTotal{}
+matched pairs a test has power to detect differences far smaller than anything economically
+interesting, so significance alone establishes very little. Cohen's $d$ across the supported
+hypotheses is modest: the largest is \HHEightEffectSizeCohenD{} (H8, cancellation counts),
+and the settlement window's spread difference of \SpreadMeanBpsDiff{} basis points against a
+control-session level of \SpreadMeanBpsControl{} is a real but small widening.
+
+The two contradicted hypotheses are informative rather than embarrassing, and they point the
+same way. H7 predicted that cancellations per entry would spike; they fall. H8 shows the
+cancellation \emph{count} rising at the same time, so entries must be rising faster still -
+the window attracts more order submission of every kind, not a disproportionate amount of
+placing and pulling. H18 predicted that book pressure would become more persistent; it
+becomes less so, which is what one expects when more participants are active on both sides
+rather than when one side is leaning on the book.
+
+Set against that, the hypotheses that speak most directly to directional pressure are the
+ones that fail to reject. Depth is not reliably eroded (H14), order flow imbalance does not
+rise (H16), and traded volume is no more concentrated into the window's closing minutes than
+on a control session (H29). The differences that do appear sit in the mechanics of order
+handling: wider spreads (H12), more concealed size (H9), more orders withdrawn inside a
+second (H28), higher price impact (H17), a higher variance rate (H24), and spreads that
+recover from a widening faster rather than slower (H30). That combination is the signature
+of heavier and more automated participation in a known window, which is what expiry-day
+hedging and rolling would also produce.
 """
 
 LIMITATIONS = r"""\section{What this design cannot establish}\label{sec:limits}

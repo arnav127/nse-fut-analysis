@@ -90,21 +90,36 @@ STYLISED_ROWS = [
 
 
 def _headline(summary: pd.DataFrame) -> str:
-    """One sentence stating the outcome, recorded rather than asserted."""
+    """One sentence stating the outcome, derived rather than asserted.
+
+    The supported/contradicted split is the point. A paired t-test is two-sided, so a small
+    p-value says the quantity differs between expiry and control sessions - not that it
+    differs the way the hypothesis claimed. Counting a hypothesis whose effect points the
+    other way among the confirmations would invert its meaning.
+    """
     tested = summary[summary.p_value.notna()] if "p_value" in summary else summary.iloc[0:0]
-    rejected = (summary[summary.significant_fdr.astype(bool)]
-                if "significant_fdr" in summary else summary.iloc[0:0])
     if not len(tested):
         return ("No hypothesis could be evaluated on the data available to this run; the "
                 "inputs each one requires were absent or empty.")
-    if not len(rejected):
+
+    supported = summary[summary.supported.astype(bool)] if "supported" in summary else summary.iloc[0:0]
+    contradicted = (summary[summary.contradicted.astype(bool)]
+                    if "contradicted" in summary else summary.iloc[0:0])
+    if not len(supported) and not len(contradicted):
         return (f"Of the {len(tested)} hypotheses evaluated, none survives control of the "
-                f"false discovery rate. We report the per-test statistics and effect sizes "
+                f"false discovery rate; we report per-test statistics and effect sizes "
                 f"rather than a set of findings.")
-    ids = ", ".join(rejected.hypothesis_id.astype(str))
-    return (f"Of the {len(tested)} hypotheses evaluated, {len(rejected)} are rejected under "
-            f"false discovery rate control ({ids}); effect sizes and per-test statistics "
-            f"are reported in full.")
+
+    parts = [f"Of the {len(tested)} hypotheses evaluated, {len(supported)} are supported "
+             f"under false discovery rate control"]
+    if len(supported):
+        parts.append(f" ({', '.join(supported.hypothesis_id.astype(str))})")
+    if len(contradicted):
+        parts.append(f", and {len(contradicted)} "
+                     f"({', '.join(contradicted.hypothesis_id.astype(str))}) are rejected "
+                     f"with the effect pointing against the direction they state")
+    parts.append(". Effect sizes are modest throughout and are reported in full.")
+    return "".join(parts)
 
 
 def _stylised_table() -> str:
@@ -163,7 +178,11 @@ def _tests_table(summary: pd.DataFrame) -> str:
                          rf"\textit{{not evaluated - inputs absent}}}} \\")
             continue
         stem = f"h.{h_id.lower()}"
-        marker = r"$^{\ast}$" if getattr(row, "significant_fdr", False) else ""
+        # Two markers, not one. A hypothesis rejected with its effect pointing the other way
+        # has been refuted, and giving it the same star as a confirmation would read as the
+        # opposite of what the data says.
+        marker = (r"$^{\ast}$" if getattr(row, "supported", False)
+                  else r"$^{\dagger}$" if getattr(row, "contradicted", False) else "")
         lines.append(
             rf"\textbf{{{h_id}}}{marker} & {desc} "
             rf"& \{macro_name(stem + '.n_pairs')}{{}} "
@@ -171,8 +190,11 @@ def _tests_table(summary: pd.DataFrame) -> str:
             rf"& \{macro_name(stem + '.p_value')}{{}} "
             rf"& \{macro_name(stem + '.effect_size_cohen_d')}{{}} \\")
     lines.append(r"\end{longtable}")
-    lines.append(r"\noindent\footnotesize $^{\ast}$ rejected at a false discovery rate of "
-                 r"$\alpha = \TestAlpha{}$.\normalsize")
+    lines.append(
+        r"\noindent\footnotesize $^{\ast}$ rejected at a false discovery rate of "
+        r"$\alpha = \TestAlpha{}$, with the effect in the direction the hypothesis states. "
+        r"$^{\dagger}$ rejected at the same threshold with the effect in the opposite "
+        r"direction: the quantity differs, but not as claimed.\normalsize")
     return "\n".join(lines)
 
 

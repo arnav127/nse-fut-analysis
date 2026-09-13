@@ -100,10 +100,16 @@ def format_value(value: Any, unit: str) -> str:
 
 
 def _p_value(number: float) -> str:
-    """p-values read badly at fixed precision on either side of the range."""
+    """p-values read badly at fixed precision on either side of the range.
+
+    Scientific notation below 1e-4, since four decimals renders every strong result as
+    "0.0000" and a reader cannot tell 1e-5 from 1e-30. Wrapped in `\\ensuremath` because the
+    result is math-mode content cited from ordinary table cells and running text, and a bare
+    `\\times` outside maths is a fatal LaTeX error rather than a formatting wobble.
+    """
     if number < 1e-4:
         mantissa, exponent = f"{number:.2e}".split("e")
-        return rf"{mantissa}\times 10^{{{int(exponent)}}}"
+        return rf"\ensuremath{{{mantissa}\times 10^{{{int(exponent)}}}}}"
     return f"{number:.4f}"
 
 
