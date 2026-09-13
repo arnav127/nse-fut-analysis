@@ -1,0 +1,123 @@
+\section{Research design}\label{sec:design}
+
+The comparison at the centre of this report is between an expiry Thursday and an ordinary
+session. Two things stand between that comparison and a conclusion about the settlement
+mechanism, and the design is built around both.
+
+The first is the market environment. A given month's volatility, index level and news flow
+affect the expiry session and everything around it, so the comparison is made within the
+month: each of the \DesignExpirySessions{} expiry Thursdays in 2022 is paired with a control
+session in the same calendar month, giving \DesignSessions{} sessions. Every test is paired at
+the level of a security and a month, so a security that is simply busier than another
+contributes nothing to any comparison.
+
+The second is the calendar. An expiry Thursday is also the last Thursday of the month, when
+index rebalancing, month-end portfolio flows and index option expiry all fall due. Matching
+within the month does nothing about this: it is a property of the day itself. A study that
+stops here can report that the settlement window is different and cannot say why, which is
+the position the first version of this project was in.
+
+\subsection{Three groups}
+
+The answer is to include securities for which the settlement mechanism does not exist.
+
+\paragraph{Liquid and illiquid, both with derivatives.} Both groups carry an expiring
+contract that settles against their own cash VWAP, so both face the same incentive. What
+differs is the cost of acting on it, which Section~\ref{sec:results} quantifies directly by
+sweeping the displayed book. If the settlement incentive is being acted on, the effect should
+be larger where acting on it is cheaper.
+
+This only works if the groups actually differ in liquidity. The first version of this study
+used five ``liquid'' and five ``illiquid'' securities, every one of which was a large-cap
+index constituent; the contrast measured nothing, because both groups were among the most
+traded securities on the exchange.
+
+\paragraph{Placebo, without derivatives.} No contract settles against these securities, so
+nobody has any reason to care about their closing half hour for settlement purposes. They are
+still subject to everything else that happens on the last Thursday of a month. If spreads
+widen and cancellations rise there too, the effect belongs to the calendar; if they do not,
+it is specific to securities with an expiring contract.
+
+This group is the identifying assumption of the study made testable. Without it every result
+in Section~\ref{sec:results} is compatible with a settlement explanation and a calendar
+explanation equally, and has to be reported with that caveat.
+
+\input{generated/tables/universe}
+
+\subsection{How the securities were chosen}
+
+Membership is derived from the tape rather than taken from an index. An index membership list
+downloaded today describes today: it includes securities listed since 2022, excludes
+securities removed since, and carries present-day names for securities renamed in between.
+Using one to select a 2022 sample silently mixes all three into the study.
+
+The procedure is as follows.
+
+\paragraph{Rank on control sessions only.} Turnover is averaged over the
+\SelectControlSessions{} control sessions and the expiry sessions are excluded. This matters
+more than it might appear. Turnover on an expiry Thursday is partly the phenomenon being
+measured, so ranking securities on it would make the group variable a function of the
+outcome, and part of any liquid-against-illiquid difference would be mechanical rather than
+economic.
+
+\paragraph{Require completeness.} A security must trade in every session in the sample. One
+absent for a month cannot contribute that month's matched pair, and admitting it would make
+each group's mean depend on which months its members happened to trade in.
+
+\paragraph{Require enough activity to measure.} A security must clear a floor of
+\SelectMinTrades{} trades in the median control session. This is a measurement criterion
+rather than a size cut-off: below roughly this level a one-second book snapshot sees nothing
+happen between consecutive observations, so the microstructure quantities are not identified
+rather than merely small.
+
+\paragraph{Require stable membership.} A security's turnover rank must not span more than
+\SelectMaxRankSpan{} of the cross-section between its tenth and ninetieth percentile across
+the year. One that is in the top decile in January and the bottom half in July is not
+reliably in either group, and including it puts a security in one group that belonged in the
+other for part of the sample.
+
+\paragraph{Form the groups.} The \SelectGroupSize{} most traded and \SelectGroupSize{} least
+traded of the surviving derivatives underlyings become the liquid and illiquid groups.
+
+\paragraph{Match the placebo group.} Placebo securities are drawn from the surviving
+securities with no derivative, by nearest-neighbour matching without replacement against the
+illiquid group on two variables: turnover and price level, both in logarithms and
+standardised so that neither dominates the distance.
+
+Price level is not decoration. A quoted spread expressed in basis points depends on the tick
+size relative to the price, so a placebo group of systematically cheaper shares would show
+wider spreads for a mechanical reason with nothing to do with expiry, and the placebo
+comparison would be biased before any data was examined. Matching without replacement matters
+for a smaller reason: reusing one security as the match for several targets would make the
+placebo group narrower than the group it stands in for.
+
+\input{generated/tables/selection}
+
+Table~\ref{tab:balance} reports how alike the groups ended up on the variables the matching
+was meant to equalise. The placebo group's turnover range can only overlap the illiquid
+group---a security traded as heavily as the liquid group while carrying no derivative is
+close to a contradiction in terms, since heavy trading is roughly what derivatives
+eligibility is granted for---so the placebo comparison speaks to the illiquid group and is
+silent about the liquid one.
+
+\input{generated/tables/balance}
+
+\subsection{Derivatives eligibility}
+
+Whether a security had an expiring contract cannot be read off the cash tape, so it is taken
+from a published list of derivatives underlyings. Verified against a list for this run:
+\SelectFoVerified{}. Where no list is available the two derivative groups are still formed on
+turnover, no placebo group is produced, and the report states that expiry effects cannot be
+separated from calendar effects.
+
+\subsection{Window}
+
+All measures are computed between \DesignWindowStart{} and \DesignWindowEnd{} IST. Where a
+measure compares the window against the rest of the session it is expressed as a rate per
+minute rather than as a total: the window is \DesignWindowMinutes{} minutes against roughly
+three hundred and forty-five for the remainder, and a comparison of sums would reflect that
+difference in length rather than any difference in behaviour.
+
+Pre-open auction records share the session file with continuous trading and are excluded from
+every return series. Otherwise the first continuous-session observation is differenced against
+the auction price, which books the entire overnight move as one minute of intraday variance.
