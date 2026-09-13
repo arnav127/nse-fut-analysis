@@ -23,7 +23,7 @@ import shutil
 import sys
 import time
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
@@ -32,7 +32,7 @@ if str(PROJECT_ROOT) not in sys.path:
 import nsetick
 
 from config.categories import CATEGORIES, Category
-from config.settings import NSETICK_THREADS, TARGET_SYMBOLS
+from config.settings import NSETICK_THREADS, PARQUET_COMPRESSION, TARGET_SYMBOLS
 from utils.logger import setup_logger
 from utils.paths import has_partitions, parsed_dir, promote_hive_partitions, raw_files
 from utils.progress import track_bytes
@@ -57,6 +57,8 @@ def parse_category(
     category_name: str,
     symbols: Optional[List[str]] = None,
     force: bool = False,
+    threads: Optional[int] = None,
+    memory_limit_mb: Optional[int] = None,
 ) -> Optional[Path]:
     """Parse one feed for one session. Returns the output directory, or None if skipped."""
     category = CATEGORIES[category_name]
@@ -117,8 +119,12 @@ def parse_category(
                         layout=category.layout,
                         where=where,
                         partition_by="symbol",
-                        compression="snappy",
-                        threads=NSETICK_THREADS,
+                        compression=PARQUET_COMPRESSION,
+                        threads=threads or NSETICK_THREADS,
+                        # Passed rather than left to nsetick, which otherwise sizes its
+                        # limit from total system memory - so four concurrent workers would
+                        # between them claim the whole machine.
+                        memory_limit_mb=memory_limit_mb,
                         note=f"ProjectCourse stage1 {category_name} {session}",
                     )
                 )
@@ -146,11 +152,25 @@ def parse_category(
     return out_dir
 
 
-def parse_session(session: str, symbols: Optional[List[str]] = None, force: bool = False) -> None:
-    """Parse all four feeds for one session, reporting rather than aborting on failure."""
-    for name in CATEGORIES:
+def parse_session(
+    session: str,
+    symbols: Optional[List[str]] = None,
+    force: bool = False,
+    categories: Optional[Sequence[str]] = None,
+    threads: Optional[int] = None,
+    memory_limit_mb: Optional[int] = None,
+) -> None:
+    """Parse the requested feeds for one session, reporting rather than aborting on failure.
+
+    `categories` narrows the work. The universe scan needs the whole cross-section but only
+    the trade tape - turnover, trade counts and price levels all come from trades - and
+    parsing every feed for every listed security instead costs about a hundred gigabytes for
+    data nothing reads.
+    """
+    for name in (categories or CATEGORIES):
         try:
-            parse_category(session, name, symbols=symbols, force=force)
+            parse_category(session, name, symbols=symbols, force=force,
+                           threads=threads, memory_limit_mb=memory_limit_mb)
         except FileNotFoundError as exc:
             logger.error(f"[MISSING] {name} {session}: {exc}")
         except Exception as exc:  # one bad feed should not abandon the other three

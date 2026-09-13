@@ -42,10 +42,44 @@ anything, so an interrupted run resumes where it stopped rather than starting ov
 python run_all.py --stage parse          # one stage; see --help for the list
 python run_all.py --date 27012022        # one session through the data stages
 python run_all.py --force                # redo work already on disk
-python run_all.py --parse-all-eq         # keep every EQ symbol, not just the ten studied
+python run_all.py --jobs 4               # four sessions at a time
 ```
 
 Logs are written per stage under `logs/`, results to `data/results/`.
+
+### Running on a cluster
+
+```bash
+python run_all.py --jobs 4
+```
+
+Sessions are independent, so `--jobs` runs several at once. The memory and thread budget is
+divided among the workers rather than left to each of them, which matters more than it
+sounds: nsetick sizes its memory limit from total system memory and DuckDB does the same, so
+four workers each helping themselves to a quarter of the machine is the whole of it. The
+failure that causes is an allocation error several hours into a run.
+
+The budget comes from what the process is actually allowed to use, not from what the node
+has. `utils/resources.py` resolves it in order from `PIPELINE_MEMORY_MB` and `PIPELINE_CPUS`,
+then the scheduler's own variables, then the cgroup limit, then the machine. On a cluster the
+first three are what matter; `os.cpu_count()` reports the node and will be wrong.
+
+Every run logs what it resolved and what it suggests:
+
+```
+=== resources: 32 cpus, 64.0 GiB usable (detected via SLURM, 20% reserved) ===
+=== 4 job(s), 16.0 GiB and 8 threads each (suggested --jobs 8) ===
+```
+
+Start at the suggestion or below it. Memory is normally what binds: the per-session stages
+hold a book for every symbol in the session.
+
+Two things worth knowing when sizing an allocation. Keep the raw `.DAT.gz` files on shared
+storage and the derived parquet on **local** scratch - raw access is sequential reads of large
+files, which a network filesystem handles well, while the derived layers are thousands of
+small symbol partitions, which it does not. And the pipeline resumes at session granularity,
+so a job that hits a walltime limit loses only the session it was in the middle of.
+
 
 ```bash
 python -m pytest tests -q          # 47 tests over the analysis and macro layers
@@ -74,8 +108,9 @@ decode pass. Output is one directory per feed, partitioned by symbol.
 
 Narrowed to `TARGET_SYMBOLS`. Decoding costs the same either way - every record is read
 regardless and the symbol filter is a bucketed set lookup - but the output does not: a
-session carries roughly 1,900 EQ symbols and the study uses ten. `--parse-all-eq` keeps
-them all, at roughly two orders of magnitude more Parquet.
+session carries roughly 1,900 EQ symbols and the study uses a fraction of them.
+`--universe-scan` keeps every symbol but only the trade tape, which is what the universe
+builder ranks on.
 
 ### Stage 2 — enrich
 
@@ -105,10 +140,14 @@ Three groups, derived from the tape rather than hand-picked:
 | `placebo` | no | no contract settles against these, so an expiry effect here is a calendar effect |
 
 ```bash
-python run_all.py --stage parse --parse-all-eq    # keeps every EQ symbol
+python run_all.py --stage parse --universe-scan   # every EQ symbol, trades only
 python scripts/build_universe.py --group-size 50
-python run_all.py                                 # the study, on the derived universe
+python run_all.py --jobs 4                        # the study, on the derived universe
 ```
+
+The scan parses only the trade tape, because turnover, trade counts and price levels are all
+the ranking needs. Scanning orders for every listed security as well would cost about a
+hundred gigabytes for data nothing reads.
 
 The placebo group is what separates a settlement effect from a last-Thursday-of-the-month
 effect. Without it every result stays open to the second explanation, and the report says so.

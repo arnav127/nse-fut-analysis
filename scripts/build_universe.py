@@ -34,7 +34,7 @@ in the other for part of the sample.
 
 Requires a full cross-section parse:
 
-    python run_all.py --stage parse --parse-all-eq
+    python run_all.py --stage parse --universe-scan
 
 and, for the placebo group, the list of derivatives underlyings:
 
@@ -107,7 +107,8 @@ def session_statistics() -> pd.DataFrame:
             WHERE record_indicator = 'RM'
             GROUP BY symbol""")
     if not parts:
-        raise SystemExit("no parsed trade data; run: python run_all.py --stage parse --parse-all-eq")
+        raise SystemExit("no parsed trade data; run: "
+                         "python run_all.py --stage parse --universe-scan")
 
     logger.info(f"[UNIVERSE] measuring {len(parts)} sessions")
     with duckdb.connect() as conn:

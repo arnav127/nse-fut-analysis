@@ -112,5 +112,17 @@ CLOB_DEPTH_LEVELS = 20
 CLOB_REPORTED_LEVELS = 20
 CLOB_DEPTH_SUM_LEVELS = 10
 
+# Parquet compression for every layer the pipeline writes.
+#
+# zstd at level 3, not snappy. Measured on a real order partition: 113.5 MB snappy against
+# 73.9 MB zstd, a factor of 1.54, and level 9 buys only another 2 per cent for half again the
+# write time. Across both projects that is roughly ninety gigabytes, which is the difference
+# between fitting on a 500 GB allocation and not.
+#
+# The cost is on the read side, and it is small: a warm-cache scan of the same partition took
+# 0.13 s under snappy and 0.14 s under zstd. Against that, a cold read moves 35 per cent
+# fewer bytes, so on anything disk-bound zstd is the faster of the two.
+PARQUET_COMPRESSION = "zstd"
+
 # Threads handed to the Rust parser and book builder. None lets nsetick size to the machine.
 NSETICK_THREADS: int | None = None
