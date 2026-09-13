@@ -1,17 +1,43 @@
-# nsetick is the parser and order book engine. It is a compiled Rust extension built from
-# the sibling repository (https://github.com/arnav127/nsetick) with maturin; install the
-# wheel it produces rather than expecting it from PyPI:
+# ProjectCourse - expiry-day settlement microstructure on the NSE.
+#
+# Pinned as lower bounds, each verified against the versions the pipeline currently runs on
+# (Python 3.13). Install with:
+#   pip install -r requirements.txt
+#
+# Then install nsetick separately; see the note below.
+
+# --- parser and order book engine ---------------------------------------------------------
+# nsetick is a compiled Rust extension built from the sibling repository with maturin. It is
+# not on PyPI, so it cannot be resolved from this file alone:
 #   cd ../nsetick && maturin build --release -m crates/nsetick-py/Cargo.toml
 #   pip install ../nsetick/target/wheels/nsetick-*.whl
+# A prebuilt wheel also ships in ../nsetick/dist.
 nsetick>=0.1.0
 
+# --- data handling ------------------------------------------------------------------------
 duckdb>=1.0.0
 pandas>=2.0
+# Required by pandas for every to_parquet/read_parquet call in the pipeline, and by nsetick.
 pyarrow>=14.0
 numpy>=1.24
+
+# --- statistics ---------------------------------------------------------------------------
+# Hypothesis tests, Benjamini-Hochberg correction, and the paired group contrasts.
 scipy>=1.11
+# Granger causality and the lead-lag estimation in stage3_analysis/a10_lead_lag.py.
 statsmodels>=0.14
+
+# --- figures ------------------------------------------------------------------------------
 matplotlib>=3.7
 seaborn>=0.12
+
+# --- progress reporting -------------------------------------------------------------------
 tqdm>=4.66
-pymupdf>=1.23.0
+
+# --- optional: the Word proposal generator -------------------------------------------------
+# generate_proposal_docs.py only. No pipeline stage imports it, and the LaTeX report in
+# stage8_report does not need it.
+python-docx>=1.1.0
+
+# --- development ---------------------------------------------------------------------------
+pytest>=7.4.0
