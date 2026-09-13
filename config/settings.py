@@ -19,25 +19,38 @@ CLOB_DATA_DIR = PROJECT_ROOT / "data" / "clob_snapshots"
 CLOB_BOOKS_DIR = PROJECT_ROOT / "data" / "clob_books"
 BLOOMBERG_DATA_DIR = PROJECT_ROOT / "data" / "bloomberg"
 RESULTS_DIR = PROJECT_ROOT / "data" / "results"
+
+# The manuscript is LaTeX source, authored and edited as LaTeX. The pipeline writes only
+# what it computes - macros, tables, figures - into paper/generated and paper/figures, and
+# never touches the prose. Generating the document from Python string constants, which is
+# what this replaced, meant no editor support, escaping every backslash twice, and no way to
+# place a float where it belongs.
+PAPER_DIR = PROJECT_ROOT / "paper"
+PAPER_GENERATED_DIR = PAPER_DIR / "generated"
+PAPER_FIGURES_DIR = PAPER_DIR / "figures"
 LOG_DIR = PROJECT_ROOT / "logs"
 
 for path in (RAW_DATA_DIR, PARSED_DATA_DIR, ENRICHED_DATA_DIR, CLOB_DATA_DIR,
-             CLOB_BOOKS_DIR, BLOOMBERG_DATA_DIR, RESULTS_DIR, LOG_DIR):
+             CLOB_BOOKS_DIR, BLOOMBERG_DATA_DIR, RESULTS_DIR, LOG_DIR,
+             PAPER_GENERATED_DIR, PAPER_FIGURES_DIR):
     path.mkdir(parents=True, exist_ok=True)
 
 # Target equity universe.
 #
-# Plain symbols, no padding. NSE right-aligns the 10-byte symbol field with 'b' (0x62)
-# padding, and the previous configuration carried pre-padded literals such as "  RELIANCE"
-# so that a SUBSTRING comparison would match. That coupling between the universe and the
-# byte layout is what five successive commits in this repository's history were trying to
-# repair. nsetick strips the padding during decode, so the filter now compares symbols.
-TARGET_SYMBOLS: List[str] = [
-    "RELIANCE", "TCS", "ICICIBANK", "HDFCBANK", "INFY",
-    "DIVISLAB", "CIPLA", "EICHERMOT", "BPCL", "APOLLOHOSP",
-]
-LIQUID_SYMBOLS: List[str] = ["RELIANCE", "TCS", "ICICIBANK", "HDFCBANK", "INFY"]
-ILLIQUID_SYMBOLS: List[str] = ["DIVISLAB", "CIPLA", "EICHERMOT", "BPCL", "APOLLOHOSP"]
+# Membership, grouping and the reasoning behind the three-group design live in
+# config/universe.py, which prefers a universe derived from the tape by
+# scripts/build_universe.py over its checked-in fallback lists. Re-exported here so the
+# analysis modules keep a single import.
+from config.universe import (  # noqa: E402,F401
+    DERIVATIVE_SYMBOLS,
+    GROUPS,
+    ILLIQUID_SYMBOLS,
+    LIQUID_SYMBOLS,
+    PLACEBO_SYMBOLS,
+    TARGET_SYMBOLS,
+    group_of,
+    is_derived_universe,
+)
 
 # Bloomberg ticker mapping (Near Fut, Next Fut, Spot Equity)
 BLOOMBERG_TICKERS: Dict[str, Tuple[str, str, str]] = {
@@ -89,10 +102,15 @@ FUTURES_INSTRUMENT_FILTER = "FUTSTK"
 CLOB_SNAPSHOT_INTERVAL_SECONDS = 1.0
 CLOB_DEPTH_LEVELS = 20
 
-# Levels carried into the flattened snapshot the stage-5 analyses read. Kept at ten so the
-# existing `bid_depth_1..10` contract is unchanged; the deeper levels remain available in
-# the raw nsetick snapshots alongside it.
-CLOB_REPORTED_LEVELS = 10
+# Levels carried into the flattened snapshot the analysis stages read.
+#
+# All twenty. Ten was chosen to preserve an older `bid_depth_1..10` contract, but the
+# book-walk measures need enough of the book to absorb a realistic order: at ten levels a
+# ten-basis-point move was unreachable in over ninety per cent of snapshots, so every cost
+# figure was censored. The depth totals the stage-5 analyses report stay on the first ten
+# levels, which is what they have always meant.
+CLOB_REPORTED_LEVELS = 20
+CLOB_DEPTH_SUM_LEVELS = 10
 
 # Threads handed to the Rust parser and book builder. None lets nsetick size to the machine.
 NSETICK_THREADS: int | None = None

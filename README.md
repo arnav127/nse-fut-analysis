@@ -94,29 +94,44 @@ queue-priority loss it entails. The settlement-window slice is flattened into
 `data/clob_snapshots/` with the column names the stage-5 analyses read, including hidden
 size at every level.
 
-### Stage 7 - the manuscript
+### Stage 6 - settlement-window analysis
 
-The paper contains no hand-typed number. Each quantity is recorded by the code that computes
-it, with its unit and a note describing the computation, into `data/results/metrics.json`;
-`build_macros.py` turns those into `macros.tex`; the prose in `stage7_report/manuscript.py`
-cites them as macros. Rerunning the pipeline updates every number that changed and leaves
-the rest alone.
+The measures that make the study more than a description of a busy half hour.
 
-`audit_macros.py` runs before the compile and fails the build in either direction: on a
-quantity the text cites but nothing recorded, and on a numeral appearing in the authored
-prose. The first is defined as a visible `??` so the document still builds and the gap shows
-on the page rather than stopping LaTeX with an opaque error.
+`s1` computes the settlement VWAP itself and places it against the mid at the window's open,
+the closing price and the final minute's own average. `s2` separates directional pressure
+from heavier two-sided trading: a variance ratio, the persistence of signed order flow, and
+the share of price impact that survives a minute all respond to the two explanations with
+opposite signs. `s3` measures concealed size and how fast it is replenished. `s4` sweeps the
+displayed book by a fixed notional and records how far the price moves, which is the cost of
+marking the settlement. `s5` builds the minute-by-minute profile behind the figures. `s6`
+runs the two differences-in-differences: derivatives securities against the placebo group,
+and illiquid against liquid.
 
-To add a number to the paper: record it in `collect_metrics.py`, then cite
-`\MacroName{}` in `manuscript.py`. The macro name follows the recorded key, with digits
-spelled out because LaTeX command names cannot contain them - `h.h12.p_value` becomes
-`\HHOneTwoPValue`.
+### Stage 8 - the report
+
+The manuscript is LaTeX source under `paper/`, edited directly as LaTeX. The pipeline never
+writes prose. It writes only what it computes:
+
+```
+paper/main.tex           the document; edit this
+paper/sections/*.tex     the prose; edit these
+paper/generated/         macros, provenance and tables - overwritten every run
+paper/figures/           plots - overwritten every run
+```
+
+No number is typed into the prose. Each quantity is recorded by the code that computes it,
+with its unit and a note, and cited as `\MacroName{}`. `audit_macros.py` runs before the
+compile and fails the build in either direction: on a quantity the text cites but nothing
+computed, and on a numeral appearing in the authored text. The first is defined as a visible
+`??` so the document still builds and the gap shows on the page.
+
+To add a number: record it in `collect_metrics.py` or `collect_insights.py`, then cite it.
+Macro names follow the recorded key with digits spelled out, since LaTeX command names cannot
+contain them - `s2.p_value` becomes `\STwoPValue`.
 
 Sample counts come from nsetick's parse manifests rather than from the configuration, so the
-paper reports what was actually read rather than what was asked for.
-
-A provenance appendix in the PDF records the commit of both repositories, the library
-versions and the raw-file manifest behind that particular run.
+report states what was actually read.
 
 ---
 

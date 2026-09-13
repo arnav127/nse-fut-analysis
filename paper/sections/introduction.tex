@@ -1,0 +1,62 @@
+\section{Introduction}\label{sec:intro}
+
+Stock futures on the National Stock Exchange of India settle at the volume-weighted average
+price (VWAP) of the underlying share in the cash market between \DesignWindowStart{} and
+\DesignWindowEnd{} on the last Thursday of the month. The settlement price is therefore
+produced by the cash market, and anyone carrying a large expiring position has a direct
+financial interest in what that market does for \DesignWindowMinutes{} minutes.
+
+This is a well-known design trade-off. A settlement struck at a single closing print is
+cheap to move, so exchanges generally do not use one. An average over a window is more
+expensive to move, because the mover has to keep trading for the length of the window, and
+each additional unit of size has less effect on the average than the last. The question is
+empirical: does the window look different, and if so, in what way.
+
+The answer is not obvious in either direction, because expiry brings a second kind of
+activity that has nothing to do with the settlement price. Positions have to be closed or
+rolled, hedges have to be unwound, and that alone would make the window busier, wider and
+harder to trade. Any comparison against a normal day therefore measures both effects
+together. Every number in this report is a difference against a matched control session in
+the same month, which removes the market environment but not this second effect.
+
+\subsection*{What order-level data adds}
+
+Most studies of settlement windows work from trade prints and top-of-book quotes. Those show
+what happened but not what was attempted. An order entered and cancelled a fraction of a
+second later leaves no trace in a trade file. A large order shown a few hundred shares at a
+time looks, in a depth feed, like a stream of unrelated small orders.
+
+The exchange publishes order-by-order files that record each entry, modification and
+cancellation as a separate event, with the participant category and the total and displayed
+quantities attached. Three of the measures in this report cannot be built from trade data at
+all: the rate at which orders are cancelled within a second of entry, the share of resting
+size that is never displayed, and the rate at which concealed size is replenished as it
+fills. Rebuilding the book from these events also gives the displayed size at each price
+level, which is what makes it possible to ask how much an order of a given size would move
+the price.
+
+\subsection*{The question this report tries to answer}
+
+Almost everything one can measure in a busy window---wider spreads, more cancellations,
+larger price impact---rises when there is simply more trading, regardless of why. Reporting
+those alone cannot separate a market being pushed from a market that is merely crowded.
+
+We therefore build the report around measures that respond to the two explanations with
+opposite signs. If prices are being pushed in one direction, returns lean the same way from
+one second to the next and the variance ratio rises above one; if the window is busier and
+more two-sided, the extra activity arrives as bid-ask bounce and the ratio falls. If one
+participant is working a large order, signed order flow is persistent; if many participants
+are trading against each other, it is not. More trading on its own cannot move either
+statistic in the direction that indicates pressure.
+
+We also compute the settlement price. The original design for this project measured many
+properties of the window and never calculated the number the window exists to produce, which
+left the central question---does the settlement end up somewhere unusual---unasked.
+Section~\ref{sec:results} reports how far it sits from the mid at the window's open, from
+the closing price, and from the final minute's own average.
+
+Section~\ref{sec:background} describes the settlement mechanism.
+Section~\ref{sec:data} covers the data and the book reconstruction, Section~\ref{sec:method}
+the measures and the tests, and Section~\ref{sec:results} the findings.
+Section~\ref{sec:discussion} reads them together, and Section~\ref{sec:limitations} sets out
+what this design cannot establish.

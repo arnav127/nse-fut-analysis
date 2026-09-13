@@ -1,0 +1,67 @@
+\section{Discussion}\label{sec:discussion}
+
+The results split cleanly in two, and the split is the finding.
+
+Everything that measures the \emph{supply} of liquidity moves on expiry Thursdays. Spreads
+widen, displayed notional falls, a given order moves the price further, per-trade impact
+rises, realised variance per minute rises, and orders are cancelled within a second of entry
+more often. Trading in the settlement window costs more on the day the settlement is struck.
+
+Everything that measures \emph{direction} does not move. The variance ratio does not rise;
+it falls slightly. Signed order flow is no more persistent. The share of price impact that
+survives a minute is unchanged. Submitted flow is no more one-sided. Volume does not
+concentrate into the final minute, and less of it transacts at the running benchmark.
+
+The natural reading is that the window is crowded rather than pushed. More participants are
+active, for the ordinary reason that positions have to be closed or rolled, and the book
+prices that congestion. Nothing in the order flow looks like one side working steadily
+against the other.
+
+\subsection{The awkward result}
+
+The settlement VWAP does end up further from the closing price on expiry sessions, and that
+is what a price pushed and then released looks like. It is also what a noisier price series
+produces around any fixed reference point, and realised variance per minute is higher on
+these sessions. The two explanations are not separable from the reversal alone.
+
+They are separable using the direction measures, and those favour the second. A push large
+enough to move a thirty-minute average by several basis points would have to leave some trace
+in return autocorrelation, in flow persistence, or in the permanent share of impact. None of
+the three moves. Taken together the evidence points to a wider, thinner, noisier market
+rather than a directed one---though this is an inference from the absence of a signature, and
+absence of a signature in a sample of this size is weaker evidence than its presence would
+have been.
+
+\subsection{Concealment}
+
+The concealment results are the ones that most needed order-level data, and they are also the
+ones most easily over-read. The level of concealment does not change. What changes is that
+concealed parent orders get larger relative to displayed ones while being refilled less often
+per share traded. That is a description of larger institutional orders in the window, which
+is exactly what expiry-related hedging would look like. It is not evidence of stealth, and
+reading it as such would be reading a routine execution choice as an intention.
+
+\subsection{Where the cost falls}
+
+The sweep measure gives the liquidity contrast a number: moving the price by trading a fixed
+notional costs several times more in the illiquid group than in the liquid one. That is the
+constraint that would bind anyone trying to influence a settlement, and it binds least
+exactly where the incentive is cheapest to act on. The difference-in-differences in
+Table~\ref{tab:contrasts} tests whether the expiry effects are in fact larger there. With the
+universe used here the contrast lacks the securities to resolve it, which is a limitation of
+the sample rather than a finding.
+
+\subsection{What would settle the question}
+
+Three things, in order of how much they would add.
+
+Open interest per security, which is the variable the settlement story actually predicts on.
+If the expiry effects scale with the size of the expiring position, that is a far more
+specific prediction than anything tested here, and failure to scale would be close to
+decisive against.
+
+A wider universe. The difference-in-differences are the right tests and they are
+underpowered; a few dozen securities per group would resolve them.
+
+The futures tape. Without it the basis cannot be computed, the lead-lag between futures and
+cash cannot be tested, and the hypotheses listed in Section~\ref{sec:limitations} stay open.

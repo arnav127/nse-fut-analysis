@@ -1,0 +1,53 @@
+\section{Data and reconstruction}\label{sec:data}
+
+\subsection{Source}
+
+The exchange publishes complete order and trade files for each session. The order file
+records every entry, modification and cancellation with a microsecond timestamp, the side,
+the total and displayed quantities, the limit price, the immediate-or-cancel and market
+flags, a participant category (custodian, proprietary, or neither) and a routing category
+(algorithmic or manual). The trade file records every execution and names the order numbers
+on both sides, so trades can be traced back to the orders that produced them.
+
+Across \SampleSessionsParsed{} sessions the files hold \SampleOrderEventsRead{} order records
+and \SampleTradesRead{} trade records in the equity series. Restricting to the securities
+studied leaves \SampleOrderEvents{} order events and \SampleTrades{} trades.
+
+\subsection{Decoding}
+
+The files are fixed-width binary. Timestamps are stored as jiffies, a count of $1/65536$
+second intervals from 1980-01-01; prices are in paise; the ten-byte symbol field is
+right-aligned and padded. The layout has changed across specification revisions, and parsing
+a file with the wrong revision shifts every field after the change by one byte, producing
+output that is wrong but not obviously so.
+
+Decoding is done by \texttt{nsetick}, which holds the layouts in a versioned specification,
+chooses the revision from the session date, and checks that choice against the observed
+record length. A mismatch is reported rather than silently mis-sliced. The sample counts
+above are read from the decoder's own manifests, so they describe what was actually parsed
+rather than what the configuration asked for.
+
+\subsection{Rebuilding the book}
+
+The limit order book is rebuilt for each security and session by replaying its order events
+in sequence, and photographed every \DesignSnapshotInterval{} second at
+\DesignBookLevels{} price levels per side.
+
+The replay follows disclosed-quantity behaviour: only the displayed slice rests in the
+visible book, the concealed remainder replenishes as that slice fills, and the replenished
+portion loses queue priority. This is not a detail. Resting the full size of a
+disclosed-quantity order would overstate displayed depth at exactly the prices where large
+orders sit, which is where the depth and cost measures in Section~\ref{sec:results} are
+taken; an earlier version of this project did exactly that.
+
+Each snapshot records, at every level, the displayed size, the concealed size and the price,
+together with the entries, cancellations, fills and replenishments since the previous
+snapshot. Books are replayed from the session open rather than from the window's open---a
+book started at \DesignWindowStart{} would contain only what arrived after
+\DesignWindowStart{}---and only the window is kept. This yields \SampleSnapshots{} snapshots
+across \SampleSnapshotSymbols{} securities.
+
+Pre-open auction records share the session file with continuous trading. They are excluded
+from every return series; otherwise the first continuous-session observation is differenced
+against the auction price, which books the whole overnight move as one minute of intraday
+variance.

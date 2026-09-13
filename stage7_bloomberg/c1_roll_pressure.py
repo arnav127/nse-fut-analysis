@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from config.settings import EXPIRY_THURSDAYS_DDMMYYYY, RESULTS_DIR, TARGET_SYMBOLS
-from stage6_bloomberg.load_bloomberg_data import build_bloomberg_master
+from stage7_bloomberg.load_bloomberg_data import build_bloomberg_master
 
 
 def run_c1_roll_pressure() -> pd.DataFrame:

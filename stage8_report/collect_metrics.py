@@ -52,7 +52,7 @@ from utils.logger import setup_logger  # noqa: E402
 from utils.paths import clob_dir, parsed_dir  # noqa: E402
 from utils.provenance import Run  # noqa: E402
 
-logger = setup_logger("Metrics", "stage7_report.log")
+logger = setup_logger("Metrics", "stage8_report.log")
 
 
 def _csv(name: str) -> pd.DataFrame:
@@ -342,7 +342,7 @@ def _tests(run: Run) -> None:
     run.record("test.untested_ids", ", ".join(untested.hypothesis_id.astype(str)) or "none", "", "")
 
     for row in summary.itertuples(index=False):
-        stem = f"h.{str(row.hypothesis_id).lower()}"
+        stem = str(row.hypothesis_id).lower()
         run.record(f"{stem}.desc", str(row.description), "", "")
         for field, unit in (("test_stat", ""), ("p_value", ""), ("wilcoxon_p_value", ""),
                             ("effect_size_cohen_d", ""), ("n_pairs", "pairs"),

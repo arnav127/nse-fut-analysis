@@ -1,0 +1,39 @@
+\section{The settlement mechanism}\label{sec:background}
+
+Equity derivatives on the National Stock Exchange expire on the last Thursday of each
+calendar month. For stock futures the settlement price is the volume-weighted average price
+of the underlying share in the cash market between \DesignWindowStart{} and
+\DesignWindowEnd{} on that day, a window of \DesignWindowMinutes{} minutes ending at the
+close.
+
+Three properties of this arrangement shape what follows.
+
+The window is known in advance, so anyone who wants to act in it can plan rather than react.
+The window is short, so a single participant's volume can be a noticeable share of the total
+traded in it, particularly in a security that does not trade much. And because the
+settlement is an average rather than a single print, moving it requires trading across the
+window rather than placing one order at the close; if there is a footprint, it should be
+visible in the shape of activity across the half hour, not only at its end.
+
+\subsection{Order types that matter here}
+
+The cash market runs a continuous limit order book with price-time priority. Two order-level
+features are used directly in this report.
+
+A \emph{disclosed quantity} instruction lets a participant display less than the full size of
+an order. Only the displayed slice rests in the visible book; as it fills, the concealed
+remainder replenishes it, and each replenishment goes to the back of the queue at that price.
+The trade-off is deliberate---the participant gives up queue priority in exchange for not
+revealing size---and both sides of it are recorded in the order file.
+
+An \emph{immediate-or-cancel} instruction executes against whatever is available at
+submission and cancels the remainder. It is the usual way to take liquidity without leaving
+a resting order behind, and its rate of use is a reasonable proxy for how urgent the flow is.
+
+\subsection{Why concealment is relevant}
+
+A participant accumulating or distributing stock into a benchmark window has an obvious
+reason to hide size. A displayed order of unusual size announces both the direction and the
+scale of what is being attempted, which invites others to trade ahead of it. Concealment is
+also entirely routine for large institutional orders on any day, so its level says little on
+its own; the comparison against the control session is what carries the information.

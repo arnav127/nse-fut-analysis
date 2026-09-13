@@ -1,0 +1,167 @@
+\section{Results}\label{sec:results}
+
+Of \TestSpecified{} hypotheses, \TestSupported{} are supported, \TestContradicted{} are
+rejected with the effect running against the direction stated, and \TestNotRejected{} are not
+distinguishable from no difference. Table~\ref{tab:descriptives} gives the descriptive
+picture and Table~\ref{tab:tests} the tests. The sections below take them in the order that
+makes the pattern visible, rather than in hypothesis order.
+
+\input{generated/tables/descriptives}
+
+\subsection{Liquidity supply falls and execution gets more expensive}
+
+The clearest result is that the window is harder to trade in. The quoted spread widens from
+\SpreadMeanBpsControl{} to \SpreadMeanBpsExpiry{} basis points, displayed notional in the
+book falls, and a sweep of the displayed book by a fixed order moves the price further:
+\MoveBpsSmallControl{} basis points per \ProbeSizeCr{} crore on a control session against
+\MoveBpsSmallExpiry{} on an expiry. Per-trade price impact rises with it, and so does the
+impact of a given quantity of signed order flow, which is the largest effect among the
+liquidity measures ($d = \PFourEffectSizeCohenD{}$).
+
+Figure~\ref{fig:cost} shows where this concentrates. The cost of moving the price is several
+times higher in the illiquid group on any day, which is what one would expect and is worth
+stating quantitatively rather than assuming; the expiry-day increase appears in both groups.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{marking_cost.pdf}
+  \caption{Price move, in basis points, from sweeping the displayed book by
+    \ProbeSizeCr{}~crore, by group and session type. The sweep assumes the book neither
+    replenishes nor reacts, so the figure is a lower bound on what moving the price would
+    cost.}
+  \label{fig:cost}
+\end{figure}
+
+\subsection{But prices are not more directional}
+
+Every measure built to detect sustained pressure in one direction fails to find it, and the
+point estimates are near zero or the wrong sign.
+
+The variance ratio \emph{falls} from \VarianceRatioControl{} to \VarianceRatioExpiry{}
+($d = \POneEffectSizeCohenD{}$, $p = \POnePValue{}$). Prices on expiry sessions are closer to
+a random walk than on control sessions, not further from one. The autocorrelation of signed
+order flow is unchanged ($d = \PTwoEffectSizeCohenD{}$, $p = \PTwoPValue{}$), so flow is no
+more persistent. The permanent share of price impact is unchanged ($p = \PThreePValue{}$),
+so the larger moves that flow produces are no more likely to survive. Submitted order flow is
+no more one-sided ($p = \HOneSixPValue{}$).
+
+Figure~\ref{fig:pressure} shows the distributions. These are the measures that separate the
+two explanations, and they point the same way.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{pressure_measures.pdf}
+  \caption{The three measures that distinguish directional pressure from heavier two-sided
+    trading, by session type. Under sustained pressure the variance ratio rises above one,
+    flow autocorrelation rises, and the permanent share of impact rises. None of them does.}
+  \label{fig:pressure}
+\end{figure}
+
+\subsection{The settlement price ends up further from the close}
+
+The settlement VWAP sits \AbsReversalBpsExpiry{} basis points from the closing price on
+expiry sessions against \AbsReversalBpsControl{} on controls, a difference of
+$d = \STwoEffectSizeCohenD{}$ and one of the stronger results in the study. The final
+minute's VWAP also diverges further from the window's ($d = \SThreeEffectSizeCohenD{}$). The
+gap against the mid at the window's open is larger too, but not reliably so
+($p = \SOnePValue{}$).
+
+This is the result that most resembles a settlement being pushed and then released. It is
+also what a thinner, more volatile book produces on its own: realised variance per minute is
+higher on expiry, and a noisier price series around an average will land further from any
+single point of it. The two are not separable from these three numbers alone, which is why
+the direction measures above matter---and they do not support the first reading.
+
+Two findings cut against the pushing story more directly. Less volume transacts within a
+basis point of the running VWAP on expiry sessions ($d = \SFourEffectSizeCohenD{}$), which is
+the opposite of what benchmark-driven accumulation would produce. And volume does \emph{not}
+concentrate into the final minute; it spreads out, against the stated direction
+($d = \SFiveEffectSizeCohenD{}$, $p = \SFivePValue{}$). If the cheapest moment to move an
+average is its end, the flow is not going there.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{settlement_benchmarks.pdf}
+  \caption{Distance of the settlement VWAP from the mid at the window's open, from the
+    closing price, and from the final minute's VWAP, by session type. Absolute values: the
+    sign depends on which way a given participant is positioned and averages out across
+    securities.}
+  \label{fig:settlement}
+\end{figure}
+
+\subsection{Size is concealed differently, not more}
+
+The share of resting size that is never displayed is high on any day---\ConcealedDepthShareControl{}
+per cent of resting quantity on control sessions---and it does not move reliably on expiry
+($p = \COnePValue{}$). What changes is the shape of concealment rather than its level.
+Concealed parent orders are larger relative to displayed ones
+($d = \CTwoEffectSizeCohenD{}$), and more entered orders carry a disclosed quantity below
+their total ($d = \HNinePValue{}$ for the count measure). Meanwhile the replenishment rate
+per unit matched \emph{falls}, against the stated direction
+($d = \CThreeEffectSizeCohenD{}$).
+
+Fewer, larger concealed parcels that are refilled less often per share traded is a
+description of bigger institutional orders working through the window, not of size being
+sliced to hide an accumulation.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.92\textwidth]{concealment.pdf}
+  \caption{Concealed size, by session type. The level barely moves; the size of individual
+    concealed orders relative to displayed ones does.}
+  \label{fig:concealment}
+\end{figure}
+
+\subsection{Order handling: more of everything, not more churn}
+
+Cancellation counts rise sharply---the largest effect in the study
+($d = \HEightEffectSizeCohenD{}$)---and so does the share of orders cancelled within a second
+of entry. But cancellations \emph{per entry} fall, against the stated direction
+($d = \HSevenEffectSizeCohenD{}$). Entries must therefore be rising faster than
+cancellations: the window attracts more order submission of every kind rather than a
+disproportionate amount of placing and pulling. Book pressure is also less persistent, not
+more ($d = \HOneEightEffectSizeCohenD{}$), which is what happens when more participants are
+active on both sides.
+
+Proprietary desks take a larger share of traded volume, while algorithmic flow's share does
+not change reliably ($p = \HFivePValue{}$).
+
+\subsection{Within the window}
+
+Figure~\ref{fig:profile} plots the main measures minute by minute. The expiry and control
+lines are separated for most of the window rather than diverging at its end, which is the
+shape one expects from a market that is generally busier and thinner rather than from
+activity aimed at the closing average.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{window_profile.pdf}
+  \caption{Spread, traded volume share, concealed share of resting size and cancellations per
+    entry by minute from \DesignWindowStart{}, split by session type and group. Each line
+    averages over securities and months.}
+  \label{fig:profile}
+\end{figure}
+
+\subsection{Effect sizes}
+
+Figure~\ref{fig:forest} places all the tested effects on one axis with their intervals. With
+\TestPairsTotal{} matched pairs the tests have power to detect differences well below
+anything economically interesting, so the ordering of effect sizes is more informative than
+the pattern of $p$-values.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=\textwidth]{effects_forest.pdf}
+  \caption{Paired effect sizes with 95\% intervals. Filled markers are supported; open
+    markers are rejected with the effect running against the stated direction.}
+  \label{fig:forest}
+\end{figure}
+
+\input{generated/tables/tests}
+
+\subsection{Is it the settlement, or is it the Thursday?}
+
+Table~\ref{tab:contrasts} reports the two difference-in-differences described in
+Section~\ref{sec:method}. \ContrastPlaceboNote{}
+
+\input{generated/tables/contrasts}

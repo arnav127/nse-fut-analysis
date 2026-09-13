@@ -1,0 +1,47 @@
+\section{What this design cannot establish}\label{sec:limitations}
+
+\paragraph{Intent.} Nothing here identifies manipulation, and none of it should be read as
+doing so. Every measure is consistent with deliberate positioning around the settlement price
+and equally consistent with hedging and rolling concentrated in the same window for entirely
+ordinary reasons. The matched design removes the market environment as an explanation; it
+does not remove expiry-day hedging, which is a real and legitimate source of exactly the
+activity measured.
+
+\paragraph{The calendar.} Expiry Thursdays are also the last Thursday of the month, when
+index rebalancing, month-end flows and index option expiry all occur. The placebo comparison
+in Table~\ref{tab:contrasts} exists to separate these from the settlement mechanism, and it
+is the single most important robustness check in the study.
+
+\paragraph{Sample size.} \DesignSymbols{} securities over \DesignSessions{} sessions is
+enough to detect a difference between expiry and control days and not enough to characterise
+how that difference varies across the cross-section. The difference-in-differences that would
+do so are underpowered at this universe size.
+
+\paragraph{One year.} All sessions fall in 2022. Whether these patterns hold across
+volatility regimes is not something a single year can answer.
+
+\paragraph{Participant identification.} The feed distinguishes custodian, proprietary and
+other. It does not identify individual participants and does not link activity across
+securities, so a participant hedging one position across several names is invisible as such.
+
+\paragraph{Derivatives positions.} Open interest is not observed, so the link between the
+size of a security's expiring position and its cash-market behaviour---the relationship the
+settlement story is actually about---cannot be tested. The following hypotheses were
+specified and could not be evaluated on the data held:
+
+\input{generated/tables/out_of_scope}
+
+\paragraph{The book sweep.} The cost figures assume the displayed book neither replenishes
+nor reacts. Both assumptions understate the true cost of moving the price, so the numbers are
+lower bounds and should be compared across groups rather than read as prices.
+
+\section{Reproducibility}\label{sec:repro}
+
+Every number in this report is computed by the pipeline and reaches the document as a macro;
+none is typed in. The build fails if the text cites a quantity that was never computed, or if
+a numeral appears in the prose. Rerunning the pipeline updates each number that changed and
+leaves the rest alone.
+
+The whole analysis runs from one command, from the raw exchange files to this document. The
+appendix records the code commits, library versions and input file manifest behind this
+particular run.

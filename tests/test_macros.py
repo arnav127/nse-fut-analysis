@@ -16,10 +16,10 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from stage7_report.audit_macros import (  # noqa: E402
+from stage8_report.audit_macros import (  # noqa: E402
     audit, cited_macros, defined_macros, hand_typed_numbers,
 )
-from stage7_report.build_macros import format_value, macro_name  # noqa: E402
+from stage8_report.build_macros import format_value, macro_name  # noqa: E402
 
 
 class TestMacroNames:
@@ -122,12 +122,12 @@ class TestHandTypedNumbers:
 
 class TestManuscriptIsClean:
     def test_the_authored_prose_contains_no_typed_numbers(self):
-        from stage7_report.generate_report import _authored_text
+        from stage8_report.generate_report import _authored_text
         offenders = hand_typed_numbers(_authored_text())
         assert offenders == [], offenders
 
     def test_every_cited_name_is_spelled_the_way_a_key_would_be(self):
-        from stage7_report import manuscript
+        from stage8_report import manuscript
         text = "\n".join(v for k, v in vars(manuscript).items()
                          if isinstance(v, str) and not k.startswith("__"))
         for name in cited_macros(text):
@@ -138,17 +138,17 @@ class TestPValueRendering:
     """A p-value below 1e-4 is math-mode content cited from text-mode table cells."""
 
     def test_small_p_values_are_safe_outside_math_mode(self):
-        from stage7_report.build_macros import _p_value
+        from stage8_report.build_macros import _p_value
         rendered = _p_value(1.7e-5)
         # A bare \times outside maths is a fatal LaTeX error, not a formatting wobble.
         assert rendered.startswith(r"\ensuremath{"), rendered
         assert r"\times" in rendered
 
     def test_ordinary_p_values_are_plain_decimals(self):
-        from stage7_report.build_macros import _p_value
+        from stage8_report.build_macros import _p_value
         assert _p_value(0.0312) == "0.0312"
         assert _p_value(0.9) == "0.9000"
 
     def test_exponent_is_preserved(self):
-        from stage7_report.build_macros import _p_value
+        from stage8_report.build_macros import _p_value
         assert "10^{-12}" in _p_value(3.2e-12)

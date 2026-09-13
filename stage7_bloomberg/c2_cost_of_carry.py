@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from config.settings import RESULTS_DIR
-from stage6_bloomberg.load_bloomberg_data import load_cost_of_carry
+from stage7_bloomberg.load_bloomberg_data import load_cost_of_carry
 
 
 def run_c2_cost_of_carry() -> pd.DataFrame:
