@@ -10,6 +10,16 @@ import pandas as pd
 from config.settings import CLOB_DATA_DIR, EXPIRY_THURSDAYS_DDMMYYYY, RESULTS_DIR
 from utils.paths import session_to_iso
 
+# A spread counts as shocked above this multiple of the session's baseline, and as recovered
+# once it falls back below the lower one. The gap between them is deliberate: a single
+# threshold makes an episode hovering at the boundary flicker in and out of shock.
+SHOCK_MULTIPLE = 2.0
+RECOVERY_MULTIPLE = 1.5
+
+# Below this many snapshots a median baseline is not identified and the recovery count is
+# dominated by the window edge.
+MIN_SNAPSHOTS = 20
+
 
 def run_b7_market_resilience() -> pd.DataFrame:
     # Addresses the snapshot partitions explicitly rather than globbing the whole tree.
@@ -48,27 +58,50 @@ def run_b7_market_resilience() -> pd.DataFrame:
 
         metrics = []
         for (symbol, trade_date, is_expiry), grp in df_all.groupby(["symbol", "trade_date", "is_expiry"]):
-            spreads = grp["spread_bps"].values
-            if len(spreads) < 20:
+            spreads = grp.sort_values("snapshot_time")["spread_bps"].to_numpy(dtype=np.float64)
+            if len(spreads) < MIN_SNAPSHOTS:
                 continue
 
-            baseline_spread = np.mean(spreads)
-            shock_threshold = baseline_spread * 2.0
-            shock_indices = np.where(spreads > shock_threshold)[0]
+            # Median, not mean. The baseline is meant to be the normal spread the book
+            # returns to, and a mean over the same series the shocks are drawn from is
+            # pulled up by them - most on the widest days, which is where resilience is
+            # being measured. A few wide seconds barely move the median.
+            baseline = float(np.median(spreads))
+            if baseline <= 0:
+                continue
+
+            elevated = spreads > baseline * SHOCK_MULTIPLE
+            recovered_level = baseline * RECOVERY_MULTIPLE
+
+            # Consecutive elevated seconds are one episode. Counting each of them
+            # separately inflated the shock count by the length of every episode and
+            # biased the mean recovery time down: a ten-second widening was recorded as
+            # ten shocks recovering in 10, 9, 8 ... 1 seconds.
+            starts = np.flatnonzero(elevated & ~np.r_[False, elevated[:-1]])
+
             recovery_times = []
+            unrecovered = 0
+            for start in starts:
+                below = np.flatnonzero(spreads[start:] <= recovered_level)
+                if below.size:
+                    recovery_times.append(int(below[0]))
+                else:
+                    # The spread never came back inside the window. Counted, not silently
+                    # dropped - a session where nothing recovers is the most resilient
+                    # looking one if only completed recoveries are averaged.
+                    unrecovered += 1
 
-            for idx in shock_indices:
-                recovered = np.where(spreads[idx:] <= baseline_spread * 1.5)[0]
-                if len(recovered) > 0:
-                    recovery_times.append(recovered[0])
-
-            avg_recovery = float(np.mean(recovery_times)) if recovery_times else 0.0
             metrics.append({
                 "symbol": symbol,
                 "trade_date": trade_date,
                 "is_expiry": is_expiry,
-                "n_shocks": len(shock_indices),
-                "mean_recovery_time_sec": avg_recovery,
+                "baseline_spread_bps": baseline,
+                "n_snapshots": len(spreads),
+                "n_shocks": int(starts.size),
+                "n_unrecovered": unrecovered,
+                "shock_seconds": int(elevated.sum()),
+                "mean_recovery_time_sec": float(np.mean(recovery_times)) if recovery_times else np.nan,
+                "median_recovery_time_sec": float(np.median(recovery_times)) if recovery_times else np.nan,
             })
 
         res_df = pd.DataFrame(metrics)

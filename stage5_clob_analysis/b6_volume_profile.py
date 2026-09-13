@@ -41,17 +41,28 @@ def run_b6_volume_profile() -> pd.DataFrame:
     # control day.
     expiry_list = ", ".join(f"'{session_to_iso(d)}'" for d in EXPIRY_THURSDAYS_DDMMYYYY)
 
+    # Traded volume, not resting depth.
+    #
+    # This measured `total_bid_volume + total_ask_volume`, which is the size sitting in the
+    # book at each snapshot - a stock, not a flow. Its Gini described how unevenly *depth*
+    # was distributed across the window, while H29 is about when trading actually happens.
+    # The two can move in opposite directions: depth is thinnest in the minute that trades
+    # most. `interval_volume_matched` is the quantity matched between consecutive snapshots,
+    # which nsetick reports and the previous book could not produce at all.
+    #
+    # Aggregated to minutes, which is what "final minute share" has always claimed to
+    # measure; per-second buckets made that the final second.
     query = f"""
-    SELECT 
-        TRIM(symbol) AS symbol,
+    SELECT
+        symbol,
         trade_date,
-        (trade_date IN ({expiry_list})) AS is_expiry,
-        seconds_from_1500,
-        AVG(total_bid_volume + total_ask_volume) AS tot_vol
+        trade_date IN ({expiry_list}) AS is_expiry,
+        seconds_from_1500 // 60 AS minute_from_1500,
+        SUM(interval_volume_matched) AS traded_volume,
+        AVG(total_bid_volume + total_ask_volume) AS mean_book_depth
     FROM read_parquet('{pattern}')
-    WHERE total_bid_volume IS NOT NULL
-    GROUP BY TRIM(symbol), trade_date, is_expiry, seconds_from_1500
-    ORDER BY symbol, trade_date, seconds_from_1500
+    GROUP BY symbol, trade_date, is_expiry, minute_from_1500
+    ORDER BY symbol, trade_date, minute_from_1500
     """
 
     try:
@@ -60,17 +71,25 @@ def run_b6_volume_profile() -> pd.DataFrame:
 
         metrics = []
         for (symbol, trade_date, is_expiry), grp in df_mins.groupby(["symbol", "trade_date", "is_expiry"]):
-            vol_vals = grp["tot_vol"].values
-            if len(vol_vals) < 5:
+            grp = grp.sort_values("minute_from_1500")
+            vol_vals = grp["traded_volume"].to_numpy(dtype=np.float64)
+            depth_vals = grp["mean_book_depth"].to_numpy(dtype=np.float64)
+            total = vol_vals.sum()
+            if len(vol_vals) < 5 or total <= 0:
                 continue
-            gini_val = _gini_coefficient(vol_vals)
             metrics.append({
                 "symbol": symbol,
                 "trade_date": trade_date,
                 "is_expiry": is_expiry,
-                "volume_gini": gini_val,
-                "peak_to_trough_ratio": float(np.max(vol_vals) / (np.min(vol_vals) + 1e-5)),
-                "final_min_share": float(vol_vals[-1] / (np.sum(vol_vals) + 1e-5)),
+                "n_minutes": len(vol_vals),
+                "settlement_volume": float(total),
+                "volume_gini": _gini_coefficient(vol_vals),
+                "depth_gini": _gini_coefficient(depth_vals),
+                # A minute with no trades makes a ratio against the minimum infinite, which
+                # is exactly the case on a thin name. Reported against the median instead.
+                "peak_to_median_ratio": float(np.max(vol_vals) / max(np.median(vol_vals), 1.0)),
+                "final_min_share": float(vol_vals[-1] / total),
+                "last_five_min_share": float(vol_vals[-5:].sum() / total),
             })
 
         res_df = pd.DataFrame(metrics)

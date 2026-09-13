@@ -25,6 +25,27 @@ def run_c3_directional_validation() -> pd.DataFrame:
         return df_res
 
     df_c1 = pd.read_csv(c1_file)
+
+    # C1 writes a row per symbol and expiry whether or not Bloomberg data was available,
+    # with direction "UNKNOWN" when it was not. Comparing "UNKNOWN" against an actual "UP"
+    # or "DOWN" never matches, so keeping those rows produced a 0-of-120 match rate and a
+    # binomial p-value - a hypothesis reported as tested and decisively rejected, on a
+    # comparison that was never made. They are dropped here, and an empty remainder means
+    # the roll hypotheses are untestable on this run rather than false.
+    known = df_c1[df_c1["predicted_punch_direction"].isin(["UP", "DOWN", "NEUTRAL"])]
+    dropped = len(df_c1) - len(known)
+    if dropped:
+        print(f"[C3] {dropped} of {len(df_c1)} roll predictions are UNKNOWN "
+              f"(no Bloomberg input); excluded from the directional tests.")
+    df_c1 = known
+    if df_c1.empty:
+        print("[WARN] No usable roll direction predictions; H20-H22 cannot be tested.")
+        empty = pd.DataFrame(columns=[
+            "symbol", "trade_date", "roll_direction_score", "roll_intensity",
+            "predicted_punch_dir", "vwap_drift_bps", "actual_vwap_drift_dir", "match_vwap",
+            "book_imbalance", "match_book", "ofi", "match_ofi"])
+        empty.to_csv(out_csv, index=False)
+        return empty
     df_vwap = pd.read_csv(a1_file) if a1_file.exists() else pd.DataFrame()
     df_b5 = pd.read_csv(b5_file) if b5_file.exists() else pd.DataFrame()
     df_b3 = pd.read_csv(b3_file) if b3_file.exists() else pd.DataFrame()

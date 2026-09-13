@@ -143,14 +143,40 @@ def generate_all_charts() -> None:
     # 10. Figure 10: Hypothesis Forest Plot (Stage 7 Summary)
     df_stat = _safe_read_csv(results_path / "hypothesis_testing_summary.csv")
     if not df_stat.empty and "effect_size_cohen_d" in df_stat.columns:
+        d = pd.to_numeric(df_stat["effect_size_cohen_d"], errors="coerce").to_numpy(dtype=float)
+        n = pd.to_numeric(df_stat.get("n_pairs", pd.Series(dtype=float)),
+                          errors="coerce").to_numpy(dtype=float)
+
+        # Real intervals, not a constant.
+        #
+        # This plotted xerr=0.15 on every hypothesis - the same whisker whether a test had
+        # four pairs or four hundred, and drawn even for hypotheses that were never
+        # evaluated. A forest plot's whole content is the width of the intervals relative to
+        # each other, so a fixed one is not a simplification, it is a fabricated result.
+        #
+        # For a paired design the standard error of Cohen's d is approximately
+        # sqrt(1/n + d^2 / 2n); the whiskers are the 95 per cent interval from it.
+        with np.errstate(divide="ignore", invalid="ignore"):
+            se = np.sqrt(1.0 / n + d ** 2 / (2.0 * n))
+        xerr = 1.96 * se
+        drawable = np.isfinite(d) & np.isfinite(xerr)
+
         fig, ax = plt.subplots(figsize=(12, 10))
         y_pos = np.arange(len(df_stat))
-        ax.errorbar(df_stat["effect_size_cohen_d"], y_pos, xerr=0.15, fmt='o', color=color_expiry, ecolor='gray', elinewidth=2, capsize=4)
+        ax.errorbar(d[drawable], y_pos[drawable], xerr=xerr[drawable], fmt="o",
+                    color=color_expiry, ecolor="gray", elinewidth=2, capsize=4)
+        # Hypotheses with no test are shown in place and marked, rather than omitted
+        # silently or drawn as though they had been estimated.
+        for y in y_pos[~drawable]:
+            ax.annotate("not tested", (0.0, y), color="#999999", fontsize=9,
+                        va="center", ha="center")
+
         ax.set_yticks(y_pos)
-        ax.set_yticklabels([f"{hid}: {str(desc)[:35]}..." for hid, desc in zip(df_stat["hypothesis_id"], df_stat["description"])])
-        ax.axvline(0, color='red', linestyle='--')
-        ax.set_xlabel("Effect Size (Cohen's d)")
-        ax.set_title("Figure 10: Hypothesis Testing Forest Plot (H1-H30 Effect Sizes)")
+        ax.set_yticklabels([f"{hid}: {str(desc)[:40]}"
+                            for hid, desc in zip(df_stat["hypothesis_id"], df_stat["description"])])
+        ax.axvline(0, color="red", linestyle="--")
+        ax.set_xlabel("Effect size (Cohen's d), 95% CI")
+        ax.set_title("Figure 10: Paired effect sizes, H1-H30")
         ax.invert_yaxis()
         plt.tight_layout()
         fig.savefig(results_path / "fig10_hypothesis_forest_plot.png", dpi=300)

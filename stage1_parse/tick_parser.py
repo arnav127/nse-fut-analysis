@@ -164,10 +164,10 @@ if __name__ == "__main__":
 
     ap = argparse.ArgumentParser(description="Stage 1: parse NSE tick files with nsetick")
     ap.add_argument("--date", help="single session in DDMMYYYY form")
-    ap.add_argument("--universe-only", action="store_true",
-                    help="restrict to config.settings.TARGET_SYMBOLS")
+    ap.add_argument("--all-eq", action="store_true",
+                    help="parse every EQ symbol instead of only config.settings.TARGET_SYMBOLS")
     ap.add_argument("--force", action="store_true", help="reparse sessions already present")
     args = ap.parse_args()
 
     for s in [args.date] if args.date else ALL_TARGET_DATES:
-        parse_session(s, symbols=TARGET_SYMBOLS if args.universe_only else None, force=args.force)
+        parse_session(s, symbols=None if args.all_eq else TARGET_SYMBOLS, force=args.force)

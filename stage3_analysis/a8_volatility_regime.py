@@ -26,22 +26,38 @@ def run_a8_volatility_regime() -> pd.DataFrame:
                LAG(SUM(trade_price * trade_quantity) / SUM(trade_quantity)) 
                OVER (PARTITION BY TRIM(symbol), trade_date ORDER BY time_bucket)) AS log_return
         FROM read_parquet('{cash_path}/**/*.parquet')
+        -- Regular-market records only. Pre-open auction trades sit in the same file; the
+        -- first continuous-session bucket would otherwise be differenced against the
+        -- auction price, booking the whole overnight move as one pre-settlement minute of
+        -- realised variance.
+        WHERE is_regular_market
         GROUP BY TRIM(symbol), trade_date, time_bucket, is_expiry, is_settlement_window
     ),
     rv_calc AS (
-        SELECT 
+        SELECT
             symbol, trade_date, is_expiry,
-            SUM(CASE WHEN is_settlement_window = True THEN log_return * log_return ELSE 0 END) AS rv_settlement,
-            SUM(CASE WHEN is_settlement_window = False THEN log_return * log_return ELSE 0 END) AS rv_presettlement
+            SUM(CASE WHEN is_settlement_window THEN log_return * log_return ELSE 0 END) AS rv_settlement,
+            SUM(CASE WHEN NOT is_settlement_window THEN log_return * log_return ELSE 0 END) AS rv_presettlement,
+            COUNT(*) FILTER (WHERE is_settlement_window) AS n_settlement,
+            COUNT(*) FILTER (WHERE NOT is_settlement_window) AS n_presettlement
         FROM min_returns
         WHERE log_return IS NOT NULL
         GROUP BY symbol, trade_date, is_expiry
     )
-    SELECT 
+    SELECT
         symbol, trade_date, is_expiry,
         rv_settlement,
         rv_presettlement,
-        rv_settlement / (rv_presettlement + 1e-8) AS rv_ratio
+        n_settlement,
+        n_presettlement,
+        rv_settlement / NULLIF(n_settlement, 0) AS rv_per_min_settlement,
+        rv_presettlement / NULLIF(n_presettlement, 0) AS rv_per_min_presettlement,
+        -- Per-minute, not summed. The settlement window is 30 minutes and the rest of the
+        -- session is about 345, so a ratio of the two sums is dominated by the length
+        -- difference: identical minute-by-minute volatility would score roughly 0.09 and
+        -- read as calm. H24 is a claim about the variance rate, which is what this is.
+        (rv_settlement / NULLIF(n_settlement, 0))
+            / NULLIF(rv_presettlement / NULLIF(n_presettlement, 0), 0) AS rv_ratio
     FROM rv_calc
     ORDER BY symbol, trade_date
     """

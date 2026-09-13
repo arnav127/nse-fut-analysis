@@ -23,7 +23,7 @@ def run_a9_trade_clustering() -> pd.DataFrame:
             TRIM(symbol) AS symbol, trade_date, time_bucket, is_expiry,
             SUM(trade_quantity) AS bucket_volume
         FROM read_parquet('{cash_path}/**/*.parquet')
-        WHERE is_settlement_window = True
+        WHERE is_settlement_window AND is_regular_market
         GROUP BY TRIM(symbol), trade_date, time_bucket, is_expiry
     ),
     day_vol AS (
@@ -36,7 +36,9 @@ def run_a9_trade_clustering() -> pd.DataFrame:
     SELECT 
         b.symbol, b.trade_date, b.is_expiry,
         SUM(POWER((b.bucket_volume * 1.0 / d.total_settlement_volume), 2)) AS hhi_concentration,
-        MAX(b.bucket_volume) * 1.0 / FIRST(d.total_settlement_volume) AS max_bucket_share
+        -- ANY_VALUE, not FIRST: the day total is constant within the group, and FIRST
+        -- without an ORDER BY picks an arbitrary row.
+        MAX(b.bucket_volume) * 1.0 / ANY_VALUE(d.total_settlement_volume) AS max_bucket_share
     FROM bucket_vol b
     JOIN day_vol d ON b.symbol = d.symbol AND b.trade_date = d.trade_date
     GROUP BY b.symbol, b.trade_date, b.is_expiry
