@@ -27,7 +27,9 @@ def run_a4_algo_segmentation() -> pd.DataFrame:
         SUM(CASE WHEN ioc_flag THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS ioc_rate,
         SUM(CASE WHEN mkt_order_flag THEN 1 ELSE 0 END) * 1.0 / COUNT(*) AS mkt_rate
     FROM read_parquet('{orders_path}/**/*.parquet')
-    WHERE activity_type = 1
+    -- Settlement window only. H5 and H6 are claims about the window, and comparing the
+    -- window's algorithmic share against the whole session's answers a different question.
+    WHERE activity_type = 1 AND is_settlement_window AND is_regular_market
     GROUP BY TRIM(symbol), trade_date, is_expiry, is_settlement_window, algo_type
     ORDER BY symbol, trade_date, algo_type
     """

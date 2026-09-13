@@ -23,7 +23,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from config.settings import PAPER_GENERATED_DIR, RESULTS_DIR  # noqa: E402
-from config.universe import GROUPS  # noqa: E402
+from config.universe import GROUPS, META, is_derived_universe  # noqa: E402
 from stage8_report.build_macros import macro_name, tex_escape  # noqa: E402
 from utils.logger import setup_logger  # noqa: E402
 from utils.provenance import load_metrics  # noqa: E402
@@ -92,6 +92,55 @@ def build_universe_table() -> None:
         lines.append(r"\addlinespace[2pt]")
     lines += [r"\bottomrule", r"\end{tabular}", r"\end{table}"]
     _write("universe", lines)
+
+
+def build_balance_table() -> None:
+    """How alike the groups are on what the matching was meant to equalise.
+
+    Standard for a matched design, and load-bearing here: the placebo group is useful only if
+    it resembles the group it stands in for, and a reader cannot take that on trust.
+    """
+    balance = META.get("balance") or []
+    if not balance:
+        _write("balance", [
+            r"\textit{The universe for this run was not built from the tape, so no balance "
+            r"statistics are available and the groups are the development list rather than "
+            r"the study universe. See Section~\ref{sec:limitations}.}"])
+        return
+
+    overlap = META.get("placebo_adv_overlap") or {}
+    lines = [
+        r"\begin{table}[H]", r"\centering",
+        r"\caption{Group balance on the variables the placebo group is matched on. Turnover "
+        r"is measured on control sessions only, so group membership does not depend on "
+        r"expiry-day behaviour. Parenthesised ranges are the group minimum and maximum.}",
+        r"\label{tab:balance}", r"\small",
+        r"\begin{tabular}{lrrrr}", r"\toprule",
+        r"Group & $n$ & Turnover (cr/day) & Price (Rs) & Trades/session \\",
+        r"\midrule",
+    ]
+    for row in balance:
+        lines.append(
+            f"{tex_escape(str(row['group']))} & {row['n']} & "
+            f"{row['adv_cr_median']:,.1f} "
+            f"({row['adv_cr_min']:,.1f}--{row['adv_cr_max']:,.1f}) & "
+            f"{row['price_median']:,.0f} & {row['trades_per_session_median']:,.0f} \\\\")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    if overlap:
+        # Which comparison the placebo actually licenses. A security traded as heavily as the
+        # liquid group and carrying no derivative barely exists - close to the reason the
+        # liquid group has derivatives - so the placebo can only stand in for the illiquid
+        # group, and the report should not imply otherwise.
+        parts = ", ".join(f"{share:.0%} of the {tex_escape(name)} group"
+                          for name, share in overlap.items())
+        lines.append(
+            r"\vspace{0.4em}\par\noindent\footnotesize The placebo group's turnover range "
+            rf"covers {parts}. The placebo comparison therefore speaks to the group whose "
+            r"range it overlaps and not to the other: a security traded as heavily as the "
+            r"liquid group and carrying no derivative is close to a contradiction in terms."
+            r"\normalsize")
+    lines.append(r"\end{table}")
+    _write("balance", lines)
 
 
 def build_descriptives_table() -> None:
@@ -213,6 +262,7 @@ def build_out_of_scope_table() -> None:
 
 def build_all_tables() -> None:
     build_universe_table()
+    build_balance_table()
     build_descriptives_table()
     build_tests_table()
     build_contrasts_table()

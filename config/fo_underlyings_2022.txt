@@ -1,0 +1,31 @@
+# Securities available for trading in the equity derivatives segment during 2022.
+#
+# This file decides which securities can be in the liquid and illiquid groups and which are
+# eligible for the placebo group. Without it scripts/build_universe.py builds only the two
+# derivative groups, on turnover alone, and produces no placebo group - which leaves the
+# report unable to separate a settlement effect from a last-Thursday-of-the-month effect.
+#
+# Where to get it
+# ---------------
+# NSE publishes the list of underlyings available in the F&O segment. Either of these works:
+#
+#   * The market-lot file, which names every underlying with its contract lot size:
+#     https://nsearchives.nseindia.com/content/fo/fo_mktlots.csv
+#   * "Securities available for trading" under Products > Equity Derivatives on nseindia.com.
+#
+# Format
+# ------
+# One symbol per line, upper case, matching the symbol as it appears in the tick files. A
+# line's first comma-separated field is used, so the market-lot CSV can be pasted in
+# unmodified. Blank lines and lines beginning with # are ignored.
+#
+# A caution on vintage
+# --------------------
+# The membership of the F&O segment changes. A list downloaded today describes today, and
+# using it for 2022 will include securities admitted since and exclude securities removed.
+# The effect is to misclassify a handful of names at the edges of both derivative groups and,
+# more seriously, to put a security that did have derivatives in 2022 into the placebo group.
+# If an archived 2022 vintage is available, prefer it, and record which was used - the
+# universe file stores `fo_verified` but cannot know how old the list was.
+#
+# Delete these comments or leave them; either way, add the symbols below.

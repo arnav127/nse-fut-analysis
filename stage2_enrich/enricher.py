@@ -54,6 +54,19 @@ ACTIVITY_CODES = {1: "Entry", 3: "Cancel", 4: "Modify"}
 # rupees here, once, keeps every downstream analysis in the unit its output is reported in.
 PRICE_COLUMNS = {"limit_price", "trigger_price", "trade_price", "strike_price"}
 
+# Feeds whose enriched layer is narrowed to the settlement window.
+#
+# Only orders. Ninety-four per cent of a session's order events fall outside the window and
+# no analysis reads them: every order measure is a window measure, and the book replay works
+# from the parsed layer, which keeps the whole session, so books are still built from the
+# open. Carrying them anyway cost twelve of the thirteen gigabytes this layer occupied, which
+# is what put a universe of any size out of reach.
+#
+# Trades keep the whole session. They are two per cent of the volume of orders, and the
+# realised-variance and Amihud measures compare the window against the rest of the day, so
+# the pre-window tape is genuinely read.
+WINDOW_ONLY_CATEGORIES = {"cash_orders", "fao_orders"}
+
 
 def _case(column: str, codes: dict, alias: str) -> str:
     arms = " ".join(f"WHEN {code} THEN '{label}'" for code, label in codes.items())
@@ -143,10 +156,15 @@ def enrich_session(
             f"CAST({c} AS DOUBLE) / 100.0 AS {c}" if c in PRICE_COLUMNS else c
             for c in available
         ]
-        where = ""
+        clauses = []
         if symbols:
             quoted = ", ".join(f"'{s}'" for s in symbols)
-            where = f"WHERE symbol IN ({quoted})"
+            clauses.append(f"symbol IN ({quoted})")
+        if category_name in WINDOW_ONLY_CATEGORIES:
+            clauses.append(
+                f"CAST(txn_time AS TIME) BETWEEN TIME '{SETTLEMENT_WINDOW_START}' "
+                f"AND TIME '{SETTLEMENT_WINDOW_END}'")
+        where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
 
         derived = _derived_columns(available, session)
         query = f"""
