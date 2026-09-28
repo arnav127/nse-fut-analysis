@@ -53,6 +53,38 @@ shows the same comparison in levels.
   \label{fig:daytypes}
 \end{figure}
 
+Figure~\ref{fig:dailyshare} shows the same quantity session by session across the year. The
+largest spikes fall on month ends and index rebalancing dates, and are shared by the placebo
+group; the difference between the two on monthly expiries is smaller than these spikes, and
+is identified by the regression rather than visible session by session.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{daily_share.pdf}
+  \caption{Share of each session's volume traded in the settlement window, averaged over the
+    securities with derivatives and over the placebo group, for every session of the year.
+    Vertical lines mark the monthly expiries.}
+  \label{fig:dailyshare}
+\end{figure}
+
+Institutional participation in the window rises on monthly expiries. In the
+liquid group, custodian participants are on at least one side of
+\TapeMeanLiquidNormalCustodian{}\% of window volume on ordinary sessions and of
+\TapeMeanLiquidMonthlyexpiryCustodian{}\% on monthly expiries, and on
+\TapeMeanLiquidMonthendCustodian{}\% on month ends; the participation of other clients falls
+correspondingly. Figure~\ref{fig:participants} shows the composition for each group. This is
+the pattern expected from institutions closing, rolling or benchmarking positions to the
+closing price, and it is strongest where institutional ownership is concentrated.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{participants.pdf}
+  \caption{Share of window volume in which each participant category is on at least one side
+    of the trade, by group and type of session. The shares do not sum to one hundred, since a
+    trade between two categories counts for both.}
+  \label{fig:participants}
+\end{figure}
+
 \subsection{The order book}\label{sec:book}
 
 On the \DesignSessions{} sessions of the order book sample the limit order book is
@@ -82,6 +114,28 @@ The rise in cost is modest relative to the level. Sweeping the book is several t
 expensive in the illiquid group, at \MoveBpsSmallIlliquid{} basis points, than in the liquid
 group, at \MoveBpsSmallLiquid{}, on any session. The cost of moving the price is set far more by
 the security than by the day.
+
+Figure~\ref{fig:profile} follows the order book through the window minute by minute, and
+Figure~\ref{fig:cost} compares the cost of sweeping the book across groups. The expiry and
+control sessions differ throughout the window rather than only at its end.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{window_profile.pdf}
+  \caption{Quoted spread, share of window volume, concealed share of resting size and
+    cancellations per entry by minute of the window, for expiry and control sessions of each
+    group. Order book sample.}
+  \label{fig:profile}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.85\textwidth]{marking_cost.pdf}
+  \caption{Price move from sweeping the displayed book with \ProbeSizeCr{}~crore, and the
+    displayed notional in the book, by group, on expiry and control sessions. Medians over
+    snapshots. The sweep assumes the book neither replenishes nor reacts.}
+  \label{fig:cost}
+\end{figure}
 
 The share of resting size that is not displayed is high on every session, at
 \ConcealedDepthShareControl{}\% on control sessions, and does not change on expiry. Concealed

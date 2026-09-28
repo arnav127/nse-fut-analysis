@@ -110,6 +110,32 @@ difference changes by $\IdxSpreadMoveExpiry{}$ basis points relative to other se
   \label{fig:indexpath}
 \end{figure}
 
+Figure~\ref{fig:indexexpiries} shows the move on each of the year's index expiries. The effect
+is not the product of a few sessions: the negative moves are spread across the year, on weekly
+and monthly expiries alike. Figure~\ref{fig:randomization} compares the estimate with its
+randomization distribution: the share of placebo samples, in which the expiries are replaced by
+other sessions of the same week, that produce a coefficient as large in magnitude is
+\IdxSpreadDriftExpiryRip{}.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{index_expiries.pdf}
+  \caption{Move of the Nifty 50 relative to the Nifty Next 50 from the pre-window level to the
+    settlement value, on each index expiry of the year. The dotted line is the mean over index
+    expiries and the dashed line the mean over sessions without an expiry.}
+  \label{fig:indexexpiries}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.65\textwidth]{randomization.pdf}
+  \caption{Randomization distribution of the index-expiry coefficient for the Nifty 50 less the
+    Nifty Next 50: the same regression estimated \RiDraws{} times with each expiry replaced by
+    another session of the same week. The solid line is the estimate on the actual expiries and
+    the dotted line its mirror image.}
+  \label{fig:randomization}
+\end{figure}
+
 The next morning the difference recovers by \IdxSpreadNextrevExpiry{} basis points more than
 after other sessions, which is of the same size as the fall and in the opposite direction. The
 estimate is imprecise (randomization $p$-value \IdxSpreadNextrevExpiryRip{}), because overnight
