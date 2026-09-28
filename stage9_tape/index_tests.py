@@ -250,6 +250,20 @@ def pinning_tests(panel: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def randomization_draws(panel: pd.DataFrame, outcome: str = "drift") -> pd.DataFrame:
+    """The placebo distribution of the index-expiry coefficient, kept for the figure."""
+    frame = _spread(panel)
+    x = ["expiry", "monthly", "month_end"]
+    rng = np.random.default_rng(SEED)
+    draws = []
+    for _ in range(RI_DRAWS):
+        fit = _fit(_pseudo(frame, rng), outcome, x)
+        if fit is not None:
+            draws.append(fit.get("expiry")["coef"])
+    observed = _fit(frame, outcome, x).get("expiry")["coef"]
+    return pd.DataFrame({"draw": draws, "observed": observed, "outcome": outcome})
+
+
 def run_index_tests(ri: bool = True) -> pd.DataFrame:
     panel = build_index_panel()
     out = Path(RESULTS_DIR)
@@ -258,6 +272,8 @@ def run_index_tests(ri: bool = True) -> pd.DataFrame:
     reversal.to_csv(out / "s10_index_reversal.csv", index=False)
     activity_tests(panel, ri=ri).to_csv(out / "s10_index_activity.csv", index=False)
     pinning_tests(panel).to_csv(out / "s10_index_pinning.csv", index=False)
+    if ri:
+        randomization_draws(panel).to_csv(out / "s10_index_ri_draws.csv", index=False)
     logger.info(f"[S10] index tests on {panel.session.nunique()} sessions")
     return reversal
 

@@ -427,6 +427,30 @@ def window_path(panel: pd.DataFrame) -> pd.DataFrame:
             .agg(["mean", "sem", "count"]).reset_index())
 
 
+def figure_summaries(panel: pd.DataFrame) -> None:
+    """Small tables the report's figures are drawn from.
+
+    The panel itself stays on the machine that holds the data; these carry only group means,
+    so the figures can be rebuilt wherever the document is typeset.
+    """
+    out = Path(RESULTS_DIR)
+    daily = (panel.groupby(["session", "group", "day_type"])
+             .agg(window_share=("window_share", "mean"), abs_drift=("abs_drift", "mean"))
+             .reset_index())
+    daily["date"] = daily.session.map(lambda x: session_to_date(x).isoformat())
+    daily.to_csv(out / "s9_daily.csv", index=False)
+    if "oib1" in panel.columns:
+        rows = []
+        for (group, kind), block in panel.groupby(["group", "day_type"]):
+            for k in range(1, 7):
+                values = block[f"oib{k}"]
+                rows.append({"group": group, "day_type": kind, "block": k,
+                             "oib": float(values.mean()),
+                             "abs_oib": float(values.abs().mean()),
+                             "sem": float(values.abs().sem())})
+        pd.DataFrame(rows).to_csv(out / "s9_oib_path.csv", index=False)
+
+
 def run_settlement_tests(ri: bool = True) -> pd.DataFrame:
     panel = build_panel()
     if panel.empty:
@@ -447,6 +471,7 @@ def run_settlement_tests(ri: bool = True) -> pd.DataFrame:
     pressure_table(panel).to_csv(out / "s9_pressure.csv", index=False)
     oib_dynamics(panel).to_csv(out / "s9_oib_dynamics.csv", index=False)
     index_channel(panel).to_csv(out / "s9_index_channel.csv", index=False)
+    figure_summaries(panel)
     logger.info("[S9] settlement tests written")
     return reversal
 
