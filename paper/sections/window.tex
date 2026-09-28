@@ -1,0 +1,136 @@
+\section{The settlement window across the year}\label{sec:window}
+
+\subsection{Activity}
+
+Table~\ref{tab:activity} reports how the settlement window on each type of session differs
+from the same security's window on ordinary sessions. On an ordinary session the window
+accounts for about \ActWindowshareLiquidNormal{}\% of the session's volume in the liquid
+group, and similar shares in the other two.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Activity in the settlement window by type of session. Each entry is the coefficient
+on an indicator for the session type in a regression with security fixed effects, estimated
+separately for each group, and measures the difference from ordinary sessions of the same
+security. The last column is the difference between the securities with derivatives and the
+placebo group, estimated with security and session fixed effects. Standard errors clustered
+by session in parentheses. $^{*}$, $^{**}$ and $^{***}$ denote significance at the ten, five
+and one per cent levels.}
+\label{tab:activity}
+\input{generated/tables/activity}
+\end{table}
+
+On monthly expiries, trading is drawn into the window in securities with derivatives and not
+in the others. The window's share of session volume rises by \ActWindowshareLiquidMonthlyexpiry{}
+percentage points in the liquid group and by \ActWindowshareIlliquidMonthlyexpiry{} points
+in the illiquid group, while the change in the placebo group, \ActWindowsharePlaceboMonthlyexpiry{}
+points, is not distinguishable from zero. The difference between the derivatives groups and
+the placebo group is \ActWindowshareDidMonthlyexpiry{} points, with a standard error of
+\ActWindowshareDidMonthlyexpirySe{}. Neither calendar control produces this pattern. On weekly
+index expiries the window's share of volume does not change in any group. On month ends it
+rises sharply in all three groups, by \ActWindowshareLiquidMonthend{} points in the liquid
+group and by \ActWindowsharePlaceboMonthend{} points in the placebo group, which is the
+closing-auction demand of index and portfolio rebalancing rather than anything related to
+derivatives.
+
+The settlement price also moves further from the pre-window price on monthly expiries. For
+the securities with derivatives the absolute move increases by
+\ActAbsdriftDerivativeMonthlyexpiry{} basis points from an average of
+\ActAbsdriftDerivativeNormal{}, and the final five minutes of the window end
+\ActAbsterminalDerivativeMonthlyexpiry{} basis points further from the settlement price.
+Neither increase is specific to the derivatives groups. The placebo group shows increases of
+similar size, and the differences between the two, \ActAbsdriftDidMonthlyexpiry{} and
+\ActAbsterminalDidMonthlyexpiry{} basis points, are small and insignificant. Figure~\ref{fig:daytypes}
+shows the same comparison in levels.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{day_types.pdf}
+  \caption{Share of session volume traded in the settlement window, and the absolute move
+    from the pre-window price to the settlement price, by group and type of session. Means
+    over security-sessions.}
+  \label{fig:daytypes}
+\end{figure}
+
+\subsection{Is the settlement price reversed?}
+
+Table~\ref{tab:reversal} estimates equation~\eqref{eq:reversal}. On ordinary sessions the move
+over the window is not reversed the next morning: the coefficient for the securities with
+derivatives is $\RevDerivativeDrift{}$, with a standard error of \RevDerivativeDriftSe{}. On
+monthly expiries a part of the move is reversed. The additional coefficient is
+$\RevDerivativeDriftxmonthlyexpiry{}$ (standard error \RevDerivativeDriftxmonthlyexpirySe{}),
+so that about a quarter of the window's move is undone by the next morning, and the
+randomization $p$-value is \RevDerivativeDriftxmonthlyexpiryRip{}. The corresponding
+coefficients for weekly index expiries and month ends are smaller and not significant.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Reversal of the settlement price. Regressions of the return from the settlement price
+to the volume-weighted average price of the next session's first thirty minutes on the move
+over the window and its interactions with the session types, with security and session fixed
+effects. The last column is the difference between the securities with derivatives and the
+placebo group. Standard errors clustered by session in parentheses. The randomization
+$p$-value compares the monthly-expiry coefficient with its distribution over \RiDraws{}
+samples in which the expiries are replaced by one ordinary session from each month.}
+\label{tab:reversal}
+\input{generated/tables/reversal}
+\end{table}
+
+The reversal is not, however, confined to securities with an expiring contract. In the placebo
+group the additional coefficient on monthly expiries is $\RevPlaceboDriftxmonthlyexpiry{}$
+(randomization $p$-value \RevPlaceboDriftxmonthlyexpiryRip{}), and the difference between the
+two sets of securities, $\RevDidDriftxmonthlyexpiry{}$, is close to zero (randomization
+$p$-value \RevDidDriftxmonthlyexpiryRip{}). A settlement price displaced by trading aimed at
+the settlement should be reversed where there is a settlement to influence and not elsewhere.
+The pattern found here is a property of the monthly expiry session as a whole, shared by
+securities on which nothing settles.
+
+Figure~\ref{fig:path} shows the same result as a path. For each security and session the
+prices through the window and at the next morning's open are measured relative to the average
+of all securities on that session, and oriented in the direction of the window's move. On
+ordinary sessions the move is kept overnight; on monthly expiries part of it is given back, to
+a similar extent in all three groups.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{window_path.pdf}
+  \caption{Average path of the price through the settlement window and at the next morning's
+    open, relative to the pre-window price and to the average of all securities on the same
+    session, oriented so that the window's move is positive.}
+  \label{fig:path}
+\end{figure}
+
+\subsection{Whose flow moves the settlement price?}
+
+Table~\ref{tab:flow} relates the window's move and the next morning's return to the net
+aggressor flow in the window. Across the securities with derivatives, net aggressive buying of
+one per cent of median session volume raises the settlement price by
+\FlowDriftAllDerivativeFlow{} basis points on an ordinary session, and the effect on monthly
+expiries is not different.
+
+The participant categories differ sharply. Aggressive flow of custodians and of other clients
+moves the settlement price in the direction of the flow, by \FlowDriftParticipantDerivativeFlowcustodian{}
+and \FlowDriftParticipantDerivativeFlowncnp{} basis points per per cent of volume. Aggressive
+flow of proprietary traders is associated with a move in the opposite direction,
+$\FlowDriftParticipantDerivativeFlowproprietary{}$ basis points, and is followed by a
+next-morning return of \FlowNextrevParticipantDerivativeFlowproprietary{} basis points in its
+own favour. Proprietary traders thus trade aggressively against the window's move and are
+rewarded overnight, which is the behaviour of liquidity supply by arbitrageurs rather than of
+price pressure. None of these relations changes on monthly expiries: no participant category's
+window flow has a larger price effect, or is followed by a larger reversal, on the days on
+which the settlement is struck.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Net aggressor flow in the window, the window's move and the next morning's return.
+Flow is the volume bought by aggressive buyers less the volume sold by aggressive sellers, in
+per cent of the security's median session volume, in total and by the aggressor's category.
+Regressions include security and session fixed effects and the session-type indicators and
+their interactions with flow; only the flow terms and their interaction with the monthly
+expiry are shown. Standard errors clustered by session in parentheses.}
+\label{tab:flow}
+\input{generated/tables/flow}
+\end{table}
