@@ -263,6 +263,21 @@ def oib_dynamics(panel: pd.DataFrame) -> pd.DataFrame:
         for term in ("lag", "lag_x_monthly_expiry", "lag_x_weekly_expiry"):
             rows.append({"model": "persistence", "sample": key, "term": term,
                          "nobs": fit.nobs, "sessions": fit.clusters, **fit.get(term)})
+    # Against the placebo group: every regressor also interacted with the treated group.
+    for label, treated in (("did", list(DERIVATIVE_GROUPS)), ("did_liquid", ["liquid"])):
+        frame = long[long.group.isin([*treated, "placebo"])].copy()
+        frame["treat"] = frame.group.isin(treated).astype(float)
+        cols = list(x)
+        for c in x:
+            frame[f"{c}_x_treat"] = frame[c] * frame.treat
+            cols.append(f"{c}_x_treat")
+        fit = fe_ols(frame, "y", cols, fe="symbol")
+        if fit is None:
+            continue
+        for term in ("lag", "lag_x_monthly_expiry", "lag_x_weekly_expiry"):
+            rows.append({"model": "persistence", "sample": label, "term": term,
+                         "nobs": fit.nobs, "sessions": fit.clusters,
+                         **fit.get(f"{term}_x_treat")})
     x = ["oib", *[f"oib_x_{t}" for t in EVENT_TYPES]]
     for key in GROUP_SETS:
         fit = fe_ols(_subset(panel, key), "move1530", x, fe=TWO_WAY)
