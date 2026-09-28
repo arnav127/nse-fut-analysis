@@ -43,7 +43,7 @@ import pandas as pd  # noqa: E402
 
 from config.settings import RESULTS_DIR  # noqa: E402
 from config.universe import GROUPS, group_of  # noqa: E402
-from stage9_tape.calendar import DAY_TYPES, classify, next_session  # noqa: E402
+from stage9_tape.calendar import DAY_TYPES, classify, next_session, trading_sessions  # noqa: E402
 from stage9_tape.daily_tape import PARTICIPANTS, load_tape  # noqa: E402
 from utils.logger import setup_logger  # noqa: E402
 from utils.panel import fe_ols, winsorize  # noqa: E402
@@ -74,9 +74,12 @@ def build_panel(tape: Optional[pd.DataFrame] = None) -> pd.DataFrame:
     tape = load_tape() if tape is None else tape
     if tape.empty:
         return tape
-    sessions = sorted(tape.session.unique(), key=session_to_date)
-    kinds = classify(sessions)
-    following = next_session(sessions)
+    # The calendar comes from the exchange's file list, not from the sessions that reduced
+    # successfully. A session whose file could not be read is still a trading day: the
+    # session before it has no next morning in the panel, rather than taking the one after.
+    calendar = sorted(set(trading_sessions()) | set(tape.session), key=session_to_date)
+    kinds = classify(calendar)
+    following = next_session(calendar)
 
     panel = tape.copy()
     panel["group"] = panel.symbol.map(group_of)

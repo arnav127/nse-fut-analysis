@@ -9,9 +9,16 @@ flags, a participant category (custodian, proprietary, or neither) and a routing
 (algorithmic or manual). The trade file records every execution and names the order numbers
 on both sides, so trades can be traced back to the orders that produced them.
 
-Across \SampleSessionsParsed{} sessions the files hold \SampleOrderEventsRead{} order records
-and \SampleTradesRead{} trade records in the equity series. Restricting to the securities
-studied leaves \SampleOrderEvents{} order events and \SampleTrades{} trades.
+Across the \SampleSessionsParsed{} sessions of the order book sample the files hold
+\SampleOrderEventsRead{} order records and \SampleTradesRead{} trade records in the equity
+series. Restricting to the securities studied leaves \SampleOrderEvents{} order events and
+\SampleTrades{} trades. For the full-year sample, the trade file of every session is decoded
+for the securities studied and reduced to the prices, volumes and signed flows described in
+Section~\ref{sec:method}, without retaining the individual trades.
+
+The derivatives trade files record every trade in futures and options with the contract's
+expiry date, strike and option type, and the same participant fields as the cash file. Stock
+futures and stock options are retained; index contracts are not used.
 
 \subsection{Decoding}
 
