@@ -36,6 +36,11 @@ from stage8_report.build_tables import build_all_tables  # noqa: E402
 from stage8_report.collect_insights import collect_insight_metrics  # noqa: E402
 from stage8_report.collect_metrics import collect_all  # noqa: E402
 from stage8_report.stat_tests import run_all_hypothesis_tests  # noqa: E402
+from stage8_report.tape_report import (  # noqa: E402
+    build_tape_figures,
+    build_tape_tables,
+    collect_tape_metrics,
+)
 from utils.logger import setup_logger  # noqa: E402
 from utils.provenance import Run, reset as reset_metrics  # noqa: E402
 
@@ -152,6 +157,7 @@ def generate_report(collect: bool = True) -> None:
         summary = run_all_hypothesis_tests()
         collect_all()
         collect_insight_metrics()
+        collect_tape_metrics()
 
         with Run("stage8.generate_report") as run:
             run.record("results.headline", _headline(summary), "",
@@ -169,7 +175,9 @@ def generate_report(collect: bool = True) -> None:
 
     build_macros()
     build_all_tables()
+    build_tape_tables()
     build_all_figures()
+    build_tape_figures()
 
     problems, fallbacks = audit(_cited_document(), _authored_text(),
                                 Path(PAPER_GENERATED_DIR) / "macros.tex")
