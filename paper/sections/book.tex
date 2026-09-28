@@ -21,7 +21,9 @@ displayed book with an order of \ProbeSizeCr{} crore moves the price by
 of orders cancelled within one second of entry rises from \LifePhantomRateControl{}\% to
 \LifePhantomRateExpiry{}\%. The widening of the spread and the rise in fleeting orders are
 specific to securities with derivatives: relative to the placebo group, the spread widens by an
-additional \DidMeanspreadbpsPlacebo{} basis points ($p = \DidMeanspreadbpsPlaceboP{}$). The
+additional \DidMeanspreadbpsPlacebo{} basis points ($p = \DidMeanspreadbpsPlaceboP{}$) and the
+share of orders cancelled within a second rises by an additional
+\DidPhantomorderratePlacebo{} ($p = \DidPhantomorderratePlaceboP{}$). The
 cost of sweeping the book rises by a similar amount in both sets of securities.
 
 The rise in cost is modest relative to the level. Sweeping the book is several times more
@@ -42,10 +44,10 @@ None of the three measures moves toward pressure. The variance ratio is
 \VarianceRatioExpiry{} on expiry sessions against \VarianceRatioControl{} on controls, the
 persistence of signed flow is unchanged, and the permanent share of price impact is
 \ImpactPermanentShareExpiry{} against \ImpactPermanentShareControl{}. Against the placebo group
-two of them move in the direction of congestion: the variance ratio of securities with
-derivatives falls by \DidVarianceratioPlacebo{} more ($p = \DidVarianceratioPlaceboP{}$), and
-the permanent share of price impact by \DidPermanentsharePlacebo{} more
-($p = \DidPermanentsharePlaceboP{}$). The price impact of a given flow over ten seconds rises,
+two of them move in the direction of congestion: relative to the placebo group, the change in the
+variance ratio of securities with derivatives is $\DidVarianceratioPlacebo{}$
+($p = \DidVarianceratioPlaceboP{}$), and the change in the permanent share of price impact
+$\DidPermanentsharePlacebo{}$ ($p = \DidPermanentsharePlaceboP{}$). The price impact of a given flow over ten seconds rises,
 from \ImpactShortBpsControl{} to \ImpactShortBpsExpiry{} basis points, but less of it lasts.
 Figure~\ref{fig:pressure} shows the distributions.
 

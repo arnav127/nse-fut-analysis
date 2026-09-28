@@ -64,24 +64,27 @@ randomization distribution. The same regression is estimated \RiDraws{} times wi
 monthly expiries removed and replaced by one ordinary session drawn at random from each
 month. The randomization $p$-value is the share of these draws in which the coefficient is
 at least as large in absolute value as the one observed. It does not rely on the asymptotic
-approximation that a small number of clusters makes unreliable.
+approximation that a small number of clusters makes unreliable \citep{cameron2008bootstrap,
+young2019channeling}.
 
-\subsection{Futures convergence}
+\subsection{Pricing of the expiring future}
 
 On an ordinary session a stock future trades at the cash price plus the cost of carry. On the
-expiry day it settles at the average cash price of the window, part of which is already
-determined during the window. If it is priced as such, its price at minute $m$ should be close
-to the projected settlement price
+expiry day two descriptions are possible. If the future is valued as a claim on the shares it
+delivers, it should move with the cash price until the end of the window. If it is valued as a
+claim on the settlement price, it should converge to the settlement price, which by the last
+minutes of the window is almost entirely determined by the trades already made. For each
+security and minute $m$ of the window, let $F_m$ and $s_m$ be the volume-weighted average
+prices of the future and of the cash security in that minute and $S$ the settlement price. The
+regression
 \begin{equation}
-  \hat S_{m} = \frac{V_m \bar{S}_m + (V - V_m)\, s_m}{V},
+  10^{4}\ln(F_m / S) = a + b \, 10^{4}\ln(s_m / S) + u_m
 \end{equation}
-where $\bar{S}_m$ is the average price of the window up to minute $m$, $V_m$ the volume up to
-that minute, $V$ the volume of the whole window and $s_m$ the current cash price. The basis
-$\ln(F_m/s_m)$ is regressed on $\ln(\hat S_m / s_m)$ with a fixed effect for each security
-and session, which absorbs the cost of carry. A slope of one indicates that the future is
-priced as the average to which it settles; a slope of zero that it follows the cash price.
-The regression uses the realised window volume, which is not known during the window, and is
-a description of pricing rather than a trading rule.
+distinguishes the two: $b$ is close to one if the future moves with the cash price and close to
+zero if it is priced on the settlement price. Because $S$ is fixed for each security and session,
+the two sides share no common noise, and error in the measured cash price biases $b$ toward
+zero. The regression is estimated over the final five minutes and over the minute beginning two
+minutes before the close, with standard errors clustered by security.
 
 \subsection{Attraction to option strikes}
 

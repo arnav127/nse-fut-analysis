@@ -18,7 +18,7 @@ placebo group, estimated with security and session fixed effects. Standard error
 by session in parentheses. $^{*}$, $^{**}$ and $^{***}$ denote significance at the ten, five
 and one per cent levels.}
 \label{tab:activity}
-\input{generated/tables/activity}
+\resizebox{\textwidth}{!}{\input{generated/tables/activity}}
 \end{table}
 
 On monthly expiries, trading is drawn into the window in securities with derivatives and not
@@ -27,12 +27,12 @@ percentage points in the liquid group and by \ActWindowshareIlliquidMonthlyexpir
 in the illiquid group, while the change in the placebo group, \ActWindowsharePlaceboMonthlyexpiry{}
 points, is not distinguishable from zero. The difference between the derivatives groups and
 the placebo group is \ActWindowshareDidMonthlyexpiry{} points, with a standard error of
-\ActWindowshareDidMonthlyexpirySe{}. Neither calendar control produces this pattern. On weekly
+\ActWindowshareDidMonthlyexpirySe{}. The calendar controls do not reproduce this pattern. On weekly
 index expiries the window's share of volume does not change in any group. On month ends it
 rises sharply in all three groups, by \ActWindowshareLiquidMonthend{} points in the liquid
-group and by \ActWindowsharePlaceboMonthend{} points in the placebo group, which is the
-closing-auction demand of index and portfolio rebalancing rather than anything related to
-derivatives.
+group and by \ActWindowsharePlaceboMonthend{} points in the placebo group, which reflects the
+closing demand of index and portfolio rebalancing; the additional rise in the securities with
+derivatives, \ActWindowshareDidMonthend{} points, is smaller than on monthly expiries.
 
 The settlement price also moves further from the pre-window price on monthly expiries. For
 the securities with derivatives the absolute move increases by
@@ -75,7 +75,7 @@ placebo group. Standard errors clustered by session in parentheses. The randomiz
 $p$-value compares the monthly-expiry coefficient with its distribution over \RiDraws{}
 samples in which the expiries are replaced by one ordinary session from each month.}
 \label{tab:reversal}
-\input{generated/tables/reversal}
+\resizebox{\textwidth}{!}{\input{generated/tables/reversal}}
 \end{table}
 
 The reversal is not, however, confined to securities with an expiring contract. In the placebo
@@ -132,5 +132,5 @@ Regressions include security and session fixed effects and the session-type indi
 their interactions with flow; only the flow terms and their interaction with the monthly
 expiry are shown. Standard errors clustered by session in parentheses.}
 \label{tab:flow}
-\input{generated/tables/flow}
+\resizebox{\textwidth}{!}{\input{generated/tables/flow}}
 \end{table}
