@@ -180,7 +180,9 @@ def build_balance_table() -> None:
         # liquid group and carrying no derivative barely exists - close to the reason the
         # liquid group has derivatives - so the placebo can only stand in for the illiquid
         # group, and the report should not imply otherwise.
-        parts = ", ".join(f"{share:.0%} of the {tex_escape(name)} group"
+        # The percent sign is escaped: a bare % starts a LaTeX comment and silently drops the
+        # rest of the sentence from the document.
+        parts = ", ".join(f"{share * 100:.0f}\\% of the {tex_escape(name)} group"
                           for name, share in overlap.items())
         lines.append(
             r"\vspace{0.4em}\par\noindent\footnotesize The placebo group's turnover range "
@@ -218,7 +220,7 @@ def build_tests_table() -> None:
     summary = pd.read_csv(path)
 
     lines = [
-        r"\begin{longtable}{p{0.8cm} p{6.2cm} r r r r}",
+        r"\begin{longtable}{p{1.1cm} p{6.0cm} r r r r}",
         r"\caption{Paired tests: expiry sessions against matched controls, one observation "
         r"per security and month. $n$ is the number of matched pairs.}\label{tab:tests}\\",
         r"\toprule",
