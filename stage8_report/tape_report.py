@@ -62,7 +62,11 @@ def _record_fit(run: Run, stem: str, row, unit: str, note: str) -> None:
 
 
 def collect_tape_metrics() -> None:
+    from stage9_tape.settlement_tests import RI_DRAWS
+
     with Run("stage9.settlement_tests") as run:
+        run.record("ri.draws", RI_DRAWS, "draws",
+                   "pseudo-expiry samples in each randomization distribution")
         panel_path = Path(RESULTS_DIR) / "s9_panel.parquet"
         if panel_path.exists():
             panel = pd.read_parquet(panel_path, columns=["symbol", "session", "day_type",

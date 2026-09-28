@@ -1,39 +1,56 @@
-\section{The settlement mechanism}\label{sec:background}
+\section{Institutional setting}\label{sec:background}
 
-Equity derivatives on the National Stock Exchange expire on the last Thursday of each
-calendar month. For stock futures the settlement price is the volume-weighted average price
-of the underlying share in the cash market between \DesignWindowStart{} and
-\DesignWindowEnd{} on that day, a window of \DesignWindowMinutes{} minutes ending at the
-close.
+\subsection{The settlement price}
 
-Three properties of this arrangement shape what follows.
+Equity derivatives on the National Stock Exchange of India expired, during the sample year,
+on the last Thursday of each month, or on the preceding trading day when that Thursday was a
+holiday. The final settlement price of a stock future and the exercise settlement price of a
+stock option are both the closing price of the underlying security in the cash market on the
+expiry day. The closing price is not the last trade: it is the volume-weighted average price
+of all trades between \DesignWindowStart{} and \DesignWindowEnd{}, the final
+\DesignWindowMinutes{} minutes of continuous trading.
 
-The window is known in advance, so anyone who wants to act in it can plan rather than react.
-The window is short, so a single participant's volume can be a noticeable share of the total
-traded in it, particularly in a security that does not trade much. And because the
-settlement is an average rather than a single print, moving it requires trading across the
-window rather than placing one order at the close; if there is a footprint, it should be
-visible in the shape of activity across the half hour, not only at its end.
+Stock derivatives have been settled by delivery since the exchange completed the transition
+from cash settlement in 2019. A long futures position held to expiry becomes an obligation to
+take delivery of the shares, and an in-the-money stock option becomes a delivery at the
+strike. The settlement price therefore determines the final variation margin on every
+expiring futures position, and it determines which option series are exercised. For an option
+writer whose position sits near a strike, a small movement of the settlement price decides
+whether shares must be delivered.
 
-\subsection{Order types that matter here}
+Index derivatives are settled in cash against the closing value of the index, and the
+closing value is computed from the closing prices of its constituents. The settlement window
+therefore also fixes the payoff of the index options that expire on the same day. In 2022 the
+two main index option contracts also expired weekly, on every Thursday. A Thursday that is
+not the monthly expiry thus carries the index settlement but not the stock derivatives
+settlement. This distinction is used in Section~\ref{sec:design} to separate the two.
 
-The cash market runs a continuous limit order book with price-time priority. Two order-level
-features are used directly in this report.
+\subsection{Why the window may be distorted}
 
-A \emph{disclosed quantity} instruction lets a participant display less than the full size of
-an order. Only the displayed slice rests in the visible book; as it fills, the concealed
-remainder replenishes it, and each replenishment goes to the back of the queue at that price.
-The trade-off is deliberate---the participant gives up queue priority in exchange for not
-revealing size---and both sides of it are recorded in the order file.
+Three features of the arrangement are relevant. The window is known in advance, so a
+participant who wishes to trade in it can plan rather than react. It is short, so the volume
+of a single participant can be a noticeable share of the total, particularly in a security
+that trades little. And because the settlement price is an average rather than a single
+print, moving it requires trading throughout the window rather than a single order at the
+close. A participant who moves the average does so at a cost, since the price impact of the
+trades is incurred on the full quantity while the benefit accrues on the expiring position.
 
-An \emph{immediate-or-cancel} instruction executes against whatever is available at
-submission and cancels the remainder. It is the usual way to take liquidity without leaving
-a resting order behind, and its rate of use is a reasonable proxy for how urgent the flow is.
+Two responses to the settlement date are not distortions at all. Holders of expiring
+positions who do not wish to take or make delivery must close or roll them, and index funds
+and arbitrageurs who hold cash positions against futures unwind them at the settlement price
+by trading in the window, because that is the price at which their hedge is closed. Both
+raise volume in the window, and both are expected to be concentrated in securities with
+expiring contracts. The analysis therefore distinguishes between the window being more
+active, which these activities predict, and the settlement price being displaced from the
+price that prevails before and after, which they do not.
 
-\subsection{Why concealment is relevant}
+\subsection{Order-level features used}
 
-A participant accumulating or distributing stock into a benchmark window has an obvious
-reason to hide size. A displayed order of unusual size announces both the direction and the
-scale of what is being attempted, which invites others to trade ahead of it. Concealment is
-also entirely routine for large institutional orders on any day, so its level says little on
-its own; the comparison against the control session is what carries the information.
+The cash market is a continuous limit order book with price-time priority. A disclosed
+quantity instruction allows a participant to display only part of an order; as the displayed
+part is executed it is replenished from the undisclosed remainder, and each replenishment
+loses time priority. An immediate-or-cancel instruction executes against the available
+depth on arrival and cancels the remainder. Both are recorded in the order file, together
+with the category of the submitting participant: custodian, which covers institutional
+investors whose trades are cleared through a custodian, proprietary, and other clients
+(NCNP).
