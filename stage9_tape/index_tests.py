@@ -203,7 +203,7 @@ def reversal_tests(panel: pd.DataFrame, ri: bool = True) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
-def activity_tests(panel: pd.DataFrame) -> pd.DataFrame:
+def activity_tests(panel: pd.DataFrame, ri: bool = True) -> pd.DataFrame:
     """Size of the window's move and of the final minutes on expiries, index by index."""
     frames = {name: g.copy() for name, g in panel.groupby("index")}
     spread = _spread(panel)
@@ -212,14 +212,28 @@ def activity_tests(panel: pd.DataFrame) -> pd.DataFrame:
     for name, frame in frames.items():
         frame["abs_move"] = frame.move.abs()
         frame["abs_drift"] = frame.drift.abs()
-        for y in ("abs_move", "abs_drift", "move", "drift"):
-            fit = _fit(frame, y, ["expiry", "monthly", "month_end"])
+        for y in ("abs_move", "abs_drift", "move", "drift", "next_rev"):
+            x = ["expiry", "monthly", "month_end"]
+            fit = _fit(frame, y, x)
             if fit is None:
                 continue
             base = frame.loc[(frame.expiry == 0) & (frame.month_end == 0), y].mean()
             for term in ("expiry", "monthly"):
-                rows.append({"index": name, "outcome": y, "term": term, "normal_mean": base,
-                             "nobs": fit.nobs, **fit.get(term)})
+                row = {"index": name, "outcome": y, "term": term, "normal_mean": base,
+                       "nobs": fit.nobs, **fit.get(term)}
+                if ri and term == "expiry":
+                    rng = np.random.default_rng(SEED)
+                    draws = []
+                    for _ in range(RI_DRAWS):
+                        pseudo = _pseudo(frame, rng)
+                        if y.startswith("abs_"):
+                            pseudo[y] = pseudo[y.replace("abs_", "")].abs()
+                        pf = _fit(pseudo, y, x)
+                        if pf is not None:
+                            draws.append(pf.get(term)["coef"])
+                    draws = np.asarray(draws)
+                    row["ri_p"] = float(np.mean(np.abs(draws) >= abs(row["coef"])))
+                rows.append(row)
     return pd.DataFrame(rows)
 
 
@@ -242,7 +256,7 @@ def run_index_tests(ri: bool = True) -> pd.DataFrame:
     panel.to_csv(out / "s10_index_panel.csv", index=False)
     reversal = reversal_tests(panel, ri=ri)
     reversal.to_csv(out / "s10_index_reversal.csv", index=False)
-    activity_tests(panel).to_csv(out / "s10_index_activity.csv", index=False)
+    activity_tests(panel, ri=ri).to_csv(out / "s10_index_activity.csv", index=False)
     pinning_tests(panel).to_csv(out / "s10_index_pinning.csv", index=False)
     logger.info(f"[S10] index tests on {panel.session.nunique()} sessions")
     return reversal
