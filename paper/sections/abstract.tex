@@ -1,29 +1,21 @@
 \begin{abstract}
-\noindent
-Stock futures on the National Stock Exchange of India settle at the volume-weighted average
-price of the underlying cash market over the last half hour of the expiry session. Anyone
-holding a large expiring position therefore has a financial interest in a known, narrow
-window of cash trading. This report asks what the order book does in that window.
+\noindent Stock derivatives on the National Stock Exchange of India settle at the
+volume-weighted average price of the last thirty minutes of the expiry session. We ask whether
+this window is used to move the settlement price. Using order-level data for \TapeSessions{}
+sessions of 2022 and \TapeSecurities{} securities, we compare the window on monthly expiries
+with the window on every other session, using weekly index expiries and month ends as
+calendar controls and securities without derivatives as a placebo group. On monthly expiries
+trading shifts into the window, only in securities with derivatives. The settlement price
+moves further over the window and is partly reversed the next morning, but the reversal is
+equally large in the placebo group, and no participant category's flow has a larger or less
+permanent price effect on expiry days. The expiring stock future, which is settled by
+delivery, is priced on the cash price until the end of the window rather than on the
+settlement price, and the settlement price shows no attraction to option strikes. Expiry makes
+the window busier and more expensive to trade in, but we find no evidence that the
+settlement price is displaced by trading aimed at it.
 
-We use order-by-order data, which records every entry, modification and cancellation
-separately, and reconstruct the limit order book second by second. Each of
-\DesignExpirySessions{} expiry Thursdays in 2022 is compared against a matched control
-session in the same month, across \DesignSymbols{} securities in three groups: the most and
-least traded derivatives underlyings, which face the same settlement incentive at very
-different costs, and a matched set of securities with no expiring derivative at all. The
-third group is what separates a settlement effect from a last-Thursday-of-the-month effect.
-Membership is derived from the tape, ranked on control sessions only so that grouping does
-not depend on the behaviour under study. The sample is \SampleOrderEventsMillions{} million
-order events and \SampleTradesMillions{} million trades, from which \SampleSnapshots{} book
-reconstructions are built.
-
-We compute the settlement price itself, which lets us ask how far it ends up from the
-opening mid and from the close, and we separate two explanations for what changes in the
-window: prices being pushed in one direction, and more participants trading in both. Of
-\TestSpecified{} hypotheses, \TestSupported{} are supported and \TestContradicted{} are
-rejected with the effect running the other way.
-
-\ResultsHeadline{}
+\vspace{0.6em}
+\noindent \textbf{Keywords:} expiration-day effects; settlement price; closing price
+manipulation; physical settlement; limit order book. \\
+\noindent \textbf{JEL classification:} G13, G14, G18.
 \end{abstract}
-
-\vspace{0.5em}
