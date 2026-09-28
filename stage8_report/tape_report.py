@@ -110,13 +110,18 @@ def collect_tape_metrics() -> None:
 
         slopes = _csv("s7_convergence_slope.csv")
         for row in slopes.itertuples(index=False):
-            late = isinstance(getattr(row, "subset", np.nan), str)
-            stem = _key("conv", "expiry" if row.is_expiry else "control",
-                        "late" if late else "all")
+            side = "expiry" if row.is_expiry else "control"
+            stem = _key("conv", side, "last5" if row.subset.startswith("final") else "m28")
             _record_fit(run, stem, pd.Series(row._asdict()), "ratio",
-                        "slope of the futures-cash basis on the gap between the projected "
-                        "settlement price and the cash price")
+                        "slope of the futures price on the cash price, both relative to the "
+                        "settlement price")
             run.record(f"{stem}.n", int(row.nobs), "observations", "security-minutes")
+            run.record(f"{stem}.fixed", float(100 * row.weight_fixed), "per cent",
+                       "median share of window volume already traded")
+            run.record(f"{stem}.gapsettle", float(row.gap_settle), "basis points",
+                       "median distance of the futures price from the settlement price")
+            run.record(f"{stem}.gapcash", float(row.gap_cash), "basis points",
+                       "median distance of the futures price from the cash price")
         futures = _csv("s7_futures_summary.csv")
         if not futures.empty:
             run.record("conv.sessions", int(futures.session.nunique()), "sessions",
@@ -251,15 +256,19 @@ def table_flow(metrics: Dict) -> None:
 def table_derivatives(metrics: Dict) -> None:
     lines = [r"\begin{tabular}{lcc}", r"\toprule",
              r" & Expiry sessions & Control sessions \\", r"\midrule",
-             r"\multicolumn{3}{l}{\textit{Futures basis on the projected-settlement gap}} \\"]
-    lines += _grid(metrics, [(r"\quad All minutes of the window", "all"),
-                             (r"\quad Final ten minutes", "late")],
+             r"\multicolumn{3}{l}{\textit{Slope of the futures price on the cash price}} \\"]
+    lines += _grid(metrics, [(r"\quad Final five minutes", "last5"),
+                             (r"\quad Minute beginning 15:28", "m28")],
                    ["expiry", "control"], lambda r, c: _key("conv", c, r))
-    gap = [f"{metrics[k]['value']:.2f}" if k in metrics else ""
-           for k in (_key("conv", "closegap", "expiry"), _key("conv", "closegap", "control"))]
-    lines += [r"\addlinespace[3pt]",
-              r"Last futures trade vs settlement price (median bps) & " + " & ".join(gap)
-              + r" \\"]
+    lines.append(r"\addlinespace[3pt]")
+    for label, suffix in (("Window volume already traded at 15:28 (\\%)", "fixed"),
+                          ("Futures vs settlement price at 15:28 (median bps)", "gapsettle"),
+                          ("Futures vs cash price at 15:28 (median bps)", "gapcash")):
+        cells = []
+        for side in ("expiry", "control"):
+            k = _key("conv", side, "m28") + "." + suffix
+            cells.append(f"{metrics[k]['value']:.1f}" if k in metrics else "")
+        lines.append(label + " & " + " & ".join(cells) + r" \\")
     lines += [r"\bottomrule", r"\end{tabular}"]
     _write("convergence", lines)
 
@@ -364,7 +373,7 @@ def figure_convergence() -> None:
     if frame.empty:
         return
     frame["abs_spot"] = frame.basis_spot.abs()
-    frame["abs_proj"] = (frame.basis_spot - frame.gap_projection).abs()
+    frame["abs_proj"] = frame.basis_settle.abs()
     fig, axes = plt.subplots(1, 2, figsize=(7.2, 2.7), sharey=True)
     for ax, flag, title in ((axes[0], True, "Expiry sessions"),
                             (axes[1], False, "Control sessions")):
@@ -372,7 +381,7 @@ def figure_convergence() -> None:
         med = block.median()
         ax.plot(med.index, med.abs_spot, color="#9a9a9a", label="against the cash price")
         ax.plot(med.index, med.abs_proj, color="#1f4e79",
-                label="against the projected settlement price")
+                label="against the settlement price")
         ax.set_title(title, fontsize=9)
         ax.set_xlabel("minutes from 15:00")
     axes[0].set_ylabel("median |futures - benchmark| (bps)")
