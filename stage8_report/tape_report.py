@@ -88,6 +88,11 @@ def collect_tape_metrics() -> None:
                        "share of session volume traded in the window")
             run.record(f"{stem}.absdrift", float(row.abs_drift), "basis points",
                        "absolute move from the pre-window VWAP to the settlement price")
+            for part in PARTS:
+                value = getattr(row, f"share_{part}", np.nan)
+                if pd.notna(value):
+                    run.record(f"{stem}.{part}", float(value), "per cent",
+                               f"share of window volume with a {part} participant on a side")
 
         event_rows = [(prefix, row)
                       for file_name, prefix in (("s9_activity.csv", "act"),
@@ -577,9 +582,213 @@ def figure_index_path() -> None:
     _save(fig, "index_path.pdf")
 
 
+# --- figures added for the four hypotheses -------------------------------------------------
+
+GROUP_COLOURS = {"liquid": "#1f4e79", "illiquid": "#5b9bd5", "placebo": "#9a9a9a",
+                 "derivative": "#1f4e79"}
+
+
+def figure_summary() -> None:
+    """Each hypothesis's headline estimate, in units of its own standard error."""
+    import matplotlib.pyplot as plt
+
+    metrics = load_metrics()
+    items = [
+        ("H1", "Window share of volume, F&O less placebo (monthly)",
+         "act.windowshare.did.monthlyexpiry"),
+        ("H2", "|Order imbalance|, F&O less placebo (monthly)", "press.absoib.did.monthlyexpiry"),
+        ("H2", "Persistence of imbalance, liquid less placebo (monthly)",
+         "oibdyn.persistence.didliquid.lagxmonthlyexpiry"),
+        ("H3", "Next-morning reversal, F&O less placebo (monthly)",
+         "rev.did.driftxmonthlyexpiry"),
+        ("H3", "Index move, Nifty 50 less Next 50 (index expiry)", "idx.spread.drift.expiry"),
+        ("H3", "15:00 to 15:30, Nifty 50 less Next 50 (index expiry)", "idx.spread.move.expiry"),
+        ("H3", "15:00 to 15:30, liquid less placebo (index expiry)",
+         "stockidx.liquid.move1530.indexexpiry"),
+        ("H4", "Distance of stock settlement to a strike (expiry)", "pin.distance.expiry"),
+        ("H4", "Distance of index settlement to a strike (expiry)", "idxpin.nifty.distsettle"),
+    ]
+    rows = []
+    for tag, label, key in items:
+        if key in metrics and f"{key}.se" in metrics:
+            b, se = metrics[key]["value"], metrics[f"{key}.se"]["value"]
+            if se and se > 0:
+                rows.append((tag, label, b / se))
+    if not rows:
+        return
+    fig, ax = plt.subplots(figsize=(7.0, 0.36 * len(rows) + 1.0))
+    y = np.arange(len(rows))[::-1]
+    t = np.array([r[2] for r in rows])
+    colours = ["#1f4e79" if abs(v) >= 1.96 else "#9a9a9a" for v in t]
+    ax.barh(y, t, color=colours, height=0.6)
+    ax.axvspan(-1.96, 1.96, color="#eeeeee", zorder=0)
+    ax.axvline(0, color="#333333", linewidth=0.7)
+    ax.set_yticks(y)
+    ax.set_yticklabels([f"{r[0]}  {r[1]}" for r in rows], fontsize=7.5)
+    ax.set_xlabel("estimate divided by its standard error (shaded: |t| < 1.96)")
+    fig.tight_layout()
+    _save(fig, "summary.pdf")
+
+
+def figure_daily_share() -> None:
+    import matplotlib.pyplot as plt
+
+    frame = _csv("s9_daily.csv")
+    if frame.empty:
+        return
+    frame["date"] = pd.to_datetime(frame.date)
+    frame["set"] = np.where(frame.group == "placebo", "placebo", "derivative")
+    daily = frame.groupby(["date", "set"]).window_share.mean().unstack()
+    kinds = frame.drop_duplicates("date").set_index("date").day_type
+    fig, ax = plt.subplots(figsize=(7.4, 2.8))
+    for date in kinds[kinds == "monthly_expiry"].index:
+        ax.axvline(date, color="#c55a11", linewidth=0.8, alpha=0.7)
+    ax.plot(daily.index, daily.get("placebo"), color="#9a9a9a", linewidth=0.9,
+            label="Placebo")
+    ax.plot(daily.index, daily.get("derivative"), color="#1f4e79", linewidth=0.9,
+            label="Securities with derivatives")
+    ax.plot([], [], color="#c55a11", label="Monthly expiry")
+    ax.set_ylabel("window share of volume (%)")
+    ax.legend(frameon=False, fontsize=7, ncol=3, loc="upper left")
+    fig.autofmt_xdate()
+    fig.tight_layout()
+    _save(fig, "daily_share.pdf")
+
+
+def figure_participants() -> None:
+    import matplotlib.pyplot as plt
+
+    frame = _csv("s9_day_type_profile.csv")
+    if frame.empty or "share_custodian" not in frame.columns:
+        return
+    kinds = ["normal", "weekly_expiry", "month_end", "monthly_expiry"]
+    groups = ["liquid", "illiquid", "placebo"]
+    parts = [("share_custodian", "Custodian", "#1f4e79"),
+             ("share_proprietary", "Proprietary", "#c55a11"),
+             ("share_ncnp", "Other clients", "#bfbfbf")]
+    fig, axes = plt.subplots(1, 3, figsize=(7.6, 2.8), sharey=True)
+    for ax, group in zip(axes, groups):
+        block = frame[frame.group == group].set_index("day_type").reindex(kinds)
+        bottom = np.zeros(len(kinds))
+        for column, label, colour in parts:
+            values = block[column].to_numpy(dtype=float)
+            ax.bar(range(len(kinds)), values, bottom=bottom, color=colour, label=label,
+                   width=0.7)
+            bottom += np.nan_to_num(values)
+        ax.set_xticks(range(len(kinds)))
+        ax.set_xticklabels(["Other", "Weekly\nexpiry", "Month\nend", "Monthly\nexpiry"],
+                           fontsize=7)
+        ax.set_title({"liquid": "Liquid F&O", "illiquid": "Illiquid F&O",
+                      "placebo": "Placebo"}[group], fontsize=9)
+    axes[0].set_ylabel("share of window volume (%)")
+    axes[0].legend(frameon=False, fontsize=6.5, loc="lower left")
+    fig.tight_layout()
+    _save(fig, "participants.pdf")
+
+
+def figure_oib() -> None:
+    import matplotlib.pyplot as plt
+
+    frame = _csv("s9_oib_path.csv")
+    metrics = load_metrics()
+    if frame.empty:
+        return
+    fig, axes = plt.subplots(1, 2, figsize=(7.6, 2.8))
+    ax = axes[0]
+    for group, style in (("liquid", "-"), ("placebo", "--")):
+        for kind, colour in (("normal", "#9a9a9a"), ("monthly_expiry", "#1f4e79")):
+            block = frame[(frame.group == group) & (frame.day_type == kind)].sort_values("block")
+            if block.empty:
+                continue
+            ax.plot(block.block, block.abs_oib, style, marker="o", markersize=3, color=colour,
+                    label=f"{'Liquid' if group == 'liquid' else 'Placebo'}, "
+                          f"{'monthly expiry' if kind != 'normal' else 'other sessions'}")
+    ax.set_xticks(range(1, 7))
+    ax.set_xticklabels(["15:00", "15:05", "15:10", "15:15", "15:20", "15:25"], fontsize=7)
+    ax.set_ylabel("mean |order imbalance|")
+    ax.set_title("Imbalance by five-minute block", fontsize=9)
+    ax.legend(frameon=False, fontsize=6)
+
+    ax = axes[1]
+    groups = ["liquid", "illiquid", "placebo"]
+    width = 0.38
+    for i, (label, colour, extra) in enumerate((("Other sessions", "#9a9a9a", False),
+                                                ("Monthly expiry", "#1f4e79", True))):
+        heights, errors = [], []
+        for g in groups:
+            base = metrics.get(f"oibdyn.persistence.{g}.lag", {}).get("value", np.nan)
+            add = metrics.get(f"oibdyn.persistence.{g}.lagxmonthlyexpiry", {})
+            heights.append(base + (add.get("value", np.nan) if extra else 0.0))
+            key = (f"oibdyn.persistence.{g}.lagxmonthlyexpiry.se" if extra
+                   else f"oibdyn.persistence.{g}.lag.se")
+            errors.append(1.96 * metrics.get(key, {}).get("value", 0.0))
+        ax.bar(np.arange(3) + (i - 0.5) * width, heights, width, yerr=errors, capsize=2,
+               color=colour, label=label)
+    ax.set_xticks(range(3))
+    ax.set_xticklabels(["Liquid F&O", "Illiquid F&O", "Placebo"], fontsize=7.5)
+    ax.set_ylabel("persistence coefficient")
+    ax.set_title("Persistence from one block to the next", fontsize=9)
+    ax.legend(frameon=False, fontsize=6.5)
+    fig.tight_layout()
+    _save(fig, "oib.pdf")
+
+
+def figure_index_expiries() -> None:
+    import matplotlib.pyplot as plt
+
+    frame = _csv("s10_index_panel.csv")
+    if frame.empty:
+        return
+    frame["session"] = frame.session.astype(str).str.zfill(8)
+    wide = frame.pivot(index="session", columns="index", values="drift")
+    days = frame.drop_duplicates("session").set_index("session")
+    spread = (wide["nifty"] - wide["next50"]).rename("d").to_frame().join(days[["day_type", "date"]])
+    spread["date"] = pd.to_datetime(spread.date)
+    spread = spread.sort_values("date")
+    expiries = spread[spread.day_type.isin(["monthly_expiry", "weekly_expiry"])]
+    other = spread[~spread.day_type.isin(["monthly_expiry", "weekly_expiry", "month_end"])]
+    fig, ax = plt.subplots(figsize=(7.4, 2.8))
+    colours = np.where(expiries.day_type == "monthly_expiry", "#c55a11", "#1f4e79")
+    ax.bar(range(len(expiries)), expiries.d, color=colours, width=0.75)
+    ax.axhline(0, color="#333333", linewidth=0.6)
+    ax.axhline(other.d.mean(), color="#9a9a9a", linestyle="--", linewidth=0.9,
+               label="Mean, sessions without expiry")
+    ax.axhline(expiries.d.mean(), color="#1f4e79", linestyle=":", linewidth=1.2,
+               label="Mean, index expiries")
+    ax.bar([], [], color="#1f4e79", label="Weekly expiry")
+    ax.bar([], [], color="#c55a11", label="Monthly expiry")
+    step = max(1, len(expiries) // 12)
+    ax.set_xticks(range(0, len(expiries), step))
+    ax.set_xticklabels([d.strftime("%d %b") for d in expiries.date.iloc[::step]], fontsize=6.5,
+                       rotation=45)
+    ax.set_ylabel("Nifty 50 less Next 50 (bps)")
+    ax.legend(frameon=False, fontsize=6.5, ncol=2)
+    fig.tight_layout()
+    _save(fig, "index_expiries.pdf")
+
+
+def figure_randomization() -> None:
+    import matplotlib.pyplot as plt
+
+    frame = _csv("s10_index_ri_draws.csv")
+    if frame.empty:
+        return
+    observed = float(frame.observed.iloc[0])
+    fig, ax = plt.subplots(figsize=(4.8, 2.7))
+    ax.hist(frame["draw"], bins=40, color="#bfbfbf", edgecolor="white")
+    ax.axvline(observed, color="#1f4e79", linewidth=1.8, label="Index expiries")
+    ax.axvline(-observed, color="#1f4e79", linewidth=0.8, linestyle=":")
+    ax.set_xlabel("coefficient (bps), Nifty 50 less Next 50")
+    ax.set_ylabel("placebo samples")
+    ax.legend(frameon=False, fontsize=7)
+    fig.tight_layout()
+    _save(fig, "randomization.pdf")
+
+
 def build_tape_figures() -> None:
     for builder in (figure_window_path, figure_day_types, figure_convergence, figure_pinning,
-                    figure_index_path):
+                    figure_index_path, figure_summary, figure_daily_share, figure_participants,
+                    figure_oib, figure_index_expiries, figure_randomization):
         try:
             builder()
         except Exception as exc:
