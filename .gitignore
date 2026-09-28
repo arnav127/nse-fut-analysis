@@ -56,3 +56,6 @@ logs/
 
 # Built by scripts/paper_bundle.py; regenerate it rather than committing it.
 paper_bundle*.tar.gz
+
+# Per-security turnover statistics derived from the licensed NSE tape; not committed.
+config/universe_2022_candidates.csv
