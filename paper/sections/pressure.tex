@@ -22,7 +22,18 @@ five-minute block carries over to the next with a coefficient of
 the window continues through it. The rise is visible in all three groups but is largest in
 the liquid group; relative to the placebo group it is \OibdynPersistenceDidliquidLagxmonthlyexpiry{}
 (standard error \OibdynPersistenceDidliquidLagxmonthlyexpirySe{}), which is not significant.
-On weekly index expiries persistence does not change. Persistent imbalance is what the
+On weekly index expiries persistence does not change. Figure~\ref{fig:oib} shows the absolute
+imbalance block by block and the persistence coefficients.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{oib.pdf}
+  \caption{Left: mean absolute order imbalance in each five-minute block of the window, for the
+    liquid and placebo groups on monthly expiries and other sessions. Right: persistence of the
+    imbalance from one block to the next, with 95\% intervals.}
+  \label{fig:oib}
+\end{figure}
+ Persistent imbalance is what the
 execution of large orders through the window produces, whether they are placed to close
 expiring positions or to move the price. The move from the window's first minute to its last
 is larger on monthly expiries, by \PressAbsmoveOneFiveThreeZeroLiquidMonthlyexpiry{} basis

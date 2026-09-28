@@ -91,8 +91,11 @@ def collect_tape_metrics() -> None:
             for part in PARTS:
                 value = getattr(row, f"share_{part}", np.nan)
                 if pd.notna(value):
-                    run.record(f"{stem}.{part}", float(value), "per cent",
-                               f"share of window volume with a {part} participant on a side")
+                    # The panel divides by twice the window volume; doubled here, this is the
+                    # share of window volume with the category on at least one side.
+                    run.record(f"{stem}.{part}", 2.0 * float(value), "per cent",
+                               f"share of window volume with a {part} participant on at least "
+                               f"one side")
 
         event_rows = [(prefix, row)
                       for file_name, prefix in (("s9_activity.csv", "act"),
@@ -656,32 +659,35 @@ def figure_daily_share() -> None:
 
 
 def figure_participants() -> None:
+    """Share of window volume in which each category is on at least one side of the trade.
+
+    Not a partition: a trade between a custodian and a proprietary trader counts for both.
+    """
     import matplotlib.pyplot as plt
 
     frame = _csv("s9_day_type_profile.csv")
     if frame.empty or "share_custodian" not in frame.columns:
         return
-    kinds = ["normal", "weekly_expiry", "month_end", "monthly_expiry"]
+    kinds = [("normal", "Other sessions", "#bfbfbf"), ("weekly_expiry", "Weekly expiry", "#5b9bd5"),
+             ("month_end", "Month end", "#548235"), ("monthly_expiry", "Monthly expiry", "#1f4e79")]
     groups = ["liquid", "illiquid", "placebo"]
-    parts = [("share_custodian", "Custodian", "#1f4e79"),
-             ("share_proprietary", "Proprietary", "#c55a11"),
-             ("share_ncnp", "Other clients", "#bfbfbf")]
+    parts = [("share_custodian", "Custodian"), ("share_proprietary", "Proprietary"),
+             ("share_ncnp", "Other clients")]
     fig, axes = plt.subplots(1, 3, figsize=(7.6, 2.8), sharey=True)
+    width = 0.2
     for ax, group in zip(axes, groups):
-        block = frame[frame.group == group].set_index("day_type").reindex(kinds)
-        bottom = np.zeros(len(kinds))
-        for column, label, colour in parts:
-            values = block[column].to_numpy(dtype=float)
-            ax.bar(range(len(kinds)), values, bottom=bottom, color=colour, label=label,
-                   width=0.7)
-            bottom += np.nan_to_num(values)
-        ax.set_xticks(range(len(kinds)))
-        ax.set_xticklabels(["Other", "Weekly\nexpiry", "Month\nend", "Monthly\nexpiry"],
-                           fontsize=7)
+        block = frame[frame.group == group].set_index("day_type")
+        for i, (kind, label, colour) in enumerate(kinds):
+            if kind not in block.index:
+                continue
+            heights = [2.0 * float(block.loc[kind, column]) for column, _ in parts]
+            ax.bar(np.arange(3) + (i - 1.5) * width, heights, width, color=colour, label=label)
+        ax.set_xticks(range(3))
+        ax.set_xticklabels([p[1] for p in parts], fontsize=7)
         ax.set_title({"liquid": "Liquid F&O", "illiquid": "Illiquid F&O",
                       "placebo": "Placebo"}[group], fontsize=9)
-    axes[0].set_ylabel("share of window volume (%)")
-    axes[0].legend(frameon=False, fontsize=6.5, loc="lower left")
+    axes[0].set_ylabel("% of window volume, on at least one side")
+    axes[0].legend(frameon=False, fontsize=6)
     fig.tight_layout()
     _save(fig, "participants.pdf")
 
@@ -755,14 +761,17 @@ def figure_index_expiries() -> None:
                label="Mean, sessions without expiry")
     ax.axhline(expiries.d.mean(), color="#1f4e79", linestyle=":", linewidth=1.2,
                label="Mean, index expiries")
-    ax.bar([], [], color="#1f4e79", label="Weekly expiry")
-    ax.bar([], [], color="#c55a11", label="Monthly expiry")
+    from matplotlib.patches import Patch
+
+    handles, _ = ax.get_legend_handles_labels()
+    handles += [Patch(color="#1f4e79", label="Weekly expiry"),
+                Patch(color="#c55a11", label="Monthly expiry")]
     step = max(1, len(expiries) // 12)
     ax.set_xticks(range(0, len(expiries), step))
     ax.set_xticklabels([d.strftime("%d %b") for d in expiries.date.iloc[::step]], fontsize=6.5,
                        rotation=45)
     ax.set_ylabel("Nifty 50 less Next 50 (bps)")
-    ax.legend(frameon=False, fontsize=6.5, ncol=2)
+    ax.legend(handles=handles, frameon=False, fontsize=6.5, ncol=2)
     fig.tight_layout()
     _save(fig, "index_expiries.pdf")
 
