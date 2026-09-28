@@ -43,7 +43,7 @@ logger = setup_logger("Pipeline", "pipeline.log")
 
 # Stages 1, 2 and 4 run once per session; the rest run once over everything.
 PER_SESSION_STAGES = ["parse", "enrich", "clob"]
-AGGREGATE_STAGES = ["analyze", "clob-analyze", "insights", "bloomberg", "report",
+AGGREGATE_STAGES = ["analyze", "clob-analyze", "tape", "insights", "bloomberg", "report",
                     # `paper` typesets from the metrics store without recomputing
                     # anything, so it runs on a machine that has LaTeX but no data.
                     "paper"]
@@ -52,7 +52,7 @@ ALL_STAGES = PER_SESSION_STAGES + AGGREGATE_STAGES
 # The universe builder ranks securities on turnover, trade counts and price level, all of
 # which come from the trade tape. Scanning the whole cross-section for orders as well costs
 # roughly a hundred gigabytes for data nothing reads.
-UNIVERSE_SCAN_CATEGORIES = ("cash_trades",)
+UNIVERSE_SCAN_CATEGORIES = ("cash_trades", "fao_trades")
 
 
 @dataclass
@@ -253,8 +253,18 @@ def main(argv: Optional[List[str]] = None) -> int:
         from stage7_bloomberg.run_bloomberg_analysis import run_bloomberg
         from stage8_report.generate_report import generate_report
 
+        def run_tape_stage() -> None:
+            from stage9_tape.daily_tape import run_tape
+            from stage9_tape.settlement_tests import run_settlement_tests
+
+            memory, threads = worker_budget(max(args.jobs, 1))
+            run_tape(jobs=max(args.jobs, 1), force=args.force, threads=threads,
+                     memory_limit_mb=memory)
+            run_settlement_tests()
+
         for name, function in (("analyze", run_analysis),
                                ("clob-analyze", run_clob_analysis),
+                               ("tape", run_tape_stage),
                                ("insights", run_insights),
                                ("bloomberg", run_bloomberg),
                                ("report", generate_report),

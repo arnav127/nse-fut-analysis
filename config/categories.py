@@ -60,15 +60,24 @@ CATEGORIES: Dict[str, Category] = {
         required=False,
         multipart=True,
     ),
+    # Stock futures and stock options. The futures carry the convergence analysis; the
+    # options carry the strike grid and the volume at each strike that the pinning analysis
+    # needs. Index contracts are dropped at parse time. Optional, because the derivatives
+    # files held cover March to June only, and a missing month is a smaller sample rather
+    # than an error.
     "fao_trades": Category(
         name="fao_trades",
         layout="fao_trades",
         file_prefix="FAO_Trades",
-        where=f"instrument == '{FUTURES_INSTRUMENT_FILTER}'",
-        required=True,
+        where=f"instrument in ('{FUTURES_INSTRUMENT_FILTER}', 'OPTSTK')",
+        required=False,
         multipart=True,
     ),
 }
+
+# Feeds a session run parses by default. The derivatives order file is left out: it is by far
+# the largest feed, several times the size of the cash order file, and no analysis reads it.
+DEFAULT_CATEGORIES: Tuple[str, ...] = ("cash_orders", "cash_trades", "fao_trades")
 
 CASH_CATEGORIES: Tuple[str, ...] = ("cash_orders", "cash_trades")
 FAO_CATEGORIES: Tuple[str, ...] = ("fao_orders", "fao_trades")

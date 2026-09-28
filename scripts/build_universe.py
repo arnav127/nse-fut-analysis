@@ -230,7 +230,15 @@ def main() -> int:
     fo_verified = fo is not None
     if fo_verified:
         derivative = stats[stats.symbol.isin(fo)].reset_index(drop=True)
-        cash_only = stats[~stats.symbol.isin(fo)].reset_index(drop=True)
+        # Securities that entered or left the derivatives segment during the held sessions
+        # belong to neither side: not reliably treated, and not a clean placebo.
+        partial = set()
+        partial_path = CONFIG_DIR / "fo_partial_2022.txt"
+        if partial_path.exists():
+            partial = {line.strip().upper() for line in
+                       partial_path.read_text(encoding="utf-8").splitlines()
+                       if line.strip() and not line.startswith("#")}
+        cash_only = stats[~stats.symbol.isin(fo | partial)].reset_index(drop=True)
     else:
         logger.warning(
             f"[UNIVERSE] {FO_LIST.name} not found. The two derivative groups will be formed "

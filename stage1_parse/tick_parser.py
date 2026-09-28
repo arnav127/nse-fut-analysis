@@ -31,13 +31,27 @@ if str(PROJECT_ROOT) not in sys.path:
 
 import nsetick
 
-from config.categories import CATEGORIES, Category
+from config.categories import CATEGORIES, DEFAULT_CATEGORIES, Category
 from config.settings import NSETICK_THREADS, PARQUET_COMPRESSION, TARGET_SYMBOLS
 from utils.logger import setup_logger
 from utils.paths import has_partitions, parsed_dir, promote_hive_partitions, raw_files
 from utils.progress import track_bytes
 
 logger = setup_logger("TickParser", "stage1_parse.log")
+
+
+def _is_linked(path: Path) -> bool:
+    """True when `path` or any parent up to the parsed root is a symbolic link."""
+    from config.settings import PARSED_DATA_DIR
+
+    root = Path(PARSED_DATA_DIR)
+    current = path
+    while True:
+        if current.is_symlink():
+            return True
+        if current == root or current.parent == current:
+            return False
+        current = current.parent
 
 
 def _where_clause(category: Category, symbols: Optional[List[str]]) -> str:
@@ -67,6 +81,14 @@ def parse_category(
     if has_partitions(out_dir) and not force:
         logger.info(f"[SKIP] {category_name} {session} already parsed ({out_dir})")
         return out_dir
+
+    # A feed directory may be a link to another project's parsed layer - the cash feeds are
+    # shared with BlockCrosser, which parsed the same sessions. Clearing it below would delete
+    # that project's data through the link, so a linked directory is never rewritten.
+    if _is_linked(out_dir):
+        logger.warning(f"[LINKED] {category_name} {session} is linked to {out_dir.resolve()}; "
+                       f"not reparsed through the link")
+        return out_dir if has_partitions(out_dir) else None
 
     files = raw_files(category.file_prefix, session)
     if not files:
@@ -167,7 +189,7 @@ def parse_session(
     parsing every feed for every listed security instead costs about a hundred gigabytes for
     data nothing reads.
     """
-    for name in (categories or CATEGORIES):
+    for name in (categories or DEFAULT_CATEGORIES):
         try:
             parse_category(session, name, symbols=symbols, force=force,
                            threads=threads, memory_limit_mb=memory_limit_mb)

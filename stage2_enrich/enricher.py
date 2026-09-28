@@ -31,7 +31,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from utils.duck import connect
 
-from config.categories import CATEGORIES
+from config.categories import CASH_CATEGORIES, CATEGORIES
 from config.settings import (
     ALL_TARGET_DATES,
     EXPIRY_THURSDAYS_DDMMYYYY,
@@ -222,7 +222,10 @@ def run_enrich(
     logger.info(f"=== STAGE 2: ENRICH ({len(sessions)} sessions) ===")
     started = time.time()
     for session in sessions:
-        for name in CATEGORIES:
+        # Cash feeds only. The derivatives trades are read directly from the parsed layer by
+        # the convergence and pinning analyses, which need contract fields (expiry, strike,
+        # option type) that the enriched schema does not carry.
+        for name in CASH_CATEGORIES:
             try:
                 enrich_session(session, name, symbols=symbols, force=force,
                                memory_limit_mb=memory_limit_mb, threads=threads)
