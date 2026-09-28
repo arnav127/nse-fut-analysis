@@ -1,77 +1,77 @@
 \section{Introduction}\label{sec:intro}
 
-Stock futures on the National Stock Exchange of India settle at the volume-weighted average
-price (VWAP) of the underlying share in the cash market between \DesignWindowStart{} and
-\DesignWindowEnd{} on the last Thursday of the month. The settlement price is therefore
-produced by the cash market, and anyone carrying a large expiring position has a direct
-financial interest in what that market does for \DesignWindowMinutes{} minutes.
+Derivatives that settle against a price formed in the underlying market give their holders an
+interest in that price. When the settlement price is a single closing print, a participant
+with a large expiring position can move it at little cost, and the resulting distortions are
+well documented \citep{stoll1987program, kumar1992futures, hillion2004price,
+comerton2011measuring}. Exchanges have responded by settling against averages over a window,
+which raises the cost of moving the price because the mover has to trade throughout the
+window. The National Stock Exchange of India settles stock futures and stock options at the
+volume-weighted average price of the last thirty minutes of the expiry session. Whether this
+window is nevertheless used to move the settlement price, a practice market participants call
+settlement punching, is the question of this paper.
 
-This is a well-known design trade-off. A settlement struck at a single closing print is
-cheap to move, so exchanges generally do not use one. An average over a window is more
-expensive to move, because the mover has to keep trading for the length of the window, and
-each additional unit of size has less effect on the average than the last. The question is
-empirical: does the window look different, and if so, in what way.
+Two features of the setting make the question answerable. First, the exchange's order-level
+files record every order and trade with the category of the participant, custodian,
+proprietary or other client, and with the identity of the order on each side of every trade.
+The direction of each participant category's trading in the window can therefore be measured,
+and the limit order book reconstructed. Second, the settlement window exists on every
+session, since the settlement price is simply the closing price, but it settles stock
+derivatives on only twelve of them. The window on a monthly expiry can therefore be compared
+with the window on every other session of the year, including sessions that share the
+calendar features of an expiry without its settlement: the weekly expiries of the index
+options, and month ends. A group of securities without derivatives, matched on turnover and
+price, is exposed to the same calendar but to no settlement.
 
-The answer is not obvious in either direction, because expiry brings a second kind of
-activity that has nothing to do with the settlement price. Positions have to be closed or
-rolled, hedges have to be unwound, and that alone would make the window busier, wider and
-harder to trade. Any comparison against a normal day therefore measures both effects
-together. Every number in this report is a difference against a matched control session in
-the same month, which removes the market environment but not this second effect.
+The analysis is organised around the distinction between activity and distortion. Expiry is
+expected to raise activity in the window whether or not anyone attempts to move the price:
+expiring positions are closed, rolled or hedged, and arbitrage positions are unwound at the
+settlement price. Distortion is different. A settlement price moved by trading that does not
+reflect information should be displaced from the prices before and after it, and should be
+reversed once the trading stops. The tests therefore ask whether the settlement price is
+reversed the next morning, whether this happens more on monthly expiries than on other
+sessions, and whether it happens only in securities with an expiring contract.
 
-\subsection*{What order-level data adds}
+The results separate the two cleanly. On monthly expiries the share of the session's volume
+traded in the window rises by \ActWindowshareDidMonthlyexpiry{} percentage points more in
+securities with derivatives than in the placebo group, and it does not rise on weekly index
+expiries. The settlement price also moves further over the window on monthly expiries and is
+partly reversed the next morning. But the reversal is equally large in the placebo group, and
+the difference between the two is $\RevDidDriftxmonthlyexpiry{}$, with a randomization
+$p$-value of \RevDidDriftxmonthlyexpiryRip{}. Aggressive flow by any participant category moves
+the settlement price no more on expiry days than on other days, and is not reversed more. The
+extra activity in the window is not accompanied by a distortion specific to the settlement.
 
-Most studies of settlement windows work from trade prints and top-of-book quotes. Those show
-what happened but not what was attempted. An order entered and cancelled a fraction of a
-second later leaves no trace in a trade file. A large order shown a few hundred shares at a
-time looks, in a depth feed, like a stream of unrelated small orders.
+The derivatives explain why. In 2022 stock derivatives were settled by delivery, so the
+settlement price of an expiring future divides the payment for the delivered shares between
+the final variation margin and the delivery price without changing its total. The expiring
+future is priced accordingly: two minutes before the close, when nearly all of the settlement
+price is determined, it still moves by \ConvExpiryMTwoEight{} basis points for each basis point
+by which the cash price moves. For
+futures holders the settlement price is an accounting price. It retains economic content for
+stock options, whose exercise it decides, but the settlement price shows no tendency to settle
+near option strikes on expiry days.
 
-The exchange publishes order-by-order files that record each entry, modification and
-cancellation as a separate event, with the participant category and the total and displayed
-quantities attached. Three of the measures in this report cannot be built from trade data at
-all: the rate at which orders are cancelled within a second of entry, the share of resting
-size that is never displayed, and the rate at which concealed size is replenished as it
-fills. Rebuilding the book from these events also gives the displayed size at each price
-level, which is what makes it possible to ask how much an order of a given size would move
-the price.
+On the subset of sessions for which the full order book is reconstructed, the window is more
+expensive to trade in on expiry days: spreads are wider, displayed depth is lower and a given
+order moves the price further. The measures that separate directional pressure from heavier
+two-sided trading, the variance ratio \citep{lo1988stock}, the persistence of signed order
+flow and the permanent share of price impact, show no sign of sustained pressure.
 
-\subsection*{The question this report tries to answer}
+The paper contributes to the literature on expiration-day effects \citep{stoll1987program,
+stoll1991expiration}, including the evidence for India \citep{vipul2005futures,
+agarwalla2013expiration}, which has documented abnormal volume and volatility around expiry
+but has not been able to separate the settlement from the calendar or to observe who trades.
+It applies the reversal test of the closing-price manipulation literature
+\citep{carhart2002leaning, hillion2004price, comerton2011measuring} to a settlement window with
+a placebo group and calendar controls, and it shows that the settlement method of the
+derivative, delivery rather than cash, is central to whether the averaging window creates an
+incentive to move the price at all. It also adds to the evidence on strike pinning
+\citep{ni2005stock, avellaneda2003pinning, golez2012pinning} in a market where options are
+settled by delivery.
 
-Almost everything one can measure in a busy window---wider spreads, more cancellations,
-larger price impact---rises when there is simply more trading, regardless of why. Reporting
-those alone cannot separate a market being pushed from a market that is merely crowded.
-
-We therefore build the report around measures that respond to the two explanations with
-opposite signs. If prices are being pushed in one direction, returns lean the same way from
-one second to the next and the variance ratio rises above one; if the window is busier and
-more two-sided, the extra activity arrives as bid-ask bounce and the ratio falls. If one
-participant is working a large order, signed order flow is persistent; if many participants
-are trading against each other, it is not. More trading on its own cannot move either
-statistic in the direction that indicates pressure.
-
-We also compute the settlement price. The original design for this project measured many
-properties of the window and never calculated the number the window exists to produce, which
-left the central question---does the settlement end up somewhere unusual---unasked.
-Section~\ref{sec:results} reports how far it sits from the mid at the window's open, from
-the closing price, and from the final minute's own average.
-
-\subsection*{Separating the settlement from the calendar}
-
-An expiry Thursday is also the last Thursday of the month, when index rebalancing, month-end
-flows and index option expiry all fall due. Comparing an expiry session against a control
-session in the same month removes the market environment but not the day: whatever is
-special about the last Thursday applies to the expiry session and not to its control.
-
-The study therefore includes a third group of securities that have no expiring
-derivative---nothing settles against their closing half hour---but which are subject to
-everything else that happens on that date. If the same effects appear there, they belong to
-the calendar. This comparison is what turns "the settlement window is different" into a
-statement about the settlement mechanism, and Section~\ref{sec:design} sets out how the
-groups were built and matched.
-
-Section~\ref{sec:background} describes the settlement mechanism and
-Section~\ref{sec:data} the data and the book reconstruction. Section~\ref{sec:design} covers
-the three-group design and how the securities were selected, and Section~\ref{sec:method}
-the measures and the tests. Section~\ref{sec:results} reports the findings,
-Section~\ref{sec:discussion} reads them together, and Section~\ref{sec:limitations} sets out
-what this design cannot establish.
+Section~\ref{sec:background} describes the settlement arrangements and
+Section~\ref{sec:design} the design and the samples. Section~\ref{sec:data} describes the data
+and Section~\ref{sec:method} the measures and estimation. Section~\ref{sec:window} reports the
+full-year results, Section~\ref{sec:derivatives} the results for the futures and options, and
+Section~\ref{sec:book} the order book. Section~\ref{sec:conclusion} concludes.

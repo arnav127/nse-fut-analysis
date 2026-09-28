@@ -1,0 +1,95 @@
+\section{The derivatives: what the settlement price decides}\label{sec:derivatives}
+
+The results of Section~\ref{sec:window} raise the question of how much the settlement price
+matters to holders of stock derivatives. This section examines the two instruments directly,
+on the \ConvSessions{} sessions for which the derivatives trade files are available.
+
+\subsection{The expiring future is priced on the shares}
+
+Under settlement by delivery, the settlement price of an expiring stock future divides the
+cash flows of a long position between the final variation margin and the payment for the
+delivered shares, but does not change their sum. A long position bought at price $F$ pays
+$F$ for the shares whatever the settlement price turns out to be. The expiring future should
+therefore be priced on the value of the shares, that is on the current cash price, until the
+end of the window, rather than on the average that determines the settlement price. If it were
+settled in cash against the average, it would instead converge to the average, which by the
+last minutes of the window is almost entirely determined.
+
+Table~\ref{tab:convergence} distinguishes the two. The futures price and the cash price are
+both measured relative to the settlement price, and the first is regressed on the second. By
+the minute beginning two minutes before the close, \ConvExpiryMTwoEightFixed{}\% of the window's volume has already
+traded, so the settlement price is nearly fixed. A future priced on the settlement price would
+not respond to the cash price at that point; a future priced on the shares would move with it
+one for one. The slope is \ConvExpiryMTwoEight{}, and over the final five minutes
+\ConvExpiryLastFive{}, both far from zero and close to one. The median distance of the futures
+price from the settlement price in that minute, \ConvExpiryMTwoEightGapsettle{} basis points, exceeds
+its distance from the concurrent cash price, \ConvExpiryMTwoEightGapcash{} basis points.
+Figure~\ref{fig:convergence} shows the same comparison minute by minute.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Pricing of the expiring stock future in the settlement window. Regression of the
+futures price on the cash price, both in basis points relative to the settlement price, over
+security-minutes of the window; a slope of one indicates that the future moves with the cash
+price, a slope of zero that it is priced on the settlement price. Standard errors clustered by
+security in parentheses. Control sessions are the trading day before each expiry, on which the
+same future has one day to run.}
+\label{tab:convergence}
+\input{generated/tables/convergence}
+\end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.9\textwidth]{convergence.pdf}
+  \caption{Median absolute distance of the expiring future's price from the concurrent cash
+    price and from the settlement price, by minute of the window.}
+  \label{fig:convergence}
+\end{figure}
+
+The result has a direct implication for the settlement incentive. A holder of an expiring
+stock future gains nothing from moving the settlement price, because the gain on the final
+margin is paid back in the price of the delivered shares. The incentive that motivated the
+original design of this study, that holders of large expiring positions have a direct interest
+in the settlement price, applies to stock futures only in accounting terms.
+
+\subsection{Option strikes}
+
+The incentive is real for stock options, because the settlement price determines which series
+are exercised and therefore which option holders take or make delivery. If the settlement price
+were drawn toward strikes on expiry days, either through the hedging of option writers or
+through trading by option holders, the distance between the settlement price and the nearest
+strike would be smaller on the expiry day than on other days of the month.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Distance of the settlement price to the nearest option strike, in units of the local
+strike interval. Other sessions are the sessions of the same expiry month; regressions include
+a fixed effect for each security and month. High option activity is option volume on the
+expiry and control days above the median relative to the security's cash turnover. The change
+in the window is the distance at the settlement price less the distance at the pre-window
+price. Standard errors clustered by session in parentheses.}
+\label{tab:pinning}
+\input{generated/tables/pinning}
+\end{table}
+
+Table~\ref{tab:pinning} finds no such attraction. On other sessions of the month the average
+distance is \PinDistanceControlmean{} strike intervals, close to the value of one quarter
+expected when prices are unrelated to strikes. On expiry days it is lower by
+$\PinDistanceExpiry{}$ intervals (standard error \PinDistanceExpirySe{}), which is small and
+not significant, and the share of settlement prices within a tenth of an interval of a strike
+does not rise. Nor does the settlement window move the price toward the nearest strike: the
+change in distance over the window is $\PinChangeExpiry{}$ on expiry days relative to other
+sessions. For securities with the most option activity, where the incentive is greatest, the
+estimates point in the direction opposite to attraction. Figure~\ref{fig:pinning} shows the
+distribution.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.62\textwidth]{pinning.pdf}
+  \caption{Distribution of the distance of the settlement price to the nearest strike on expiry
+    sessions and on the other sessions of the same month. The dashed line is the uniform
+    density.}
+  \label{fig:pinning}
+\end{figure}
