@@ -1,22 +1,20 @@
-"""How the expiring future is priced while its settlement price is being formed.
+"""What the expiring future is priced on during the settlement window.
 
-On an ordinary session a stock future trades at the cash price plus the cost of carry. On the
-expiry session it settles at the average cash price of the last thirty minutes, so during
-the window it is a claim on an average, part of which is already fixed. If the market prices
-it that way, the future at minute m should sit at
+A stock future held to expiry in 2022 was settled by delivery. The long pays the final
+settlement price for the shares and has received, through the final variation margin, the
+difference between that price and the price at which the future was bought. The two cancel:
+whatever the settlement price, the long ends up having paid the futures price for the shares.
+An expiring future is therefore worth the shares, and in the last minutes of the window it
+should track the current cash price, not the average that sets the settlement price. Had
+stock futures been settled in cash against the average, they would track the average, which
+by the last minutes is almost fully determined.
 
-    P_m = (VWAP so far * volume so far + S_m * volume still to come) / window volume
-
-rather than at the current cash price S_m. The two differ by the gap between the average
-already realised and the current price, weighted by how much of the window has passed.
-
-Regressing the futures-cash basis on that gap separates the two descriptions. A slope near
-one says the future is priced as the average it settles to; a slope near zero says it
-follows the spot price, as it does on any other day. The control sessions give the second
-benchmark.
-
-The regression uses the realised window volume to weight the average, which the market does
-not know in advance; it is a description of how the future is priced, not a trading rule.
+The test is the slope of the futures price on the cash price, both measured relative to the
+settlement price, at minutes by which nearly all of the average is fixed. A slope near one
+says the future is priced on the shares; a slope near zero that it is priced on the
+settlement price. Using the settlement price as the reference introduces no common noise:
+it is a constant for each security and session. Noise in the cash price biases the slope
+toward zero, against the first reading.
 
 Also recorded: how far the future's last trade ends from the settlement price, and how much
 of the future's session volume trades in the window.
@@ -190,19 +188,21 @@ def run_s7_futures_convergence() -> pd.DataFrame:
     summary.to_csv(summary_csv, index=False)
 
     if not frame.empty:
-        frame["pair"] = frame.symbol + "_" + frame.session
+        frame["fut_rel"] = 1e4 * np.log(frame.fut_vwap / frame.settle)
+        frame["cash_rel"] = 1e4 * np.log(frame.cash_vwap / frame.settle)
         rows = []
         for flag, block in frame.groupby("is_expiry"):
-            fit = fe_ols(block, "basis_spot", ["gap_projection"], fe="pair", cluster="symbol")
-            if fit is not None:
-                rows.append({"is_expiry": flag, "nobs": fit.nobs, "clusters": fit.clusters,
-                             **fit.get("gap_projection")})
-            late = block[block.minute >= 20]
-            fit = fe_ols(late, "basis_spot", ["gap_projection"], fe="pair", cluster="symbol")
-            if fit is not None:
-                rows.append({"is_expiry": flag, "subset": "final ten minutes",
-                             "nobs": fit.nobs, "clusters": fit.clusters,
-                             **fit.get("gap_projection")})
+            for subset, part in (("final five minutes", block[block.minute >= 25]),
+                                 ("minute 28", block[block.minute == 28])):
+                fit = fe_ols(part, "fut_rel", ["cash_rel"], fe=None, cluster="symbol")
+                if fit is None:
+                    continue
+                rows.append({"is_expiry": flag, "subset": subset, "nobs": fit.nobs,
+                             "clusters": fit.clusters,
+                             "weight_fixed": float(part.weight_fixed.median()),
+                             "gap_settle": float(part.fut_rel.abs().median()),
+                             "gap_cash": float((part.fut_rel - part.cash_rel).abs().median()),
+                             **fit.get("cash_rel")})
         pd.DataFrame(rows).to_csv(Path(RESULTS_DIR) / "s7_convergence_slope.csv", index=False)
     logger.info(f"[S7] {len(frame):,} symbol-minutes, {len(summary)} symbol-sessions")
     return summary
