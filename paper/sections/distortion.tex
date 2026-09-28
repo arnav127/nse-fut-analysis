@@ -67,8 +67,8 @@ closing prices of the constituents, that is from their settlement-window VWAPs. 
 options expired on every Thursday of the year and were the most heavily traded derivatives on
 the exchange. If the settlement window is used to move a price, the index is where it pays.
 
-The exchange's index file records, every second, the value of the Nifty 50 and of the Nifty
-Next 50, an index of the next fifty large companies on which no derivatives were traded. The
+The exchange's index file records, every second, the value of the Nifty 50 and of the 
+ Nifty Next 50, an index of the next fifty large companies on which no derivatives were traded. The
 second index is exposed to the same market and the same calendar but to no settlement, and it
 serves as the placebo at the index level. The closing value of the Nifty 50 is approximated by
 its average over the window; on the dates on which the published closing value was checked,
@@ -95,8 +95,8 @@ Nifty 50 over the window, relative to the Nifty Next 50, differs from other sess
 \IdxSpreadDriftExpiryRip{}). This is about \IdxSpreadDriftPoints{} index points at the year's
 average level of \IdxNiftyLevel{}. It occurs on the weekly expiries, on which only the index
 options settle, as much as on the monthly ones: the additional coefficient for monthly expiries
-is $\IdxSpreadDriftMonthly{}$ and insignificant. The Nifty 50 ends the window below the Nifty
-Next 50 on \IdxNegshareExpiry{}\% of index expiries, against \IdxNegshareOther{}\% of other
+is $\IdxSpreadDriftMonthly{}$ and insignificant. The Nifty 50 ends the window below the 
+ Nifty Next 50 on \IdxNegshareExpiry{}\% of index expiries, against \IdxNegshareOther{}\% of other
 sessions. The movement takes place within the window: from its first minute to its last the
 difference changes by $\IdxSpreadMoveExpiry{}$ basis points relative to other sessions
 (randomization $p$-value \IdxSpreadMoveExpiryRip{}). Figure~\ref{fig:indexpath} shows the path.
