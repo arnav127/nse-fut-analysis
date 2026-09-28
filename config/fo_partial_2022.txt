@@ -1,0 +1,5 @@
+# Traded in the derivatives segment on some held sessions but not all of them.
+# Excluded from the derivative groups and from the placebo pool.
+MOTHERSON
+MOTHERSUMI
+PFIZER

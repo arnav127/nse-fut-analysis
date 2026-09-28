@@ -29,7 +29,7 @@ TABLE_DIR = Path(PAPER_GENERATED_DIR) / "tables"
 EVENTS = ["monthly_expiry", "weekly_expiry", "month_end"]
 EVENT_LABEL = {"monthly_expiry": "Monthly expiry", "weekly_expiry": "Weekly index expiry",
                "month_end": "Month end", "normal": "Other sessions"}
-SAMPLES = ["liquid", "illiquid", "placebo", "did"]
+SAMPLES = ["liquid", "illiquid", "derivative", "placebo", "did"]
 SAMPLE_LABEL = {"liquid": "Liquid", "illiquid": "Illiquid", "placebo": "Placebo",
                 "derivative": "F\\&O", "did": "F\\&O $-$ placebo"}
 PARTS = ["custodian", "proprietary", "ncnp"]
@@ -137,6 +137,17 @@ def collect_tape_metrics() -> None:
                 run.record(f"conv.windowshare.{side}",
                            float(100 * block.fut_window_share.median()), "per cent",
                            "median share of the future's session volume traded in the window")
+
+        # The order book sample's differences-in-differences, so the text can cite them.
+        contrasts = _csv("s6_group_contrasts.csv")
+        for row in contrasts.itertuples(index=False):
+            column = str(row.source).split(":")[-1].replace("_", "")
+            which = "placebo" if str(row.contrast).startswith("settlement") else "liquidity"
+            stem = f"did.{column}.{which}"
+            run.record(stem, float(row.difference_in_differences), "ratio",
+                       f"{row.measure}: {row.contrast}, difference in expiry-minus-control "
+                       f"differences")
+            run.record(f"{stem}.p", float(row.p_value), "p-value", f"{row.measure}: Welch test")
 
         pins = _csv("s8_pinning_tests.csv")
         for row in pins.itertuples(index=False):

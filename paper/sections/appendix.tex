@@ -1,3 +1,12 @@
+\section{Paired tests on the order book sample}\label{app:tests}
+
+Each test compares a per-security quantity on a monthly expiry with the same quantity on the
+control session of the same month, one pair per security and month. Tests are paired $t$-tests,
+with significance assessed under Benjamini--Hochberg control of the false discovery rate at
+$\alpha = \TestAlpha{}$; effect sizes are Cohen's $d$ on the paired differences.
+
+\input{generated/tables/tests}
+
 \section{Provenance}\label{app:provenance}
 
 \input{generated/provenance}
