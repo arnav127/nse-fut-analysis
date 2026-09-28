@@ -46,6 +46,8 @@ EXEMPT_LINE = re.compile(
 # so there is no need to exempt them, and requiring that is what keeps this list short.
 EXEMPT_PHRASES = (
     "Level 3",        # the name of the feed
+    "Nifty Next 50",  # index names; the longer one first, so its "50" is not left behind
+    "Nifty 50",
     "1/65536",        # the jiffy definition, quoted from the exchange specification
     "65536",
     "1980-01-01",     # the jiffy epoch
