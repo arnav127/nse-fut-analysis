@@ -88,7 +88,8 @@ def format_value(value: Any, unit: str) -> str:
     if unit == "rupees per share":
         # Kyle's lambda is order 1e-4; two decimals would print it as 0.00.
         return f"{number:.3g}"
-    if unit in ("shares", "records", "snapshots", "pairs", "episodes"):
+    if unit in ("shares", "records", "snapshots", "pairs", "episodes", "observations",
+                "sessions", "securities"):
         return _thousands(number, 0)
     if unit in ("millions", "thousands"):
         return f"{number:,.2f}"
@@ -141,7 +142,8 @@ def build() -> int:
         unit = entry.get("unit", "")
         value = entry.get("value")
         rendered = (_p_value(float(value))
-                    if key.endswith("p_value") and isinstance(value, (int, float))
+                    if (key.endswith("p_value") or unit == "p-value")
+                    and isinstance(value, (int, float))
                     else format_value(value, unit))
         lines.append(rf"\newcommand{{\{name}}}{{{rendered}}}")
 

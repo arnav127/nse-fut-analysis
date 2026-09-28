@@ -92,27 +92,29 @@ def load_fo_underlyings() -> Optional[Set[str]]:
 
 def session_statistics() -> pd.DataFrame:
     """Turnover, trade count and mean price for every symbol in every parsed session."""
-    parts = []
-    for session in ALL_TARGET_DATES:
-        directory = parsed_dir("cash_trades", session)
-        if not any(directory.glob("symbol=*")):
-            continue
-        pattern = (directory / "symbol=*" / "*.parquet").as_posix()
-        parts.append(f"""
-            SELECT '{session}' AS session, symbol,
-                   COUNT(*) AS trades,
-                   SUM(CAST(trade_quantity AS DOUBLE)) AS shares,
-                   SUM(CAST(trade_price AS DOUBLE) / 100.0 * trade_quantity) AS turnover_inr
-            FROM read_parquet('{pattern}', hive_partitioning = true)
-            WHERE record_indicator = 'RM'
-            GROUP BY symbol""")
-    if not parts:
+    # One query per session rather than one union over all of them: the union asks DuckDB to
+    # plan across every symbol partition of every session at once, tens of thousands of
+    # files, and on the full cross-section it stalled rather than finishing.
+    frames = []
+    with duckdb.connect() as conn:
+        for session in ALL_TARGET_DATES:
+            directory = parsed_dir("cash_trades", session)
+            if not any(directory.glob("symbol=*")):
+                continue
+            pattern = (directory / "symbol=*" / "*.parquet").as_posix()
+            frames.append(conn.execute(f"""
+                SELECT '{session}' AS session, symbol,
+                       COUNT(*) AS trades,
+                       SUM(CAST(trade_quantity AS DOUBLE)) AS shares,
+                       SUM(CAST(trade_price AS DOUBLE) / 100.0 * trade_quantity) AS turnover_inr
+                FROM read_parquet('{pattern}', hive_partitioning = true)
+                WHERE record_indicator = 'RM'
+                GROUP BY symbol""").df())
+            logger.info(f"[UNIVERSE] measured {session}")
+    if not frames:
         raise SystemExit("no parsed trade data; run: "
                          "python run_all.py --stage parse --universe-scan")
-
-    logger.info(f"[UNIVERSE] measuring {len(parts)} sessions")
-    with duckdb.connect() as conn:
-        frame = conn.execute(" UNION ALL ".join(parts)).df()
+    frame = pd.concat(frames, ignore_index=True)
     frame["mean_price"] = frame.turnover_inr / frame.shares.replace(0, np.nan)
     return frame
 
