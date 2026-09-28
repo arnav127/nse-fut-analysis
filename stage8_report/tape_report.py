@@ -145,6 +145,17 @@ def collect_tape_metrics() -> None:
                        "the Nifty Next 50")
             run.record("idx.negshare.other", neg.get(0.0), "per cent",
                        "the same share on other sessions")
+            level = float(index_panel[index_panel["index"] == "nifty"].settle.mean())
+            run.record("idx.nifty.level", level, "index points",
+                       "average settlement value of the Nifty 50 over the year")
+            effect = _csv("s10_index_activity.csv")
+            effect = effect[(effect["index"] == "spread") & (effect.outcome == "drift")
+                            & (effect.term == "expiry")]
+            if not effect.empty:
+                run.record("idx.spread.drift.points", abs(float(effect.coef.iloc[0])) * level / 1e4,
+                           "index points",
+                           "the expiry-day move of the Nifty 50 relative to the Nifty Next 50, in "
+                           "points at the year's average index level")
 
         for row in _csv("s9_reversal.csv").itertuples(index=False):
             stem = _key("rev", row.sample, row.term)

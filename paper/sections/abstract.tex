@@ -1,21 +1,22 @@
 \begin{abstract}
-\noindent Stock derivatives on the National Stock Exchange of India settle at the
-volume-weighted average price of the last thirty minutes of the expiry session. We ask whether
-this window is used to move the settlement price. Using order-level data for \TapeSessions{}
-sessions of 2022 and \TapeSecurities{} securities, we compare the window on monthly expiries
-with the window on every other session, using weekly index expiries and month ends as
-calendar controls and securities without derivatives as a placebo group. On monthly expiries
-trading shifts into the window, only in securities with derivatives. The settlement price
-moves further over the window and is partly reversed the next morning, but the reversal is
-equally large in the placebo group, and no participant category's flow has a larger or less
-permanent price effect on expiry days. The expiring stock future, which is settled by
-delivery, is priced on the cash price until the end of the window rather than on the
-settlement price, and the settlement price shows no attraction to option strikes. Expiry makes
-the window busier and more expensive to trade in, but we find no evidence that the
-settlement price is displaced by trading aimed at it.
+\noindent Derivatives on the National Stock Exchange of India settle against the
+volume-weighted average price of the last thirty minutes of trading. We ask whether this window
+is used to move the settlement price, using order-level data for every session of 2022,
+calendar controls, a placebo group of securities without derivatives and a placebo index. The
+answer depends on how the derivative is settled. Stock derivatives were settled by delivery,
+which leaves a holder indifferent to the settlement price: the expiring stock future is priced
+on the cash price until the end of the window, and the stock settlement shows no displacement
+specific to securities with derivatives. Index derivatives were settled in cash, and on the
+\IdxExpiries{} index expiries of the year the Nifty 50 falls over the settlement window by
+\IdxSpreadDriftPoints{} index points relative to the Nifty Next 50, which has no derivatives
+(randomization $p = \IdxSpreadDriftExpiryRip{}$). The fall occurs within the window and in the
+index's constituents rather than in other stocks, and is followed the next morning by a
+recovery of similar size, which is imprecisely estimated. Expiry also draws trading into the
+window of securities with derivatives and widens their spreads, while order imbalance becomes
+more persistent in all securities on monthly expiries.
 
 \vspace{0.6em}
 \noindent \textbf{Keywords:} expiration-day effects; settlement price; closing price
-manipulation; physical settlement; limit order book. \\
+manipulation; order imbalance; physical settlement. \\
 \noindent \textbf{JEL classification:} G13, G14, G18.
 \end{abstract}

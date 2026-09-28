@@ -83,6 +83,8 @@ def format_value(value: Any, unit: str) -> str:
         return f"{number * 100:.2f}"
     if unit == "per cent":
         return f"{number:.2f}"
+    if unit == "index points":
+        return _thousands(number, 0) if abs(number) >= 1000 else f"{number:.1f}"
     if unit in ("basis points", "ratio", "index", "seconds", "months"):
         return f"{number:.2f}"
     if unit == "rupees per share":

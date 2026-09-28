@@ -1,39 +1,38 @@
 \section{Conclusion}\label{sec:conclusion}
 
-Stock derivatives on the National Stock Exchange of India settle at the volume-weighted
-average price of the last half hour of the expiry session, and it is often argued that this
-arrangement invites participants with expiring positions to move the price in that window.
-This paper examines the window with order-level data, over every session of 2022, against two
-calendar controls and a placebo group of securities without derivatives.
+The settlement price of derivatives on the National Stock Exchange of India is the average
+price of the last half hour of trading, and it is often argued that this arrangement invites
+participants with expiring positions to move the price in that window. This paper tests the
+argument with order-level data for every session of 2022, against calendar controls, a placebo
+group of securities without derivatives and a placebo index.
 
-Expiry changes how much is traded in the window. On monthly expiries a larger share of the
-day's volume is traded in the settlement window, only in securities with derivatives and not
-on weekly index expiries. The settlement price also moves further over the window and is
-partly reversed the next morning, which is the pattern associated with price manipulation at
-the close. But the reversal is of the same size in securities on which nothing settles, so it
-is a property of the expiry session rather than of the settlement. No category of participant
-trades in the window on expiry days in a way that moves the price more or is reversed more
-than on other days. On the order book sample, the window is more expensive to trade in on
-expiry days, but the measures that distinguish directional pressure from heavier two-sided
-trading show no sign of a sustained push.
+The four hypotheses receive different answers. Expiry concentrates trading in the window (H1):
+on monthly expiries a larger share of the day's volume is traded in the settlement window, in
+securities with derivatives and not in the placebo group, and spreads widen. Order flow in the
+window is not dominated by one side on expiry days, but the imbalance that exists persists more
+through the window (H2), as the execution of large orders would produce. Whether the
+settlement price is displaced (H3) depends on what settles. The stock settlement price is
+partly reversed the next morning on monthly expiries, but equally in securities on which
+nothing settles, so the reversal is a property of the expiry session. The index settlement is
+displaced: on index expiries the Nifty 50 falls over the window relative to the Nifty Next 50,
+by about \IdxSpreadDriftPoints{} index points, within the window, in the index's constituents
+and not in other stocks.
 
-The derivatives explain why the incentive is weaker than it appears. Because stock futures
-were settled by delivery, the settlement price changes only how the payment for the delivered
-shares is split between the final margin and the delivery price. The expiring future is priced
-accordingly: until the last minutes of the window it moves with the cash price rather than
-with the nearly determined settlement price. Where the settlement price does matter, in
-deciding which stock options are exercised, it shows no attraction to strikes. The additional
-activity in the window is therefore better understood as the unwinding and hedging of
-expiring positions than as an attempt to move the price at which they settle.
+The settlement method explains the difference (H4). Stock derivatives were settled by
+delivery, which makes the settlement price an accounting price for futures holders; the
+expiring stock future is accordingly priced on the cash price until the end of the window, and
+neither stock nor index settlement prices are drawn toward option strikes. Index derivatives
+were settled in cash, which makes the settlement value the payoff itself. The settlement
+window is displaced where its price is paid out in cash, and not where it only divides a
+delivery payment.
 
-The analysis has limitations. The derivatives files cover four of the twelve expiries, so the
-futures and option results rest on a smaller sample. Open interest is not observed, so
-positions are inferred from traded volume, and the incentive cannot be measured security by
-security. The categories in the order file distinguish institutional, proprietary and other
-clients but not individual participants, so a strategy spread across participants or across
-securities is not detected as such. The sample covers a single year, with Thursday expiries
-and settlement by delivery; the incentive would be different, and larger, for contracts
-settled in cash against the average, which include the index derivatives whose settlement
-depends on the same window. Finally, the absence of a settlement-specific effect in the
-average does not exclude manipulation in individual cases, which requires surveillance data
-that identifies the trader.
+The analysis has limitations. The derivatives files cover four of the twelve monthly expiries,
+so the results for stock futures and options rest on a smaller sample. Open interest and
+positions are not observed, so the incentive cannot be measured contract by contract, and the
+direction of the index displacement cannot be tied to the positions of those who trade in the
+window. The categories in the order file distinguish institutional, proprietary and other
+clients but not individual participants. The closing value of the index is approximated by its
+average over the window. The sample covers a single year, with Thursday expiries. Finally,
+evidence of a systematic displacement in the average is not evidence of manipulation by any
+particular trader, which requires surveillance data that identifies the trader; a displacement
+of the same sign could also arise from the unwinding of hedges at the settlement price.

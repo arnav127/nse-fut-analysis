@@ -1,77 +1,73 @@
 \section{Introduction}\label{sec:intro}
 
 Derivatives that settle against a price formed in the underlying market give their holders an
-interest in that price. When the settlement price is a single closing print, a participant
-with a large expiring position can move it at little cost, and the resulting distortions are
-well documented \citep{stoll1987program, kumar1992futures, cushing2000stock, hillion2004price,
+interest in that price. When the settlement price is a single closing print, a participant with
+a large expiring position can move it at little cost, and the resulting distortions are well
+documented \citep{stoll1987program, kumar1992futures, cushing2000stock, hillion2004price,
 comerton2011measuring}. Exchanges have responded by settling against averages over a window,
-which raises the cost of moving the price because the mover has to trade throughout the
-window. The National Stock Exchange of India settles stock futures and stock options at the
-volume-weighted average price of the last thirty minutes of the expiry session. Whether this
-window is nevertheless used to move the settlement price, a practice market participants call
-settlement punching, is the question of this paper.
+which raises the cost of moving the price because the mover has to trade throughout the window.
+The National Stock Exchange of India sets the closing price of every security, and with it the
+settlement price of its derivatives, as the volume-weighted average price of the last thirty
+minutes of trading. Whether this window is nevertheless used to move the settlement price, a
+practice market participants call settlement punching, is the question of this paper.
 
 Two features of the setting make the question answerable. First, the exchange's order-level
-files record every order and trade with the category of the participant, custodian,
-proprietary or other client, and with the identity of the order on each side of every trade.
-The direction of each participant category's trading in the window can therefore be measured,
-and the limit order book reconstructed. Second, the settlement window exists on every
-session, since the settlement price is simply the closing price, but it settles stock
-derivatives on only twelve of them. The window on a monthly expiry can therefore be compared
-with the window on every other session of the year, including sessions that share the
-calendar features of an expiry without its settlement: the weekly expiries of the index
-options, and month ends. A group of securities without derivatives, matched on turnover and
-price, is exposed to the same calendar but to no settlement.
+files record every order and trade with the category of the participant, and identify the
+buyer- and seller-initiated side of every trade, so the direction of order flow in the window
+can be measured and the limit order book reconstructed. Second, the settlement window exists
+on every session, but derivatives settle on only some of them. Stock derivatives settle on the
+twelve monthly expiries; index options settle in cash on every Thursday. The window on these
+sessions can be compared with the window on every other session of the year, in securities
+with derivatives and in a matched placebo group without them, and for the Nifty 50 index
+against the Nifty Next 50 index, which has no derivatives.
 
-The analysis is organised around the distinction between activity and distortion. Expiry is
-expected to raise activity in the window whether or not anyone attempts to move the price:
-expiring positions are closed, rolled or hedged, and arbitrage positions are unwound at the
-settlement price. Distortion is different. A settlement price moved by trading that does not
-reflect information should be displaced from the prices before and after it, and should be
-reversed once the trading stops. The tests therefore ask whether the settlement price is
-reversed the next morning, whether this happens more on monthly expiries than on other
-sessions, and whether it happens only in securities with an expiring contract.
+We test four hypotheses. Expiry concentrates trading in the window (H1). Trading in the window
+is one-sided on expiry days, as measured by order imbalance (H2). The settlement price is
+displaced by that trading, which would show as a reversal after the window or as a directional
+move specific to what settles (H3). And the derivatives create an incentive to move the
+settlement price, which depends on how they are settled (H4).
 
-The results separate the two cleanly. On monthly expiries the share of the session's volume
-traded in the window rises by \ActWindowshareDidMonthlyexpiry{} percentage points more in
-securities with derivatives than in the placebo group, and it does not rise on weekly index
-expiries. The settlement price also moves further over the window on monthly expiries and is
-partly reversed the next morning. But the reversal is equally large in the placebo group, and
-the difference between the two is $\RevDidDriftxmonthlyexpiry{}$, with a randomization
-$p$-value of \RevDidDriftxmonthlyexpiryRip{}. Aggressive flow by any participant category moves
-the settlement price no more on expiry days than on other days, and is not reversed more. The
-extra activity in the window is not accompanied by a distortion specific to the settlement.
+The answer depends on how the derivative is settled. Stock derivatives were settled by delivery
+in 2022, so the settlement price of an expiring stock future divides the payment for the
+delivered shares between the final margin and the delivery price without changing its total.
+The expiring future is priced accordingly: two minutes before the close, when nearly all of the
+settlement price is determined, it still moves by \ConvExpiryMTwoEight{} basis points for each
+basis point of movement in the cash price. For stock derivatives the settlement price is
+largely an accounting price, and the stock settlement shows no displacement specific to
+securities with derivatives: its partial reversal on monthly expiries is equally large in the
+placebo group.
 
-The derivatives explain why. In 2022 stock derivatives were settled by delivery, so the
-settlement price of an expiring future divides the payment for the delivered shares between
-the final variation margin and the delivery price without changing its total. The expiring
-future is priced accordingly: two minutes before the close, when nearly all of the settlement
-price is determined, it still moves by \ConvExpiryMTwoEight{} basis points for each basis point
-by which the cash price moves. For
-futures holders the settlement price is an accounting price. It retains economic content for
-stock options, whose exercise it decides, but on expiry days the settlement price lies no closer to
-option strikes than on other days.
+The index is different. Index derivatives are settled in cash against the index's closing
+value, and here the settlement is displaced. On the \IdxExpiries{} index expiries of the year,
+the Nifty 50 moves over the settlement window by $\IdxSpreadDriftExpiry{}$ basis points
+relative to the Nifty Next 50, compared with other sessions, with a randomization $p$-value of
+\IdxSpreadDriftExpiryRip{}. The move takes place within the window, occurs on weekly expiries
+as much as on monthly ones, appears in the index's constituents and not in stocks outside the
+index, and is followed by a recovery the next morning of similar size, though that recovery is
+imprecisely estimated. The index settlement value is systematically lowered on the days it
+determines the payoff of the market's most traded derivative.
 
-On the subset of sessions for which the full order book is reconstructed, the window is more
-expensive to trade in on expiry days: spreads are wider, displayed depth is lower and a given
-order moves the price further. The measures that separate directional pressure from heavier
-two-sided trading, the variance ratio \citep{lo1988stock}, the persistence of signed order
-flow and the permanent share of price impact, show no sign of sustained pressure.
+Expiry also changes the window in ways that do not depend on the settlement method. On monthly
+expiries the share of the session's volume traded in the window rises by
+\ActWindowshareDidMonthlyexpiry{} percentage points more in securities with derivatives than in
+the placebo group, spreads widen and fleeting orders become more common, and order imbalance
+persists more from one part of the window to the next. The measures that distinguish
+directional pressure from heavier two-sided trading in the stock order books show no sustained
+push.
 
 The paper contributes to the literature on expiration-day effects \citep{stoll1987program,
 stoll1991expiration}, including the evidence for India \citep{vipul2005futures,
-agarwalla2013expiration}, which has documented abnormal volume and volatility around expiry
-but has not been able to separate the settlement from the calendar or to observe who trades.
-It applies the reversal test of the closing-price manipulation literature
-\citep{carhart2002leaning, hillion2004price, comerton2011measuring} to a settlement window with
-a placebo group and calendar controls, and it shows that the settlement method of the
-derivative, delivery rather than cash, is central to whether the averaging window creates an
-incentive to move the price at all. It also adds to the evidence on strike pinning
-\citep{ni2005stock, avellaneda2003pinning, golez2012pinning} in a market where options are
-settled by delivery.
+agarwalla2013expiration}, which has documented abnormal volume and volatility around expiry but
+has not been able to separate the settlement from the calendar or to observe the direction of
+order flow. It applies the tests of the closing-price manipulation literature
+\citep{carhart2002leaning, hillion2004price, comerton2011measuring} with a placebo group, a
+placebo index and calendar controls, and shows that the settlement method, delivery or cash,
+determines whether the averaging window is displaced. It also adds to the evidence on strike
+pinning \citep{ni2005stock, avellaneda2003pinning, golez2012pinning}: neither stock nor index
+settlement prices are drawn toward strikes.
 
 Section~\ref{sec:background} describes the settlement arrangements and
-Section~\ref{sec:design} the design and the samples. Section~\ref{sec:data} describes the data
-and Section~\ref{sec:method} the measures and estimation. Section~\ref{sec:window} reports the
-full-year results, Section~\ref{sec:derivatives} the results for the futures and options, and
-Section~\ref{sec:book} the order book. Section~\ref{sec:conclusion} concludes.
+Section~\ref{sec:hypotheses} states the hypotheses. Section~\ref{sec:design} describes the
+design, Section~\ref{sec:data} the data and Section~\ref{sec:method} the measures.
+Sections~\ref{sec:activity} to~\ref{sec:derivatives} test the four hypotheses in turn, and
+Section~\ref{sec:conclusion} concludes.

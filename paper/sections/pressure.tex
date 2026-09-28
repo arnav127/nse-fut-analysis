@@ -1,0 +1,108 @@
+\section{H2: Order imbalance and pressure}\label{sec:pressure}
+
+\subsection{Order imbalance in the window}
+
+Table~\ref{tab:pressure} reports the order imbalance of Section~\ref{sec:hypotheses} for
+each type of session. Trades are classified as buyer- or seller-initiated by the side whose
+order arrived later, which is the side that crossed the spread.
+
+On ordinary sessions the imbalance over the window is small in absolute value,
+\PressAbsoibLiquidNormal{} in the liquid group and \PressAbsoibPlaceboNormal{} in the placebo
+group, and it has no systematic sign. On monthly expiries the absolute imbalance of the liquid
+group rises by \PressAbsoibLiquidMonthlyexpiry{} (standard error
+\PressAbsoibLiquidMonthlyexpirySe{}), and its average sign turns negative, toward selling,
+by $\PressOibLiquidMonthlyexpiry{}$. Neither change is large relative to the variation across
+sessions, and neither differs significantly from the placebo group. The window is not
+dominated by one side of the market on expiry days.
+
+The imbalance does, however, become more persistent. On ordinary sessions the imbalance of one
+five-minute block carries over to the next with a coefficient of
+\OibdynPersistenceLiquidLag{} in the liquid group. On monthly expiries the coefficient rises by
+\OibdynPersistenceLiquidLagxmonthlyexpiry{} (standard error
+\OibdynPersistenceLiquidLagxmonthlyexpirySe{}), so that buying or selling that begins early in
+the window continues through it. The rise is visible in all three groups but is largest in
+the liquid group; relative to the placebo group it is \OibdynPersistenceDidliquidLagxmonthlyexpiry{}
+(standard error \OibdynPersistenceDidliquidLagxmonthlyexpirySe{}), which is not significant.
+On weekly index expiries persistence does not change. Persistent imbalance is what the
+execution of large orders through the window produces, whether they are placed to close
+expiring positions or to move the price. The move from the window's first minute to its last
+is larger on monthly expiries, by \PressAbsmoveOneFiveThreeZeroLiquidMonthlyexpiry{} basis
+points in the liquid group, and a given imbalance moves the price by
+\OibdynPriceDerivativeOib{} basis points per unit of imbalance on any session, with no
+significant change on expiry days.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Order imbalance in the settlement window. Order imbalance is
+$(BI - SI)/(BI + SI)$, where $BI$ and $SI$ are buyer- and seller-initiated volume. The first
+three panels report coefficients on indicators for the session type with security fixed
+effects; the last column is the difference between the securities with derivatives and the
+placebo group, with security and session fixed effects. The last panel regresses the imbalance
+of each five-minute block on that of the previous block, with interactions for the session
+types. Standard errors clustered by session in parentheses.}
+\label{tab:pressure}
+\resizebox{\textwidth}{!}{\input{generated/tables/pressure}}
+\end{table}
+
+\subsection{Pressure or congestion in the order book}
+
+A window that is busier because more participants trade in both directions and a window in
+which the price is pushed in one direction both show wider spreads and more cancellations.
+They differ in three respects. Under sustained pressure, returns over successive seconds lean
+the same way and the variance ratio rises; signed order flow is persistent; and a larger part
+of the price impact of order flow is permanent. Under heavier two-sided trading the variance
+ratio falls, flow is no more persistent, and more of the impact is transitory.
+
+None of the three measures moves toward pressure. The variance ratio is
+\VarianceRatioExpiry{} on expiry sessions against \VarianceRatioControl{} on controls, the
+persistence of signed flow is unchanged, and the permanent share of price impact is
+\ImpactPermanentShareExpiry{} against \ImpactPermanentShareControl{}. Against the placebo group
+two of them move in the direction of congestion: relative to the placebo group, the change in the
+variance ratio of securities with derivatives is $\DidVarianceratioPlacebo{}$
+($p = \DidVarianceratioPlaceboP{}$), and the change in the permanent share of price impact
+$\DidPermanentsharePlacebo{}$ ($p = \DidPermanentsharePlaceboP{}$). The price impact of a given flow over ten seconds rises,
+from \ImpactShortBpsControl{} to \ImpactShortBpsExpiry{} basis points, but less of it lasts.
+Figure~\ref{fig:pressure} shows the distributions.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{pressure_measures.pdf}
+  \caption{The three measures that distinguish directional pressure from heavier two-sided
+    trading, expiry against control sessions. Under sustained pressure the variance ratio and
+    the persistence of flow rise and a larger share of impact is permanent.}
+  \label{fig:pressure}
+\end{figure}
+
+\subsection{Whose flow moves the settlement price?}
+
+Table~\ref{tab:flow} relates the window's move and the next morning's return to the net
+aggressor flow in the window. Across the securities with derivatives, net aggressive buying of
+one per cent of median session volume raises the settlement price by
+\FlowDriftAllDerivativeFlow{} basis points on an ordinary session, and the effect on monthly
+expiries is not different.
+
+The participant categories differ sharply. Aggressive flow of custodians and of other clients
+moves the settlement price in the direction of the flow, by \FlowDriftParticipantDerivativeFlowcustodian{}
+and \FlowDriftParticipantDerivativeFlowncnp{} basis points per per cent of volume. Aggressive
+flow of proprietary traders is associated with a move in the opposite direction,
+$\FlowDriftParticipantDerivativeFlowproprietary{}$ basis points, and is followed by a
+next-morning return of \FlowNextrevParticipantDerivativeFlowproprietary{} basis points in its
+own favour. Proprietary traders thus trade aggressively against the window's move and are
+rewarded overnight, which is the behaviour of liquidity supply by arbitrageurs rather than of
+price pressure. None of these relations changes on monthly expiries: no participant category's
+window flow has a larger price effect, or is followed by a larger reversal, on the days on
+which the settlement is struck.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Net aggressor flow in the window, the window's move and the next morning's return.
+Flow is the volume bought by aggressive buyers less the volume sold by aggressive sellers, in
+per cent of the security's median session volume, in total and by the aggressor's category.
+Regressions include security and session fixed effects and the session-type indicators and
+their interactions with flow; only the flow terms and their interaction with the monthly
+expiry are shown. Standard errors clustered by session in parentheses.}
+\label{tab:flow}
+\resizebox{\textwidth}{!}{\input{generated/tables/flow}}
+\end{table}

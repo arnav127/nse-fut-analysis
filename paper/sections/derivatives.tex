@@ -1,8 +1,8 @@
-\section{The derivatives: what the settlement price decides}\label{sec:derivatives}
+\section{H4: What the settlement price decides}\label{sec:derivatives}
 
-The results of Section~\ref{sec:window} raise the question of how much the settlement price
-matters to holders of stock derivatives. This section examines the two instruments directly,
-on the \ConvSessions{} sessions for which the derivatives trade files are available.
+Whether anyone has a reason to move the settlement price depends on how the derivative is
+settled. This section examines the stock derivatives directly, on the \ConvSessions{} sessions
+for which the derivatives trade files are available, and returns to the index at the end.
 
 \subsection{The expiring future is priced on the shares}
 
@@ -93,3 +93,14 @@ distribution.
     density.}
   \label{fig:pinning}
 \end{figure}
+
+\subsection{Index strikes}
+
+The index options have strikes at every fifty points, and their settlement is in cash. The
+distance of the Nifty 50's settlement value to the nearest multiple of fifty, in units of the
+interval, averages \IdxpinNiftyDistsettleNormal{} on sessions without an expiry, the value
+expected when the index is unrelated to the strikes. On index expiries it differs by
+$\IdxpinNiftyDistsettle{}$ (standard error \IdxpinNiftyDistsettleSe{}), and the change in
+distance over the window by $\IdxpinNiftyDistchange{}$. The downward displacement of the index
+settlement documented in Section~\ref{sec:index} is therefore not a movement toward the
+nearest strike. It is a movement in one direction.
