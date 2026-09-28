@@ -1,90 +1,104 @@
-\section{Measures and inference}\label{sec:method}
+\section{Measures and estimation}\label{sec:method}
 
-\subsection{Measures}
+\subsection{The settlement price and its displacement}
 
-\paragraph{The settlement price.} The settlement VWAP is computed from the window's trades.
-It is then compared against the mid at the window's open (the \emph{drift}), against the
-closing price (the \emph{reversal}), and against the final minute's own VWAP (the
-\emph{terminal gap}). The reversal is the most informative of the three: a price that is
-pushed and then released leaves the close somewhere other than the settlement.
+For security $i$ on session $t$ let $S_{it}$ be the settlement price, the volume-weighted
+average price of the window, and $P^{\mathrm{pre}}_{it}$ the volume-weighted average price of
+the ten minutes before the window opens. The move over the window is
+\begin{equation}
+  D_{it} = 10^{4}\,\ln\bigl(S_{it} / P^{\mathrm{pre}}_{it}\bigr),
+\end{equation}
+in basis points. Let $O_{i,t+1}$ be the volume-weighted average price of the first thirty
+minutes of the following session. The next-morning return from the settlement price is
+\begin{equation}
+  R_{i,t+1} = 10^{4}\,\ln\bigl(O_{i,t+1} / S_{it}\bigr).
+\end{equation}
+A settlement price displaced by trading that does not reflect information is followed by a
+return in the opposite direction once that trading stops, so that $R_{i,t+1}$ is negatively
+related to $D_{it}$. Some reversal is expected on any session, since part of the price
+movement caused by liquidity demand is temporary. The test is whether the reversal is larger
+on monthly expiries:
+\begin{equation}
+  R_{i,t+1} = \alpha_i + \beta D_{it}
+      + \sum_{k} \gamma_k \, D_{it} \, \mathbb{1}[t \in k]
+      + \sum_{k} \delta_k \, \mathbb{1}[t \in k] + \varepsilon_{it},
+  \label{eq:reversal}
+\end{equation}
+where $k$ ranges over monthly expiries, weekly index expiries and month ends, and
+$\alpha_i$ is a security fixed effect. The coefficient $\beta$ measures the reversal on
+ordinary sessions and $\gamma_{\text{monthly}}$ the additional reversal on monthly expiries.
+This is the signature used in studies of closing price manipulation
+\citep{carhart2002leaning, hillion2004price, comerton2011measuring}. A value of
+$\gamma_{\text{monthly}}$ that is negative in the derivatives groups and zero in the placebo
+group would indicate that the settlement price is displaced on expiry days by trading
+related to the settlement.
 
-Tests use absolute values. A participant who is long the future wants the settlement high and
-one who is short wants it low, so across many securities and months the signed drift should
-average to roughly nothing whether or not anyone is pushing. The dispersion carries the
-information.
+\subsection{Window activity}
 
-\paragraph{Pushing or churning.} The variance ratio compares the variance of a
-\VrHorizonSeconds{}-second mid return against \VrHorizonSeconds{} times the variance of a
-one-second return. Under a random walk it is one. Sustained pressure in one direction pushes
-it above one; heavier two-sided trading, which arrives as bid-ask bounce, pushes it below.
-The first-order autocorrelation of signed volume per second asks the same question of order
-flow. Impact is split into the part that survives: for each second carrying substantial
-one-sided flow, the mid move after ten seconds and after sixty is measured, and the ratio is
-the permanent share.
+The abnormal activity in the window is measured by three quantities: the share of the
+session's volume traded in the window, the absolute move $|D_{it}|$, and the absolute
+distance between the volume-weighted average price of the final five minutes and the
+settlement price. Each is regressed on indicators for the three session types with security
+fixed effects, so that the coefficients measure the difference from ordinary sessions of the
+same security.
 
-Impact is measured on the mid rather than on trade prices. Signing trades by the tick rule
-and then measuring their own subsequent return partly measures the bid-ask bounce reverting,
-which makes the estimated impact of a buy come out negative and the permanent share a ratio
-of two negative numbers.
+\subsection{Order flow and its price effect}
 
-\paragraph{Concealment.} An order is treated as concealing size when its displayed quantity
-is positive and below its total; a displayed quantity of zero means no instruction was given,
-which is the ordinary case. From the book we take the share of resting size that is
-concealed, and the replenishment count per thousand shares matched, which is the rate at
-which concealed size is converted into executions.
+Every trade has an aggressor, the side whose order arrived later and crossed the spread;
+order numbers are assigned in order of arrival, so the aggressor is the side with the larger
+order number. For each security and session, net aggressor flow in the window is the volume
+bought by aggressive buyers minus the volume sold by aggressive sellers, expressed as a
+percentage of the security's median session volume. It is computed in total and separately
+by the category of the aggressor. The window move and the next-morning return are regressed
+on this flow and its interaction with the session types. The first regression measures how
+far a given flow moves the settlement price; the second how much of that movement is
+subsequently reversed.
 
-\paragraph{The cost of moving the price.} For each snapshot the displayed book is swept from
-the touch by a fixed notional and the resulting price move recorded. Sweeping a fixed size and
-measuring the move, rather than asking what a fixed move costs, avoids censoring: the book
-carries a finite number of levels, and on a liquid security a ten-basis-point move lies beyond
-all of them. The figure is a lower bound on what moving the settlement would take, since the
-sweep assumes the book neither replenishes nor reacts, and should be read as an order of
-magnitude and as a comparison across groups.
+\subsection{Inference}
 
-\paragraph{Order behaviour.} The cancel-to-entry ratio, the share of orders cancelled within
-one second of entry, the immediate-or-cancel rate (reported separately for the final five
-minutes), spreads, displayed depth, and the concentration of volume across the window's
-minutes.
+Observations are correlated across securities within a session, and on an expiry day this
+correlation is the rule, not the exception. Standard errors are therefore clustered by
+session. Because the monthly expiry coefficients are identified from only
+\TapeNMonthlyexpiry{} sessions, the main coefficients are also compared with their
+randomization distribution. The same regression is estimated \RiDraws{} times with the
+monthly expiries removed and replaced by one ordinary session drawn at random from each
+month. The randomization $p$-value is the share of these draws in which the coefficient is
+at least as large in absolute value as the one observed. It does not rely on the asymptotic
+approximation that a small number of clusters makes unreliable.
 
-\subsection{Paired tests}
+\subsection{Futures convergence}
 
-Every hypothesis has the same form: a per-security quantity on an expiry session against the
-same quantity on that month's control session. Each results file is first reduced to one value
-per security and session, so a security contributes one matched pair per month.
+On an ordinary session a stock future trades at the cash price plus the cost of carry. On the
+expiry day it settles at the average cash price of the window, part of which is already
+determined during the window. If it is priced as such, its price at minute $m$ should be close
+to the projected settlement price
+\begin{equation}
+  \hat S_{m} = \frac{V_m \bar{S}_m + (V - V_m)\, s_m}{V},
+\end{equation}
+where $\bar{S}_m$ is the average price of the window up to minute $m$, $V_m$ the volume up to
+that minute, $V$ the volume of the whole window and $s_m$ the current cash price. The basis
+$\ln(F_m/s_m)$ is regressed on $\ln(\hat S_m / s_m)$ with a fixed effect for each security
+and session, which absorbs the cost of carry. A slope of one indicates that the future is
+priced as the average to which it settles; a slope of zero that it follows the cash price.
+The regression uses the realised window volume, which is not known during the window, and is
+a description of pricing rather than a trading rule.
 
-Tests are paired $t$-tests with a Wilcoxon signed-rank test alongside, since these
-distributions are heavy-tailed. Effect sizes are Cohen's $d$ on the paired differences.
-\TestSpecified{} hypotheses are tested over \TestPairsTotal{} matched pairs, and significance
-is assessed under Benjamini--Hochberg control of the false discovery rate at
-$\alpha = \TestAlpha{}$.
+\subsection{Attraction to option strikes}
 
-Rejection and support are reported separately. The paired test is two-sided, so a small
-$p$-value says a quantity differs between expiry and control sessions---not that it differs in
-the direction the hypothesis claims. Each hypothesis therefore carries the direction it
-states, and a rejection running the other way is reported as a refutation rather than a
-confirmation. Four of them are.
+Let $K$ be the set of stock option strikes of security $i$ traded in the expiry month and
+$\Delta_i$ the local strike interval. The distance of the settlement price to a strike is
+\begin{equation}
+  d_{it} = \min_{k \in K} \bigl|S_{it} - k\bigr| / \Delta_i \;\in\; [0, \tfrac{1}{2}],
+\end{equation}
+which has a mean of one quarter if the settlement price is unrelated to the strikes. It is
+compared between the expiry day and the other sessions of the same expiry month, with a
+fixed effect for each security and month, and within the expiry day between the settlement
+price and the pre-window price. Delta hedging by option writers and trading by option holders
+both predict that the settlement price is drawn toward strikes on the expiry day
+\citep{ni2005stock}.
 
-\subsection{Difference-in-differences}
+\subsection{Order book measures}
 
-The paired tests establish that a quantity differs on expiry Thursdays. They do not establish
-that the settlement mechanism is the reason, and this is where the three-group design in
-Section~\ref{sec:design} does its work.
-
-Both contrasts are computed on per-security expiry-minus-control differences, so each
-security contributes one observation and the comparison is over securities rather than over
-security-months. The twelve months of one security are not twelve independent observations of
-how that security responds, and treating them as such would overstate the precision by a
-factor of more than three.
-
-The first contrast compares the derivatives groups against the placebo group. If the placebo
-securities move the same way on expiry Thursdays, the effect belongs to the calendar rather
-than to the settlement, and the paired results above describe the last Thursday of the month
-rather than the settlement mechanism.
-
-The second compares the illiquid group against the liquid group. If the settlement incentive
-is being acted on, the effect should be larger where moving the price is cheaper---a
-prediction the settlement story makes and the calendar explanations mostly do not, since
-index rebalancing and month-end flows have no particular reason to scale inversely with
-liquidity.
-
-Both are reported in Table~\ref{tab:contrasts}.
+On the order book sample the limit order book is reconstructed and the settlement window
+compared between each expiry session and its control. These measures are described in
+Section~\ref{sec:book}.

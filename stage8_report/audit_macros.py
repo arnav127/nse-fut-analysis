@@ -85,9 +85,26 @@ def cited_macros(*sources: str) -> Set[str]:
     return names
 
 
+# Mathematics is notation, not a reported quantity: the exponent in a basis-point scaling or
+# the bounds of a distance defined on [0, 1/2] are part of a definition. Blanked out, keeping
+# the line structure so reported line numbers still point at the source.
+DISPLAY_MATH = re.compile(r"\\begin\{(equation|align)\*?\}.*?\\end\{\1\*?\}|\\\[.*?\\\]",
+                          re.DOTALL)
+INLINE_MATH = re.compile(r"(?<!\\)\$[^$\n]*?(?<!\\)\$")
+
+
+def _blank(match: "re.Match") -> str:
+    return "\n" * match.group(0).count("\n")
+
+
+def strip_math(text: str) -> str:
+    return INLINE_MATH.sub("", DISPLAY_MATH.sub(_blank, text))
+
+
 def hand_typed_numbers(authored_text: str) -> List[Tuple[int, str]]:
     """Numerals in the authored prose, which should contain none."""
     offenders: List[Tuple[int, str]] = []
+    authored_text = strip_math(strip_comments(authored_text))
     for line_number, line in enumerate(authored_text.splitlines(), 1):
         if EXEMPT_LINE.search(line):
             continue
