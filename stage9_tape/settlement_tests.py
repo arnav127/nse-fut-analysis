@@ -125,6 +125,25 @@ def build_panel(tape: Optional[pd.DataFrame] = None) -> pd.DataFrame:
         panel[f"flow_x_{t}"] = panel.flow * panel[t]
         for name in PARTICIPANTS.values():
             panel[f"flow_{name}_x_{t}"] = panel[f"flow_{name}"] * panel[t]
+
+    # Order imbalance, (BI - SI) / (BI + SI), over the whole window and in each five-minute
+    # block, and the move from the window's first minute to its last.
+    if "w1_bi" in panel.columns:
+        bi = sum(panel[f"w{k}_bi"].fillna(0.0) for k in range(1, 7))
+        si = sum(panel[f"w{k}_si"].fillna(0.0) for k in range(1, 7))
+        panel["oib"] = (bi - si) / (bi + si).replace(0, np.nan)
+        panel["abs_oib"] = panel.oib.abs()
+        for k in range(1, 7):
+            b, s_ = panel[f"w{k}_bi"].fillna(0.0), panel[f"w{k}_si"].fillna(0.0)
+            panel[f"oib{k}"] = (b - s_) / (b + s_).replace(0, np.nan)
+        panel["move1530"] = bps * np.log(panel.last1_vwap / panel.first1_vwap)
+        panel["move1530"] = panel.groupby("group")["move1530"].transform(winsorize)
+        panel["abs_move1530"] = panel.move1530.abs()
+        # Thursday expiries of either kind settle the index options.
+        panel["index_expiry"] = panel.day_type.isin(["monthly_expiry", "weekly_expiry"]
+                                                    ).astype(float)
+        for t in EVENT_TYPES:
+            panel[f"oib_x_{t}"] = panel.oib * panel[t]
     return panel
 
 
@@ -201,9 +220,64 @@ def randomization_p(panel: pd.DataFrame, y: str, x: List[str], target: str,
 
 # --- the three tables ------------------------------------------------------------------
 
-def activity_table(panel: pd.DataFrame) -> pd.DataFrame:
+PRESSURE_MEASURES = {
+    "abs_oib": "|Order imbalance| over the window",
+    "oib": "Order imbalance over the window",
+    "move1530": "Move from 15:00 to 15:30 (bps)",
+    "abs_move1530": "|Move from 15:00 to 15:30| (bps)",
+}
+
+
+def pressure_table(panel: pd.DataFrame) -> pd.DataFrame:
+    """Order imbalance on each type of session: is the window more one-sided on expiry?"""
+    if "oib" not in panel.columns:
+        return pd.DataFrame()
+    return activity_table(panel, PRESSURE_MEASURES)
+
+
+def oib_dynamics(panel: pd.DataFrame) -> pd.DataFrame:
+    """Persistence of imbalance across the window's blocks, and its effect on the price.
+
+    Persistence: the imbalance of each five-minute block regressed on that of the block
+    before, with interactions for the session types. One-sided pressure sustained through the
+    window shows as higher persistence. Price effect: the move from 15:00 to 15:30 regressed
+    on the window's imbalance, with security and session effects.
+    """
+    if "oib" not in panel.columns:
+        return pd.DataFrame()
     rows = []
-    for measure, label in ACTIVITY_MEASURES.items():
+    blocks = []
+    for k in range(2, 7):
+        part = panel[["symbol", "session", "group", *EVENT_TYPES]].copy()
+        part["y"] = panel[f"oib{k}"]
+        part["lag"] = panel[f"oib{k - 1}"]
+        blocks.append(part)
+    long = pd.concat(blocks, ignore_index=True)
+    for t in EVENT_TYPES:
+        long[f"lag_x_{t}"] = long.lag * long[t]
+    x = ["lag", *[f"lag_x_{t}" for t in EVENT_TYPES], *EVENT_TYPES]
+    for key in GROUP_SETS:
+        fit = fe_ols(long[long.group.isin(GROUP_SETS[key])], "y", x, fe="symbol")
+        if fit is None:
+            continue
+        for term in ("lag", "lag_x_monthly_expiry", "lag_x_weekly_expiry"):
+            rows.append({"model": "persistence", "sample": key, "term": term,
+                         "nobs": fit.nobs, "sessions": fit.clusters, **fit.get(term)})
+    x = ["oib", *[f"oib_x_{t}" for t in EVENT_TYPES]]
+    for key in GROUP_SETS:
+        fit = fe_ols(_subset(panel, key), "move1530", x, fe=TWO_WAY)
+        if fit is None:
+            continue
+        for term in ("oib", "oib_x_monthly_expiry", "oib_x_weekly_expiry"):
+            rows.append({"model": "price", "sample": key, "term": term,
+                         "nobs": fit.nobs, "sessions": fit.clusters, **fit.get(term)})
+    return pd.DataFrame(rows)
+
+
+def activity_table(panel: pd.DataFrame, measures: Optional[Dict[str, str]] = None
+                   ) -> pd.DataFrame:
+    rows = []
+    for measure, label in (measures or ACTIVITY_MEASURES).items():
         for key in GROUP_SETS:
             frame = _subset(panel, key)
             fit = fe_ols(frame, measure, EVENT_TYPES)
@@ -328,6 +402,8 @@ def run_settlement_tests(ri: bool = True) -> pd.DataFrame:
     reversal.to_csv(out / "s9_reversal.csv", index=False)
     flow = flow_table(panel, ri=ri)
     flow.to_csv(out / "s9_flow.csv", index=False)
+    pressure_table(panel).to_csv(out / "s9_pressure.csv", index=False)
+    oib_dynamics(panel).to_csv(out / "s9_oib_dynamics.csv", index=False)
     logger.info("[S9] settlement tests written")
     return reversal
 
