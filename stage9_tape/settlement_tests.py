@@ -57,6 +57,10 @@ GROUP_SETS = {"liquid": ["liquid"], "illiquid": ["illiquid"], "placebo": ["place
               "derivative": list(DERIVATIVE_GROUPS)}
 
 RI_DRAWS = 1000
+
+# Security and session effects. The session effect removes market-wide moves, which on a
+# handful of expiry days would otherwise dominate every return-based estimate.
+TWO_WAY = ("symbol", "session")
 SEED = 20220127
 
 ACTIVITY_MEASURES = {
@@ -173,14 +177,15 @@ def _pseudo_panel(panel: pd.DataFrame, rng: np.random.Generator) -> pd.DataFrame
 
 
 def randomization_p(panel: pd.DataFrame, y: str, x: List[str], target: str,
-                    observed: float, did: bool = False, draws: int = RI_DRAWS) -> Dict[str, float]:
+                    observed: float, did: bool = False, draws: int = RI_DRAWS,
+                    fe=TWO_WAY) -> Dict[str, float]:
     rng = np.random.default_rng(SEED)
     values = []
     for _ in range(draws):
         pseudo = _pseudo_panel(panel, rng)
         frame = _did_frame(pseudo, x) if did else pseudo
         cols = x + ([f"{c}_x_deriv" for c in x] if did else [])
-        fit = fe_ols(frame, y, cols)
+        fit = fe_ols(frame, y, cols, fe=fe)
         if fit is not None and target in fit.names:
             values.append(fit.get(target)["coef"])
     values = np.asarray(values)
@@ -207,7 +212,7 @@ def activity_table(panel: pd.DataFrame) -> pd.DataFrame:
                              "normal_mean": base, "nobs": fit.nobs, "sessions": fit.clusters,
                              **fit.get(t)})
         did = _did_frame(panel, EVENT_TYPES)
-        fit = fe_ols(did, measure, EVENT_TYPES + [f"{t}_x_deriv" for t in EVENT_TYPES])
+        fit = fe_ols(did, measure, [f"{t}_x_deriv" for t in EVENT_TYPES], fe=TWO_WAY)
         if fit is not None:
             for t in EVENT_TYPES:
                 rows.append({"measure": measure, "label": label, "sample": "did", "term": t,
@@ -221,7 +226,7 @@ def reversal_table(panel: pd.DataFrame, ri: bool = True) -> pd.DataFrame:
     rows = []
     for key in GROUP_SETS:
         frame = _subset(panel, key)
-        fit = fe_ols(frame, "next_rev", x)
+        fit = fe_ols(frame, "next_rev", x, fe=TWO_WAY)
         if fit is None:
             continue
         for term in ["drift", *[f"drift_x_{t}" for t in EVENT_TYPES]]:
@@ -232,7 +237,7 @@ def reversal_table(panel: pd.DataFrame, ri: bool = True) -> pd.DataFrame:
             rows.append(row)
     did = _did_frame(panel, x)
     cols = x + [f"{c}_x_deriv" for c in x]
-    fit = fe_ols(did, "next_rev", cols)
+    fit = fe_ols(did, "next_rev", cols, fe=TWO_WAY)
     if fit is not None:
         for term in ["drift", *[f"drift_x_{t}" for t in EVENT_TYPES]]:
             row = {"sample": "did", "term": term, "nobs": fit.nobs, "sessions": fit.clusters,
@@ -251,7 +256,7 @@ def flow_table(panel: pd.DataFrame, ri: bool = True) -> pd.DataFrame:
         for model, x in (("all", _flow_x()), ("participant", _participant_x())):
             for key in GROUP_SETS:
                 frame = _subset(panel, key)
-                fit = fe_ols(frame, outcome, x)
+                fit = fe_ols(frame, outcome, x, fe=TWO_WAY)
                 if fit is None:
                     continue
                 terms = ([c for c in x if c.startswith("flow") and
@@ -283,13 +288,17 @@ def window_path(panel: pd.DataFrame) -> pd.DataFrame:
     the sign of the window's move, then the next morning. Oriented this way a push and its
     release show as a rise and a fall whatever the direction of the push.
     """
+    # Each point is measured relative to the same point's average across the universe on
+    # that session, so that a market-wide move does not appear as a push and its release.
     reference = panel.pre10_vwap.fillna(panel.pre_last)
-    sign = np.sign(panel.drift)
+    raw = {f"w{k}": 1e4 * np.log(panel[f"w{k}_vwap"] / reference) for k in range(1, 7)}
+    raw["settle"] = panel.drift
+    raw["next_open"] = panel.drift + panel.next_rev
+    adjusted = {k: v - v.groupby(panel.session).transform("mean") for k, v in raw.items()}
+    sign = np.sign(adjusted["settle"])
     points = {"pre": pd.Series(0.0, index=panel.index)}
-    for k in range(1, 7):
-        points[f"w{k}"] = 1e4 * np.log(panel[f"w{k}_vwap"] / reference) * sign
-    points["settle"] = panel.drift.abs()
-    points["next_open"] = (panel.drift + panel.next_rev) * sign
+    for k, v in adjusted.items():
+        points[k] = v * sign
     frame = pd.DataFrame(points)
     frame["group"] = panel.group.values
     frame["day_type"] = panel.day_type.values
