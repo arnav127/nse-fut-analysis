@@ -289,6 +289,33 @@ def oib_dynamics(panel: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def index_channel(panel: pd.DataFrame) -> pd.DataFrame:
+    """Signed window move of each derivatives group against the placebo on index expiries.
+
+    The index options settle in cash on every Thursday expiry. The liquid group consists
+    largely of index constituents and the illiquid group largely of securities outside the
+    index, so an effect that runs through the index settlement should appear in the first
+    and not the second.
+    """
+    if "index_expiry" not in panel.columns:
+        return pd.DataFrame()
+    rows = []
+    for group in DERIVATIVE_GROUPS:
+        frame = panel[panel.group.isin([group, "placebo"])].copy()
+        frame["treat"] = (frame.group == group).astype(float)
+        frame["ie_x_t"] = frame.index_expiry * frame.treat
+        frame["me_x_t"] = frame.monthly_expiry * frame.treat
+        frame["end_x_t"] = frame.month_end * frame.treat
+        for y in ("drift", "move1530", "next_rev"):
+            fit = fe_ols(frame, y, ["ie_x_t", "me_x_t", "end_x_t"], fe=TWO_WAY)
+            if fit is None:
+                continue
+            for term, label in (("ie_x_t", "index_expiry"), ("me_x_t", "monthly_extra")):
+                rows.append({"group": group, "outcome": y, "term": label, "nobs": fit.nobs,
+                             "sessions": fit.clusters, **fit.get(term)})
+    return pd.DataFrame(rows)
+
+
 def activity_table(panel: pd.DataFrame, measures: Optional[Dict[str, str]] = None
                    ) -> pd.DataFrame:
     rows = []
@@ -419,6 +446,7 @@ def run_settlement_tests(ri: bool = True) -> pd.DataFrame:
     flow.to_csv(out / "s9_flow.csv", index=False)
     pressure_table(panel).to_csv(out / "s9_pressure.csv", index=False)
     oib_dynamics(panel).to_csv(out / "s9_oib_dynamics.csv", index=False)
+    index_channel(panel).to_csv(out / "s9_index_channel.csv", index=False)
     logger.info("[S9] settlement tests written")
     return reversal
 
