@@ -89,14 +89,62 @@ def collect_tape_metrics() -> None:
             run.record(f"{stem}.absdrift", float(row.abs_drift), "basis points",
                        "absolute move from the pre-window VWAP to the settlement price")
 
-        for row in _csv("s9_activity.csv").itertuples(index=False):
-            stem = _key("act", row.measure, row.sample, row.term)
-            unit = "per cent" if row.measure == "window_share" else "basis points"
+        event_rows = [(prefix, row)
+                      for file_name, prefix in (("s9_activity.csv", "act"),
+                                                ("s9_pressure.csv", "press"))
+                      for row in _csv(file_name).itertuples(index=False)]
+        for prefix, row in event_rows:
+            stem = _key(prefix, row.measure, row.sample, row.term)
+            unit = ("per cent" if row.measure == "window_share"
+                    else "ratio" if "oib" in row.measure else "basis points")
             _record_fit(run, stem, pd.Series(row._asdict()), unit,
                         f"{row.label}, {row.term} against other sessions, {row.sample}")
             if row.sample != "did" and pd.notna(getattr(row, "normal_mean", np.nan)):
-                run.record(_key("act", row.measure, row.sample, "normal"),
+                run.record(_key(prefix, row.measure, row.sample, "normal"),
                            float(row.normal_mean), unit, f"{row.label}, other sessions")
+
+        for row in _csv("s9_oib_dynamics.csv").itertuples(index=False):
+            stem = _key("oibdyn", row.model, row.sample, row.term)
+            _record_fit(run, stem, pd.Series(row._asdict()), "ratio",
+                        f"order imbalance {row.model}, {row.term}, {row.sample}")
+
+        for row in _csv("s9_index_channel.csv").itertuples(index=False):
+            stem = _key("stockidx", row.group, row.outcome, row.term)
+            _record_fit(run, stem, pd.Series(row._asdict()), "basis points",
+                        f"{row.outcome} of the {row.group} group less the placebo group, "
+                        f"{row.term}")
+
+        for row in _csv("s10_index_reversal.csv").itertuples(index=False):
+            stem = _key("idxrev", row.spec, row.index, row.term)
+            _record_fit(run, stem, pd.Series(row._asdict()), "ratio",
+                        f"index next-morning return on the window move, {row.term}")
+        for row in _csv("s10_index_activity.csv").itertuples(index=False):
+            stem = _key("idx", row.index, row.outcome, row.term)
+            _record_fit(run, stem, pd.Series(row._asdict()), "basis points",
+                        f"index {row.outcome} on {row.term} sessions against others")
+            run.record(_key("idx", row.index, row.outcome, "normal"), float(row.normal_mean),
+                       "basis points", f"index {row.outcome}, sessions without expiry")
+        for row in _csv("s10_index_pinning.csv").itertuples(index=False):
+            stem = _key("idxpin", row.index, row.outcome)
+            _record_fit(run, stem, pd.Series(row._asdict()), "ratio",
+                        f"index distance to a multiple of fifty, {row.outcome}")
+            run.record(f"{stem}.normal", float(row.normal_mean), "ratio",
+                       "sessions without expiry")
+        index_panel = _csv("s10_index_panel.csv")
+        if not index_panel.empty:
+            days = index_panel.drop_duplicates("session")
+            run.record("idx.sessions", int(len(days)), "sessions", "sessions with the index file")
+            run.record("idx.expiries", int(days.expiry.sum()), "sessions",
+                       "index expiries, weekly and monthly")
+            spread = index_panel.pivot(index="session", columns="index", values="drift")
+            spread = (spread["nifty"] - spread["next50"]).rename("d").to_frame()
+            spread["e"] = days.set_index("session").expiry
+            neg = spread.groupby("e").d.apply(lambda v: float((v < 0).mean() * 100))
+            run.record("idx.negshare.expiry", neg.get(1.0), "per cent",
+                       "share of index expiries on which the Nifty 50 ends the window below "
+                       "the Nifty Next 50")
+            run.record("idx.negshare.other", neg.get(0.0), "per cent",
+                       "the same share on other sessions")
 
         for row in _csv("s9_reversal.csv").itertuples(index=False):
             stem = _key("rev", row.sample, row.term)
@@ -300,9 +348,70 @@ def table_derivatives(metrics: Dict) -> None:
     _write("pinning", lines)
 
 
+def table_pressure(metrics: Dict) -> None:
+    head = " & ".join(SAMPLE_LABEL[x] for x in SAMPLES)
+    lines = [r"\begin{tabular}{l" + "c" * len(SAMPLES) + "}", r"\toprule",
+             rf" & {head} \\", r"\midrule"]
+    blocks = [("abs_oib", "$|$Order imbalance$|$ over the window", 3),
+              ("oib", "Order imbalance over the window", 3),
+              ("abs_move1530", r"$|$Move from 15:00 to 15:30$|$ (bps)", 2)]
+    for measure, title, digits in blocks:
+        lines.append(rf"\multicolumn{{{len(SAMPLES) + 1}}}{{l}}{{\textit{{{title}}}}} \\")
+        base = []
+        for x in SAMPLES:
+            k = _key("press", measure, x, "normal")
+            base.append(f"{metrics[k]['value']:.{digits}f}" if k in metrics else "")
+        lines.append(r"\quad Other sessions (mean) & " + " & ".join(base) + r" \\")
+        for t in ("monthly_expiry", "weekly_expiry"):
+            cells = [_cell(metrics, _key("press", measure, x, t), digits) for x in SAMPLES]
+            lines.append(rf"\quad {EVENT_LABEL[t]} & " + " & ".join(c[0] for c in cells)
+                         + r" \\")
+            lines.append(" & " + " & ".join(c[1] for c in cells) + r" \\")
+        lines.append(r"\addlinespace[3pt]")
+    lines.append(rf"\multicolumn{{{len(SAMPLES) + 1}}}{{l}}{{\textit{{Persistence of order "
+                 r"imbalance from one five-minute block to the next}} \\")
+    for label, term in (("Other sessions", "lag"), ("Monthly expiry", "lag_x_monthly_expiry"),
+                        ("Weekly index expiry", "lag_x_weekly_expiry")):
+        cells = [_cell(metrics, _key("oibdyn", "persistence", x, term), 3) for x in SAMPLES]
+        lines.append(rf"\quad {label} & " + " & ".join(c[0] for c in cells) + r" \\")
+        lines.append(" & " + " & ".join(c[1] for c in cells) + r" \\")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    _write("pressure", lines)
+
+
+def table_index(metrics: Dict) -> None:
+    cols = [("nifty", "Nifty 50"), ("next50", "Nifty Next 50"), ("spread", "Difference")]
+    lines = [r"\begin{tabular}{lccc}", r"\toprule",
+             " & " + " & ".join(c[1] for c in cols) + r" \\", r"\midrule"]
+    rows = [("drift", "Move from pre-window to settlement value (bps)"),
+            ("move", "Move from 15:00 to 15:30 (bps)"),
+            ("next_rev", "Next-morning return from the settlement value (bps)"),
+            ("abs_drift", r"$|$Move from pre-window to settlement value$|$ (bps)")]
+    for outcome, title in rows:
+        lines.append(rf"\multicolumn{{4}}{{l}}{{\textit{{{title}}}}} \\")
+        base = []
+        for c, _ in cols:
+            k = _key("idx", c, outcome, "normal")
+            base.append(f"{metrics[k]['value']:.2f}" if k in metrics else "")
+        lines.append(r"\quad Sessions without expiry (mean) & " + " & ".join(base) + r" \\")
+        for label, term in (("Index expiry", "expiry"), ("Monthly expiry, additional", "monthly")):
+            cells = [_cell(metrics, _key("idx", c, outcome, term)) for c, _ in cols]
+            lines.append(rf"\quad {label} & " + " & ".join(x[0] for x in cells) + r" \\")
+            lines.append(" & " + " & ".join(x[1] for x in cells) + r" \\")
+        ri = []
+        for c, _ in cols:
+            k = _key("idx", c, outcome, "expiry") + ".rip"
+            ri.append(f"{metrics[k]['value']:.3f}" if k in metrics else "")
+        lines.append(r"\quad Randomization $p$, index expiry & " + " & ".join(ri) + r" \\")
+        lines.append(r"\addlinespace[3pt]")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    _write("index", lines)
+
+
 def build_tape_tables() -> None:
     metrics = load_metrics()
-    for builder in (table_activity, table_reversal, table_flow, table_derivatives):
+    for builder in (table_activity, table_reversal, table_flow, table_derivatives,
+                    table_pressure, table_index):
         try:
             builder(metrics)
         except Exception as exc:
@@ -422,8 +531,44 @@ def figure_pinning() -> None:
     _save(fig, "pinning.pdf")
 
 
+def figure_index_path() -> None:
+    import matplotlib.pyplot as plt
+
+    frame = _csv("s10_index_panel.csv")
+    if frame.empty:
+        return
+    wide = {}
+    points = ["pre10", "w1", "w2", "w3", "w4", "w5", "w6", "next_open30"]
+    for col in points:
+        w = frame.pivot(index="session", columns="index", values=col)
+        wide[col] = w
+    ref = wide["pre10"]
+    rel = {c: 1e4 * (np.log(wide[c]["nifty"] / ref["nifty"])
+                     - np.log(wide[c]["next50"] / ref["next50"])) for c in points}
+    rel = pd.DataFrame(rel)
+    kinds = frame.drop_duplicates("session").set_index("session").day_type
+    rel["kind"] = kinds.reindex(rel.index).map(
+        lambda k: "Index expiry" if k in ("monthly_expiry", "weekly_expiry") else "Other")
+    ticks = ["14:50", "15:05", "15:10", "15:15", "15:20", "15:25", "15:30", "next\nopen"]
+    fig, ax = plt.subplots(figsize=(5.2, 2.9))
+    for kind, colour in (("Other", "#9a9a9a"), ("Index expiry", "#1f4e79")):
+        block = rel[rel.kind == kind][points]
+        mean, sem = block.mean(), block.sem()
+        x = np.arange(len(points))
+        ax.plot(x, mean, marker="o", markersize=3, color=colour, label=kind)
+        ax.fill_between(x, mean - 1.96 * sem, mean + 1.96 * sem, color=colour, alpha=0.15)
+    ax.axhline(0, color="#333333", linewidth=0.6)
+    ax.set_xticks(range(len(points)))
+    ax.set_xticklabels(ticks, fontsize=7)
+    ax.set_ylabel("Nifty 50 less Nifty Next 50 (bps)")
+    ax.legend(frameon=False, fontsize=7)
+    fig.tight_layout()
+    _save(fig, "index_path.pdf")
+
+
 def build_tape_figures() -> None:
-    for builder in (figure_window_path, figure_day_types, figure_convergence, figure_pinning):
+    for builder in (figure_window_path, figure_day_types, figure_convergence, figure_pinning,
+                    figure_index_path):
         try:
             builder()
         except Exception as exc:
