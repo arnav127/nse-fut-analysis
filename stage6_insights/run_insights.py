@@ -14,6 +14,8 @@ from stage6_insights.s3_hidden_liquidity import run_s3_hidden_liquidity
 from stage6_insights.s4_marking_cost import run_s4_marking_cost
 from stage6_insights.s5_window_profile import run_s5_window_profile
 from stage6_insights.s6_group_contrasts import run_s6_group_contrasts
+from stage6_insights.s7_futures_convergence import run_s7_futures_convergence
+from stage6_insights.s8_strike_pinning import run_s8_strike_pinning
 from utils.logger import setup_logger
 
 logger = setup_logger("Stage6", "stage6_insights.log")
@@ -25,6 +27,9 @@ MODULES = [
     ("S4: cost of moving the book", run_s4_marking_cost),
     ("S5: minute-by-minute window profile", run_s5_window_profile),
     ("S6: placebo and liquidity contrasts", run_s6_group_contrasts),
+    ("S7: futures convergence", run_s7_futures_convergence),
+    # Reads the full-year tape panel, so it needs the tape stage to have run first.
+    ("S8: strike pinning", run_s8_strike_pinning),
 ]
 
 

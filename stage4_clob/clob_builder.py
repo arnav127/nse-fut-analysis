@@ -28,6 +28,7 @@ analyses read.
 
 from __future__ import annotations
 
+import os
 import shutil
 import sys
 import time
@@ -228,6 +229,16 @@ def flatten_snapshots(session: str, force: bool = False,
 def build_clob_for_session(session: str, symbols: Optional[List[str]] = None,
                            force: bool = False, memory_limit_mb: Optional[int] = None,
                            threads: Optional[int] = None) -> None:
+    # Flattened snapshots already on disk make the full-session books unnecessary, and the
+    # books are dropped after flattening, so their absence is not a reason to rebuild.
+    if any(clob_dir(session).glob("sym=*")) and not force:
+        logger.info(f"[SKIP] snapshots for {session} already flattened")
+        return
     if build_books(session, symbols=symbols, force=force, threads=threads) is not None:
-        flatten_snapshots(session, force=force, memory_limit_mb=memory_limit_mb,
-                          threads=threads)
+        flattened = flatten_snapshots(session, force=force, memory_limit_mb=memory_limit_mb,
+                                      threads=threads)
+        # The full-session books are an intermediate: only the flattener reads them, and a
+        # session's worth at one-second resolution for the whole universe is several
+        # gigabytes against a few hundred megabytes for the window it keeps.
+        if flattened is not None and not os.environ.get("KEEP_CLOB_BOOKS"):
+            shutil.rmtree(books_dir(session), ignore_errors=True)
