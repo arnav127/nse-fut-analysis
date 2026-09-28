@@ -1,0 +1,94 @@
+\section{H1: Activity in the settlement window}\label{sec:activity}
+
+\subsection{Volume across the year}\label{sec:window}
+
+Table~\ref{tab:activity} reports how the settlement window on each type of session differs
+from the same security's window on ordinary sessions. On an ordinary session the window
+accounts for about \ActWindowshareLiquidNormal{}\% of the session's volume in the liquid
+group, and similar shares in the other two.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Activity in the settlement window by type of session. Each entry is the coefficient
+on an indicator for the session type in a regression with security fixed effects, estimated
+separately for each group, and measures the difference from ordinary sessions of the same
+security. The last column is the difference between the securities with derivatives and the
+placebo group, estimated with security and session fixed effects. Standard errors clustered
+by session in parentheses. $^{*}$, $^{**}$ and $^{***}$ denote significance at the ten, five
+and one per cent levels.}
+\label{tab:activity}
+\resizebox{\textwidth}{!}{\input{generated/tables/activity}}
+\end{table}
+
+On monthly expiries, trading is drawn into the window in securities with derivatives and not
+in the others. The window's share of session volume rises by \ActWindowshareLiquidMonthlyexpiry{}
+percentage points in the liquid group and by \ActWindowshareIlliquidMonthlyexpiry{} points
+in the illiquid group, while the change in the placebo group, \ActWindowsharePlaceboMonthlyexpiry{}
+points, is not distinguishable from zero. The difference between the derivatives groups and
+the placebo group is \ActWindowshareDidMonthlyexpiry{} points, with a standard error of
+\ActWindowshareDidMonthlyexpirySe{}. The calendar controls do not reproduce this pattern. On weekly
+index expiries the window's share of volume does not change in any group. On month ends it
+rises sharply in all three groups, by \ActWindowshareLiquidMonthend{} points in the liquid
+group and by \ActWindowsharePlaceboMonthend{} points in the placebo group, which reflects the
+closing demand of index and portfolio rebalancing; the additional rise in the securities with
+derivatives, \ActWindowshareDidMonthend{} points, is smaller than on monthly expiries.
+
+The settlement price also moves further from the pre-window price on monthly expiries. For
+the securities with derivatives the absolute move increases by
+\ActAbsdriftDerivativeMonthlyexpiry{} basis points from an average of
+\ActAbsdriftDerivativeNormal{}, and the final five minutes of the window end
+\ActAbsterminalDerivativeMonthlyexpiry{} basis points further from the settlement price.
+Neither increase is specific to the derivatives groups. The placebo group shows increases of
+similar size, and the differences between the two, \ActAbsdriftDidMonthlyexpiry{} and
+\ActAbsterminalDidMonthlyexpiry{} basis points, are small and insignificant. Figure~\ref{fig:daytypes}
+shows the same comparison in levels.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{day_types.pdf}
+  \caption{Share of session volume traded in the settlement window, and the absolute move
+    from the pre-window price to the settlement price, by group and type of session. Means
+    over security-sessions.}
+  \label{fig:daytypes}
+\end{figure}
+
+\subsection{The order book}\label{sec:book}
+
+On the \DesignSessions{} sessions of the order book sample the limit order book is
+reconstructed, which shows how the supply of liquidity in the window changes on expiry days.
+Each measure is computed per security and session and compared between each monthly expiry
+and the control session in the same month, the trading day before it.
+Table~\ref{tab:descriptives} reports the averages and Table~\ref{tab:contrasts} compares the
+expiry-minus-control differences of the securities with derivatives with those of the
+placebo group. The full set of paired tests is reported in Appendix~\ref{app:tests}.
+
+\input{generated/tables/descriptives}
+
+The window is more expensive to trade in on expiry days. The quoted spread widens from
+\SpreadMeanBpsControl{} to \SpreadMeanBpsExpiry{} basis points, the displayed notional in the
+book falls from \BookVisibleCrControl{} to \BookVisibleCrExpiry{} crore, and sweeping the
+displayed book with an order of \ProbeSizeCr{} crore moves the price by
+\MoveBpsSmallExpiry{} basis points against \MoveBpsSmallControl{} on control sessions. The share
+of orders cancelled within one second of entry rises from \LifePhantomRateControl{}\% to
+\LifePhantomRateExpiry{}\%. The widening of the spread and the rise in fleeting orders are
+specific to securities with derivatives: relative to the placebo group, the spread widens by an
+additional \DidMeanspreadbpsPlacebo{} basis points ($p = \DidMeanspreadbpsPlaceboP{}$) and the
+share of orders cancelled within a second rises by an additional
+\DidPhantomorderratePlacebo{} ($p = \DidPhantomorderratePlaceboP{}$). The
+cost of sweeping the book rises by a similar amount in both sets of securities.
+
+The rise in cost is modest relative to the level. Sweeping the book is several times more
+expensive in the illiquid group, at \MoveBpsSmallIlliquid{} basis points, than in the liquid
+group, at \MoveBpsSmallLiquid{}, on any session. The cost of moving the price is set far more by
+the security than by the day.
+
+The share of resting size that is not displayed is high on every session, at
+\ConcealedDepthShareControl{}\% on control sessions, and does not change on expiry. Concealed
+orders become somewhat larger relative to displayed ones, from \ConcealedSizeMultipleControl{}
+to \ConcealedSizeMultipleExpiry{} times their size, and are replenished slightly less often per share
+traded. Fewer, larger concealed orders worked more slowly through the window describe the
+execution of large expiring positions rather than an attempt to hide an accumulation aimed at
+the settlement price.
+
+\input{generated/tables/contrasts}

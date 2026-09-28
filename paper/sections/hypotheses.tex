@@ -1,0 +1,39 @@
+\section{Hypotheses}\label{sec:hypotheses}
+
+The study tests four hypotheses. Each is examined through several measures, which are
+reported as parts of the hypothesis rather than as separate tests.
+
+\paragraph{H1: Expiry concentrates trading in the settlement window.} The closing and rolling
+of expiring positions, and the unwinding of arbitrage positions at the settlement price, are
+expected to draw volume into the window and to make it more expensive to trade in. The
+measures are the window's share of session volume, the quoted spread, displayed depth, the
+cost of sweeping the displayed book and the rate of cancellation
+(Sections~\ref{sec:activity} and~\ref{sec:book}).
+
+\paragraph{H2: Trading in the window is one-sided on expiry days.} Pressure on the settlement
+price requires order flow that leans persistently in one direction. It is measured by the order
+imbalance
+\begin{equation*}
+  \mathrm{OIB} = \frac{BI - SI}{BI + SI} \in [-1, 1],
+\end{equation*}
+where $BI$ and $SI$ are buyer- and seller-initiated volume, over the window and in each of its
+five-minute blocks, by the persistence of the imbalance from one block to the next, and by the
+price move from the start of the window to its end. A market with balanced two-sided trading
+has an imbalance near zero that does not persist; one-sided pressure produces an imbalance
+that stays away from zero (Section~\ref{sec:pressure}).
+
+\paragraph{H3: The settlement price is displaced by trading in the window.} A settlement price
+moved by trading that does not reflect information is reversed once that trading stops, and a
+displacement caused by the settlement should appear only where something settles. The
+measures are the reversal of the window's move the next morning, and the signed move of the
+index, whose derivatives are settled in cash, relative to an index without derivatives
+(Section~\ref{sec:distortion}).
+
+\paragraph{H4: The derivatives create an incentive to move the settlement price.} The incentive
+depends on how the derivative is settled. It is examined through the pricing of the expiring
+stock future within the window and through the attraction of the settlement price to option
+strikes, for stocks and for the index (Section~\ref{sec:derivatives}).
+
+Each hypothesis is tested on monthly expiries against other sessions, with the weekly index
+expiries and month ends as calendar controls, and in securities with derivatives against the
+placebo group.

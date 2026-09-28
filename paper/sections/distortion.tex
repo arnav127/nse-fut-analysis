@@ -1,0 +1,134 @@
+\section{H3: Is the settlement price displaced?}\label{sec:distortion}
+
+\subsection{Reversal of the stock settlement price}
+
+Table~\ref{tab:reversal} estimates equation~\eqref{eq:reversal}. On ordinary sessions the move
+over the window is not reversed the next morning: the coefficient for the securities with
+derivatives is $\RevDerivativeDrift{}$, with a standard error of \RevDerivativeDriftSe{}. On
+monthly expiries a part of the move is reversed. The additional coefficient is
+$\RevDerivativeDriftxmonthlyexpiry{}$ (standard error \RevDerivativeDriftxmonthlyexpirySe{}),
+so that about a quarter of the window's move is undone by the next morning, and the
+randomization $p$-value is \RevDerivativeDriftxmonthlyexpiryRip{}. The corresponding
+coefficients for weekly index expiries and month ends are smaller and not significant.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Reversal of the settlement price. Regressions of the return from the settlement price
+to the volume-weighted average price of the next session's first thirty minutes on the move
+over the window and its interactions with the session types, with security and session fixed
+effects. The last column is the difference between the securities with derivatives and the
+placebo group. Standard errors clustered by session in parentheses. The randomization
+$p$-value compares the monthly-expiry coefficient with its distribution over \RiDraws{}
+samples in which the expiries are replaced by one ordinary session from each month.}
+\label{tab:reversal}
+\resizebox{\textwidth}{!}{\input{generated/tables/reversal}}
+\end{table}
+
+The reversal is not, however, confined to securities with an expiring contract. In the placebo
+group the additional coefficient on monthly expiries is $\RevPlaceboDriftxmonthlyexpiry{}$
+(randomization $p$-value \RevPlaceboDriftxmonthlyexpiryRip{}), and the difference between the
+two sets of securities, $\RevDidDriftxmonthlyexpiry{}$, is close to zero (randomization
+$p$-value \RevDidDriftxmonthlyexpiryRip{}). A settlement price displaced by trading aimed at
+the settlement should be reversed where there is a settlement to influence and not elsewhere.
+The pattern found here is a property of the monthly expiry session as a whole, shared by
+securities on which nothing settles.
+
+Figure~\ref{fig:path} shows the same result as a path. For each security and session the
+prices through the window and at the next morning's open are measured relative to the average
+of all securities on that session, and oriented in the direction of the window's move. On
+ordinary sessions the move is kept overnight; on monthly expiries part of it is given back, to
+a similar extent in all three groups.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{window_path.pdf}
+  \caption{Average path of the price through the settlement window and at the next morning's
+    open, relative to the pre-window price and to the average of all securities on the same
+    session, oriented so that the window's move is positive.}
+  \label{fig:path}
+\end{figure}
+
+On the order book sample the settlement price ends further from the last traded price on
+expiry sessions, \AbsReversalBpsExpiry{} basis points against \AbsReversalBpsControl{}, and
+less volume is traded within a basis point of the running average. Both are consistent with a
+more volatile window rather than with trading that tracks the average. The first is larger in
+securities with derivatives than in the placebo group, by \DidAbsreversalbpsPlacebo{} basis
+points ($p = \DidAbsreversalbpsPlaceboP{}$). On the full-year sample, which covers every
+session and uses session fixed effects, the corresponding comparison of the final minutes with
+the settlement price is not specific to these securities (Section~\ref{sec:window}).
+
+\subsection{The index, where settlement is in cash}\label{sec:index}
+
+Settlement by delivery removes the incentive to move a stock's settlement price
+(Section~\ref{sec:derivatives}). It does not remove it for the index. Nifty 50 futures and
+options are settled in cash against the index's closing value, which is computed from the
+closing prices of the constituents, that is from their settlement-window VWAPs. The index
+options expired on every Thursday of the year and were the most heavily traded derivatives on
+the exchange. If the settlement window is used to move a price, the index is where it pays.
+
+The exchange's index file records, every second, the value of the Nifty 50 and of the Nifty
+Next 50, an index of the next fifty large companies on which no derivatives were traded. The
+second index is exposed to the same market and the same calendar but to no settlement, and it
+serves as the placebo at the index level. The closing value of the Nifty 50 is approximated by
+its average over the window; on the dates on which the published closing value was checked,
+the approximation was within a few index points of it. The comparison uses all
+\IdxSessions{} sessions, of which \IdxExpiries{} were index expiries.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{The index settlement. Regressions of each measure on indicators for index expiries,
+every Thursday on which the index options expire, and for the monthly expiry in addition,
+with a control for month ends. Difference is the Nifty 50 less the Nifty Next 50, which has no
+derivatives. Heteroskedasticity-robust standard errors in parentheses. The randomization
+$p$-value compares the index-expiry coefficient with its distribution over \RiDraws{} samples
+in which each expiry is replaced by another session of the same week.}
+\label{tab:index}
+\resizebox{0.95\textwidth}{!}{\input{generated/tables/index}}
+\end{table}
+
+Table~\ref{tab:index} reports the results. Neither index, taken on its own, moves in a
+consistent direction over the window on expiry days; the level of each is dominated by the
+movement of the market as a whole. Their difference is not. On index expiries the change of the
+Nifty 50 over the window, relative to the Nifty Next 50, differs from other sessions by $\IdxSpreadDriftExpiry{}$ basis points (standard error \IdxSpreadDriftExpirySe{}, randomization $p$-value
+\IdxSpreadDriftExpiryRip{}). This is about \IdxSpreadDriftPoints{} index points at the year's
+average level of \IdxNiftyLevel{}. It occurs on the weekly expiries, on which only the index
+options settle, as much as on the monthly ones: the additional coefficient for monthly expiries
+is $\IdxSpreadDriftMonthly{}$ and insignificant. The Nifty 50 ends the window below the Nifty
+Next 50 on \IdxNegshareExpiry{}\% of index expiries, against \IdxNegshareOther{}\% of other
+sessions. The movement takes place within the window: from its first minute to its last the
+difference changes by $\IdxSpreadMoveExpiry{}$ basis points relative to other sessions
+(randomization $p$-value \IdxSpreadMoveExpiryRip{}). Figure~\ref{fig:indexpath} shows the path.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.72\textwidth]{index_path.pdf}
+  \caption{The Nifty 50 relative to the Nifty Next 50 through the settlement window and at the
+    next morning's open, relative to the pre-window level, on index expiries and on other
+    sessions. Means with 95\% intervals.}
+  \label{fig:indexpath}
+\end{figure}
+
+The next morning the difference recovers by \IdxSpreadNextrevExpiry{} basis points more than
+after other sessions, which is of the same size as the fall and in the opposite direction. The
+estimate is imprecise (randomization $p$-value \IdxSpreadNextrevExpiryRip{}), because overnight
+returns vary far more than returns within the window, so the reversal is consistent with the
+fall being temporary but does not establish it.
+
+The same pattern appears in the stocks. On index expiries the liquid group, most of whose
+members are constituents of the Nifty 50, changes from the first minute of the window to the last
+by $\StockidxLiquidMoveOneFiveThreeZeroIndexexpiry{}$ basis points relative to the placebo group
+(standard error \StockidxLiquidMoveOneFiveThreeZeroIndexexpirySe{}). The illiquid group, most of
+whose members are outside the index, moves by $\StockidxIlliquidMoveOneFiveThreeZeroIndexexpiry{}$
+basis points, which is not significant.
+
+The index settlement is therefore displaced downward on expiry days, by an amount that is small
+relative to the daily movement of the index but systematic across the year's expiries, specific
+to the index that carries derivatives, and concentrated in the window in which its settlement
+value is fixed. The data identify participant categories but not individual traders, and they
+do not show the positions held in index options, so the cause cannot be established. Two
+explanations are consistent with the evidence: trading intended to lower the settlement value,
+and the unwinding at the settlement price of cash hedges held against index option positions.
+Either way, the settlement value of the most traded derivative in the market is systematically
+lowered in the window relative to an index without derivatives.
