@@ -277,7 +277,9 @@ def build_contrasts_table() -> None:
         r"Measure & Treated & Reference & Difference & $p$ \\", r"\midrule",
     ]
     for contrast, block in frame.groupby("contrast", sort=False):
-        lines.append(rf"\multicolumn{{5}}{{l}}{{\textit{{{tex_escape(str(contrast))}}}}} \\")
+        label = {"settlement vs calendar": "Securities with derivatives against the placebo group",
+                 "illiquid vs liquid": "Illiquid against liquid"}.get(str(contrast), str(contrast))
+        lines.append(rf"\multicolumn{{5}}{{l}}{{\textit{{{tex_escape(label)}}}}} \\")
         for row in block.itertuples(index=False):
             stars = "*" if row.p_value < 0.05 else ""
             lines.append(
