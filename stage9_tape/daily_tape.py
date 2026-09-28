@@ -73,6 +73,19 @@ def tape_path(session: str) -> Path:
     return TAPE_DIR / f"session={session}.parquet"
 
 
+# Columns a current reduction carries; an older file without them is redone.
+REQUIRED_COLUMNS = ("w1_bi", "first1_vwap")
+
+
+def _current(path: Path) -> bool:
+    if not path.exists():
+        return False
+    import pyarrow.parquet as pq
+
+    names = set(pq.read_schema(path).names)
+    return all(c in names for c in REQUIRED_COLUMNS)
+
+
 def _reduction(pattern: str, session: str, symbols: List[str]) -> str:
     quoted = ", ".join(f"'{s}'" for s in symbols)
     start, end = SETTLEMENT_WINDOW_START, SETTLEMENT_WINDOW_END
@@ -93,6 +106,18 @@ def _reduction(pattern: str, session: str, symbols: List[str]) -> str:
         sub_windows.append(
             f"SUM(px * q) FILTER (WHERE tt >= {lo} AND tt {upper} {hi}) / "
             f"NULLIF(SUM(q) FILTER (WHERE tt >= {lo} AND tt {upper} {hi}), 0) AS w{k + 1}_vwap")
+        # Buyer- and seller-initiated volume in each block, for the order imbalance
+        # (BI - SI) / (BI + SI) of each five minutes of the window.
+        sub_windows.append(
+            f"SUM(q) FILTER (WHERE sgn > 0 AND tt >= {lo} AND tt {upper} {hi}) AS w{k + 1}_bi")
+        sub_windows.append(
+            f"SUM(q) FILTER (WHERE sgn < 0 AND tt >= {lo} AND tt {upper} {hi}) AS w{k + 1}_si")
+    # The price at the two ends of the window: the VWAP of its first and of its last minute.
+    first_minute = f"tt >= TIME '{start}' AND tt < TIME '{start}' + INTERVAL 1 MINUTE"
+    last_minute = f"tt >= TIME '{end}' - INTERVAL 1 MINUTE AND tt <= TIME '{end}'"
+    for name, cond in (("first1_vwap", first_minute), ("last1_vwap", last_minute)):
+        sub_windows.append(f"SUM(px * q) FILTER (WHERE {cond}) / "
+                           f"NULLIF(SUM(q) FILTER (WHERE {cond}), 0) AS {name}")
     return f"""
     WITH t AS (
         SELECT symbol, txn_time,
@@ -147,7 +172,7 @@ def reduce_session(session: str, symbols: Optional[List[str]] = None, force: boo
     import nsetick
 
     out = tape_path(session)
-    if out.exists() and not force:
+    if _current(out) and not force:
         return out
     symbols = symbols or TARGET_SYMBOLS
     started = time.time()
@@ -204,7 +229,7 @@ def run_tape(jobs: int = 1, force: bool = False, sessions: Optional[List[str]] =
              threads: Optional[int] = None, memory_limit_mb: Optional[int] = None) -> pd.DataFrame:
     """Reduce every 2022 session, `jobs` at a time, and return the stacked panel."""
     sessions = sessions or trading_sessions()
-    todo = [s for s in sessions if force or not tape_path(s).exists()]
+    todo = [s for s in sessions if force or not _current(tape_path(s))]
     logger.info(f"[TAPE] {len(sessions)} sessions, {len(todo)} to reduce, {jobs} at a time")
     failures = []
     if todo:
