@@ -12,7 +12,9 @@ from utils.paths import session_to_iso
 
 
 def _gini_coefficient(x: np.ndarray) -> float:
-    x_arr = np.asarray(x, dtype=np.float64)
+    # A copy: the input is often a view of a pandas column, which copy-on-write pandas
+    # hands out read-only, and the shift below modifies the array in place.
+    x_arr = np.array(x, dtype=np.float64, copy=True)
     if np.amin(x_arr) < 0:
         x_arr -= np.amin(x_arr)
     x_arr += 1e-7
