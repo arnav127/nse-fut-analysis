@@ -186,10 +186,9 @@ def build_balance_table() -> None:
                           for name, share in overlap.items())
         lines.append(
             r"\vspace{0.4em}\par\noindent\footnotesize The placebo group's turnover range "
-            rf"covers {parts}. The placebo comparison therefore speaks to the group whose "
-            r"range it overlaps and not to the other: a security traded as heavily as the "
-            r"liquid group and carrying no derivative is close to a contradiction in terms."
-            r"\normalsize")
+            rf"covers {parts}. The placebo comparison therefore applies to the illiquid "
+            r"group: no security without derivatives is traded as heavily as the liquid "
+            r"group.\normalsize")
     lines.append(r"\end{table}")
     _write("balance", lines)
 
@@ -294,11 +293,14 @@ def build_tests_table() -> None:
             continue
         lines.append(rf"\multicolumn{{6}}{{l}}{{\textbf{{{tex_escape(BROAD_TITLES[broad])}}}}} \\")
         block = block.assign(rank=~block.primary.astype(bool))
-        for sub, part in block.groupby(block.subgroup.fillna(""), sort=False):
+        # Numbered within the broad hypothesis, primary measure first.
+        counter = iter(range(1, 100))
+        for sub, part in block.sort_values("rank", kind="stable").groupby(
+                block.subgroup.fillna(""), sort=False):
             if sub:
                 lines.append(rf"\multicolumn{{6}}{{l}}{{\quad\textit{{{tex_escape(sub)}}}}} \\")
             for row in part.sort_values(["rank", "hypothesis_id"]).itertuples(index=False):
-                hid = str(row.hypothesis_id)
+                hid = f"{broad[2]}.{next(counter)}"
                 tag = rf"{hid}\,P" if bool(row.primary) else hid
                 desc = tex_escape(str(row.description))
                 if pd.isna(row.p_value):

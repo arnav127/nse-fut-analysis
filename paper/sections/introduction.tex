@@ -8,18 +8,17 @@ designed to move the settlement price, a practice market participants call settl
 Whether it happens, and what the window looks like on expiry days if it does not, is the
 question of this paper.
 
-The study had four objectives: to compare the trajectory of the cash VWAP with the traded price
-of the stock future during the window; to identify which participants drive expiry-day volume;
-to measure the role of algorithmic trading; and to detect abnormal order book pressure, such as
-bursts of cancellations or aggressive immediate-or-cancel orders, ahead of the settlement. The
+We ask four questions: how the cash VWAP evolves through the window relative to the traded
+price of the stock future; which participants drive expiry-day volume; what role algorithmic
+trading plays; and whether there is abnormal order book pressure, such as bursts of
+cancellations or aggressive immediate-or-cancel orders, ahead of the settlement. The
 order-level files of the exchange make each of these measurable. They record every order entry,
 modification and cancellation with the category of the participant, custodian, proprietary or
 other client, and whether it was submitted algorithmically; they identify the buyer and seller
 of every trade; and they allow the limit order book to be reconstructed second by second.
 
-Following the advice to consolidate, the original thirty hypotheses are organised under four
-broad hypotheses, each with one primary measure, and the false discovery rate is controlled
-across the four primary tests. The settlement price behaves differently on expiry days (BH1);
+These questions are organised as four broad hypotheses, each with one primary measure, and
+the false discovery rate is controlled across the four primary tests. The settlement price behaves differently on expiry days (BH1);
 trading in the window is more costly (BH2); trading in the window is more one-sided (BH3); and
 order behaviour and participation change (BH4). The primary measures are, respectively, the
 distance of the settlement VWAP from the mid at the start of the window, the quoted spread, the absolute order

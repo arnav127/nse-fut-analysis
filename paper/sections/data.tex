@@ -22,17 +22,11 @@ futures and stock options are retained; index contracts are not used.
 
 \subsection{Decoding}
 
-The files are fixed-width binary. Timestamps are stored as jiffies, a count of $1/65536$
-second intervals from 1980-01-01; prices are in paise; the ten-byte symbol field is
-right-aligned and padded. The layout has changed across specification revisions, and parsing
-a file with the wrong revision shifts every field after the change by one byte, producing
-output that is wrong but not obviously so.
-
-Decoding is done by \texttt{nsetick}, which holds the layouts in a versioned specification,
-chooses the revision from the session date, and checks that choice against the observed
-record length. A mismatch is reported rather than silently mis-sliced. The sample counts
-above are read from the decoder's own manifests, so they describe what was actually parsed
-rather than what the configuration asked for.
+The files are fixed-width records. Timestamps are stored as jiffies, a count of $1/65536$ second
+intervals from 1980-01-01, and prices in paise. The record layout differs across revisions of
+the exchange's specification, so each file is decoded with the revision that applies to its
+date, and the choice is checked against the observed record length. The sample counts reported
+above are those of the records actually decoded.
 
 \subsection{Rebuilding the book}
 
@@ -42,10 +36,9 @@ in sequence, and photographed every \DesignSnapshotInterval{} second at
 
 The replay follows disclosed-quantity behaviour: only the displayed slice rests in the
 visible book, the concealed remainder replenishes as that slice fills, and the replenished
-portion loses queue priority. This is not a detail. Resting the full size of a
-disclosed-quantity order would overstate displayed depth at exactly the prices where large
-orders sit, which is where the depth and cost measures in Section~\ref{sec:book} are
-taken; an earlier version of this project did exactly that.
+portion loses queue priority. Resting the full size of a disclosed-quantity order would
+overstate displayed depth at the prices where large orders sit, which is where the depth and
+cost measures of Section~\ref{sec:book} are taken.
 
 Each snapshot records, at every level, the displayed size, the concealed size and the price,
 together with the entries, cancellations, fills and replenishments since the previous
