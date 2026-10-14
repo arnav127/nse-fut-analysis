@@ -1,13 +1,13 @@
 \section{BH1: The settlement price}\label{sec:bh1}\label{sec:distortion}
 
 The first hypothesis concerns the number the window exists to produce. Its primary measure is
-the distance between the settlement VWAP and the mid at 15:00, the start of the window, which is
-the comparison of the window's start and end that the hypothesis is about.
+the distance between the settlement VWAP and the mid at the start of the window, which compares where the window begins with the price it
+produces.
 
 \subsection{The window on the order book sample}
 
 On the order book sample the settlement VWAP lies \AbsDriftBpsExpiry{} basis points from the
-mid at 15:00 on expiry sessions and \AbsDriftBpsControl{} on control sessions. The difference is
+mid at the start of the window on expiry sessions and \AbsDriftBpsControl{} on control sessions. The difference is
 not significant ($p = \SOnePValue{}$), and the primary test of BH1 is not rejected. The
 simplest form of the same comparison, the move from the window's first minute to its last, is
 also not significantly larger ($p = \MovPValue{}$).
@@ -134,7 +134,7 @@ more volatile window rather than with trading that tracks the average. The first
 securities with derivatives than in the placebo group, by \DidAbsreversalbpsPlacebo{} basis
 points ($p = \DidAbsreversalbpsPlaceboP{}$). On the full-year sample, which covers every
 session and uses session fixed effects, the corresponding comparison of the final minutes with
-the settlement price is not specific to these securities (Section~\ref{sec:window}).
+the settlement price is not specific to these securities (Section~\ref{sec:bh1}).
 
 
 \subsection{The expiring future and the cash settlement price}

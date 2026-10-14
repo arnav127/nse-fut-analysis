@@ -279,7 +279,7 @@ def build_tests_table() -> None:
         summary["subgroup"] = ""
         summary["primary"] = False
     lines = [
-        r"\begin{longtable}{p{0.9cm} p{7.4cm} r r r r}",
+        r"\begin{longtable}{p{1.25cm} p{7.1cm} r r r r}",
         r"\caption{Every measure, grouped under the broad hypothesis it belongs to. Each is a "
         r"paired test of the expiry session against the control session of the same month, "
         r"one pair per security. $n$ is the number of pairs and $d$ Cohen's $d$. The primary "

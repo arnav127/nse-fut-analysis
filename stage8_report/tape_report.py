@@ -215,6 +215,9 @@ def collect_tape_metrics() -> None:
                        f"{row.measure}: {row.contrast}, difference in expiry-minus-control "
                        f"differences")
             run.record(f"{stem}.p", float(row.p_value), "p-value", f"{row.measure}: Welch test")
+            if column in ("phantomorderrate", "vwaptrackingshare", "concealeddepthshare"):
+                run.record(f"{stem}.pp", 100.0 * float(row.difference_in_differences),
+                           "basis points", f"{row.measure}, in percentage points")
 
         pins = _csv("s8_pinning_tests.csv")
         for row in pins.itertuples(index=False):
