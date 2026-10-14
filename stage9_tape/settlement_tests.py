@@ -449,6 +449,12 @@ def figure_summaries(panel: pd.DataFrame) -> None:
                              "abs_oib": float(values.abs().mean()),
                              "sem": float(values.abs().sem())})
         pd.DataFrame(rows).to_csv(out / "s9_oib_path.csv", index=False)
+        sessions = panel[["symbol", "session", "group", "oib", "abs_oib", "move1530",
+                          "abs_move1530"]].copy()
+        sessions["trade_date"] = sessions.session.map(lambda x: session_to_date(x).isoformat())
+        sessions["is_expiry"] = panel.day_type.eq("monthly_expiry").to_numpy()
+        sessions.rename(columns={"group": "security_group"}).to_csv(
+            out / "s9_oib_sessions.csv", index=False)
 
 
 def run_settlement_tests(ri: bool = True) -> pd.DataFrame:

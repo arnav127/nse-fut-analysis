@@ -341,6 +341,35 @@ def _tests(run: Run) -> None:
     untested = summary[summary.p_value.isna()] if "p_value" in summary else summary
     run.record("test.untested_ids", ", ".join(untested.hypothesis_id.astype(str)) or "none", "", "")
 
+    if "primary" in summary.columns:
+        prim = summary[summary.primary.astype(bool) & summary.p_value.notna()]
+        run.record("primary.count", int(len(prim)), "hypotheses",
+                   "primary tests, one per broad hypothesis")
+        run.record("primary.rejected", int(prim.primary_fdr.astype(bool).sum()), "hypotheses",
+                   "primary tests rejected under false discovery rate control across the four")
+        contrasts = _csv("s6_group_contrasts.csv")
+        for row in prim.itertuples(index=False):
+            stem = f"primary.{str(row.broad).lower()}"
+            run.record(f"{stem}.id", str(row.hypothesis_id), "", "")
+            run.record(f"{stem}.p", float(row.p_value), "", "paired t-test")
+            run.record(f"{stem}.bonf", float(row.bonferroni_primary), "",
+                       "p-value multiplied by the number of primary tests")
+            run.record(f"{stem}.d", float(row.effect_size_cohen_d), "", "Cohen's d")
+            run.record(f"{stem}.decision",
+                       "rejected" if bool(row.primary_fdr) else "not rejected", "", "")
+        for bh, label in (("bh1", "|Settlement VWAP - open mid| (bps)"),
+                          ("bh2", "Quoted spread (bps)"), ("bh3", "|Order imbalance|"),
+                          ("bh4", "Orders cancelled within one second")):
+            hit = contrasts[(contrasts.measure == label)
+                            & (contrasts.contrast == "settlement vs calendar")] \
+                if not contrasts.empty else contrasts
+            if len(hit):
+                run.record(f"primary.{bh}.placebo_p", float(hit.p_value.iloc[0]), "",
+                           "Welch test of expiry-minus-control differences, securities with "
+                           "derivatives against the placebo group")
+                run.record(f"primary.{bh}.placebo_did", float(hit.difference_in_differences.iloc[0]),
+                           "", "difference in expiry-minus-control differences")
+
     for row in summary.itertuples(index=False):
         stem = str(row.hypothesis_id).lower()
         run.record(f"{stem}.desc", str(row.description), "", "")

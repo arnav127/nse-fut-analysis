@@ -212,49 +212,102 @@ def build_descriptives_table() -> None:
     _write("descriptives", lines)
 
 
+BROAD_TITLES = {
+    "BH1": "BH1: The settlement price behaves differently on expiry days",
+    "BH2": "BH2: Trading in the window is more costly",
+    "BH3": "BH3: Trading in the window is more one-sided",
+    "BH4": "BH4: Order behaviour and participation change",
+}
+
+
+def _p_text(p: float) -> str:
+    if not np.isfinite(p):
+        return "--"
+    if p < 0.001:
+        return "$<0.001$"
+    return f"{p:.3f}"
+
+
+def build_primary_table() -> None:
+    """The four primary tests, with the placebo contrast for each."""
+    path = Path(RESULTS_DIR) / "hypothesis_testing_summary.csv"
+    if not path.exists():
+        return
+    summary = pd.read_csv(path)
+    if "primary" not in summary.columns:
+        return
+    contrasts = pd.read_csv(Path(RESULTS_DIR) / "s6_group_contrasts.csv") \
+        if (Path(RESULTS_DIR) / "s6_group_contrasts.csv").exists() else pd.DataFrame()
+    labels = {"S1": "|Settlement VWAP - open mid| (bps)", "H12": "Quoted spread (bps)",
+              "OIB": "|Order imbalance|", "H28": "Orders cancelled within one second"}
+    measures = {"S1": r"$|$Settlement VWAP $-$ mid at 15:00$|$ (bps)",
+                "H12": "Quoted spread (bps)", "OIB": r"$|$Order imbalance$|$",
+                "H28": r"Orders cancelled within one second (\%)"}
+    scale = {"H28": 100.0}
+    lines = [r"\begin{tabular}{llrrrrrc}", r"\toprule",
+             r" & Primary measure & Expiry & Control & $d$ & $p$ & $p \times 4$ & Placebo $p$ \\",
+             r"\midrule"]
+    prim = summary[summary.primary.astype(bool)].copy()
+    prim["order"] = prim.broad.map({"BH1": 1, "BH2": 2, "BH3": 3, "BH4": 4})
+    for row in prim.sort_values("order").itertuples(index=False):
+        k = scale.get(row.hypothesis_id, 1.0)
+        placebo = np.nan
+        if not contrasts.empty:
+            hit = contrasts[(contrasts.measure == labels.get(row.hypothesis_id))
+                            & (contrasts.contrast == "settlement vs calendar")]
+            if len(hit):
+                placebo = float(hit.p_value.iloc[0])
+        mark = r"$^{\ast}$" if bool(row.primary_fdr) else ""
+        lines.append(
+            f"{row.broad}{mark} & {measures.get(row.hypothesis_id, row.description)} & "
+            f"{row.mean_expiry * k:.3f} & {row.mean_control * k:.3f} & "
+            f"{row.effect_size_cohen_d:.3f} & {_p_text(row.p_value)} & "
+            f"{_p_text(getattr(row, 'bonferroni_primary', np.nan))} & {_p_text(placebo)} \\\\")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    _write("primary", lines)
+
+
 def build_tests_table() -> None:
+    """Every measure, grouped under its broad hypothesis: the appendix."""
     path = Path(RESULTS_DIR) / "hypothesis_testing_summary.csv"
     if not path.exists():
         _write("tests", [r"\textit{No test results were produced by this run.}"])
         return
     summary = pd.read_csv(path)
-
+    if "broad" not in summary.columns:
+        summary["broad"] = ""
+        summary["subgroup"] = ""
+        summary["primary"] = False
     lines = [
-        r"\begin{longtable}{p{1.1cm} p{6.0cm} r r r r}",
-        r"\caption{Paired tests: expiry sessions against matched controls, one observation "
-        r"per security and month. $n$ is the number of matched pairs.}\label{tab:tests}\\",
-        r"\toprule",
-        r"ID & Hypothesis & $n$ & $t$ & $p$ & $d$ \\", r"\midrule", r"\endfirsthead",
-        r"\toprule",
-        r"ID & Hypothesis & $n$ & $t$ & $p$ & $d$ \\", r"\midrule", r"\endhead",
+        r"\begin{longtable}{p{0.9cm} p{7.4cm} r r r r}",
+        r"\caption{Every measure, grouped under the broad hypothesis it belongs to. Each is a "
+        r"paired test of the expiry session against the control session of the same month, "
+        r"one pair per security. $n$ is the number of pairs and $d$ Cohen's $d$. The primary "
+        r"measure of each broad hypothesis is marked P.}\label{tab:tests}\\",
+        r"\toprule", r"ID & Measure & $n$ & $t$ & $p$ & $d$ \\", r"\midrule", r"\endfirsthead",
+        r"\toprule", r"ID & Measure & $n$ & $t$ & $p$ & $d$ \\", r"\midrule", r"\endhead",
         r"\bottomrule", r"\endfoot", r"\bottomrule", r"\endlastfoot",
     ]
-    # Supported first, then contradicted, then the rest: the reader wants the findings
-    # before the nulls, and hypothesis order is an artefact of how the design was written.
-    summary["rank"] = np.where(summary.get("supported", False), 0,
-                               np.where(summary.get("contradicted", False), 1, 2))
-    for row in summary.sort_values(["rank", "p_value"]).itertuples(index=False):
-        h_id = str(row.hypothesis_id)
-        desc = tex_escape(str(row.description))
-        if pd.isna(getattr(row, "p_value", np.nan)):
-            lines.append(rf"\textbf{{{h_id}}} & {desc} & "
-                         rf"\multicolumn{{4}}{{c}}{{\textit{{not evaluated}}}} \\")
+    for broad in ("BH1", "BH2", "BH3", "BH4"):
+        block = summary[summary.broad == broad]
+        if block.empty:
             continue
-        stem = h_id.lower()
-        marker = (r"$^{\ast}$" if getattr(row, "supported", False)
-                  else r"$^{\dagger}$" if getattr(row, "contradicted", False) else "")
-        lines.append(
-            rf"\textbf{{{h_id}}}{marker} & {desc} "
-            rf"& \{macro_name(stem + '.n_pairs')}{{}} "
-            rf"& \{macro_name(stem + '.test_stat')}{{}} "
-            rf"& \{macro_name(stem + '.p_value')}{{}} "
-            rf"& \{macro_name(stem + '.effect_size_cohen_d')}{{}} \\")
+        lines.append(rf"\multicolumn{{6}}{{l}}{{\textbf{{{tex_escape(BROAD_TITLES[broad])}}}}} \\")
+        block = block.assign(rank=~block.primary.astype(bool))
+        for sub, part in block.groupby(block.subgroup.fillna(""), sort=False):
+            if sub:
+                lines.append(rf"\multicolumn{{6}}{{l}}{{\quad\textit{{{tex_escape(sub)}}}}} \\")
+            for row in part.sort_values(["rank", "hypothesis_id"]).itertuples(index=False):
+                hid = str(row.hypothesis_id)
+                tag = rf"{hid}\,P" if bool(row.primary) else hid
+                desc = tex_escape(str(row.description))
+                if pd.isna(row.p_value):
+                    lines.append(rf"{tag} & {desc} & \multicolumn{{4}}{{c}}{{\textit{{not evaluated}}}} \\")
+                    continue
+                lines.append(f"{tag} & {desc} & {int(row.n_pairs):,} & {row.test_stat:.2f} & "
+                             f"{_p_text(row.p_value)} & {row.effect_size_cohen_d:.3f} \\\\")
+        lines.append(r"\addlinespace[4pt]")
     lines.append(r"\end{longtable}")
-    lines.append(
-        r"\noindent\footnotesize $^{\ast}$ rejected at a false discovery rate of "
-        r"$\alpha = \TestAlpha{}$ with the effect in the stated direction. "
-        r"$^{\dagger}$ rejected at the same threshold with the effect in the opposite "
-        r"direction: the quantity differs, but not as claimed.\normalsize")
     _write("tests", lines)
 
 
@@ -319,6 +372,7 @@ def build_all_tables() -> None:
     build_balance_table()
     build_descriptives_table()
     build_tests_table()
+    build_primary_table()
     build_contrasts_table()
     build_out_of_scope_table()
     logger.info(f"[TABLES] written to {TABLE_DIR}")
