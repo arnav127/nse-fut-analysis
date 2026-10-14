@@ -127,9 +127,9 @@ HYPOTHESES: List[Hypothesis] = [
       "b7_market_resilience.csv", "mean_recovery_time_sec", "mean", "two"),
 
     # --- order behaviour (retained) --------------------------------------------------
-    H("H3", "Proprietary desks take a larger share of volume",
+    H("H3", "Proprietary volume in the window rises",
       "a3_participant_profile.csv", "volume", "sum"),
-    H("H5", "Algorithmic flow takes a larger share of volume",
+    H("H5", "Algorithmic volume in the window rises",
       "a4_algo_segmentation.csv", "total_volume", "sum"),
     H("H6", "Algorithmic orders carry immediate-or-cancel more often",
       "a4_algo_segmentation.csv", "ioc_rate", "mean"),

@@ -1,22 +1,21 @@
 \begin{abstract}
-\noindent Derivatives on the National Stock Exchange of India settle against the
-volume-weighted average price of the last thirty minutes of trading. We ask whether this window
-is used to move the settlement price, using order-level data for every session of 2022,
-calendar controls, a placebo group of securities without derivatives and a placebo index. The
-answer depends on how the derivative is settled. Stock derivatives were settled by delivery,
-which leaves a holder indifferent to the settlement price: the expiring stock future is priced
-on the cash price until the end of the window, and the stock settlement shows no displacement
-specific to securities with derivatives. Index derivatives were settled in cash, and on the
-\IdxExpiries{} index expiries of the year the Nifty 50 falls over the settlement window by
-\IdxSpreadDriftPoints{} index points relative to the Nifty Next 50, which has no derivatives
-(randomization $p = \IdxSpreadDriftExpiryRip{}$). The fall occurs within the window and in the
-index's constituents rather than in other stocks, and is followed the next morning by a
-recovery of similar size, which is imprecisely estimated. Expiry also draws trading into the
-window of securities with derivatives and widens their spreads, while order imbalance becomes
-more persistent in all securities on monthly expiries.
+\noindent Derivatives on the National Stock Exchange of India settle against the volume-weighted
+average price of the last thirty minutes of trading. Using order-level data for 2022, we test
+whether the settlement window behaves differently on expiry days under four broad hypotheses,
+each with one primary measure: the settlement price, the cost of trading, the one-sidedness of
+order flow, and order behaviour and participation. Expiry sessions are compared with control
+sessions in the same month, for securities with derivatives and for a matched placebo group
+without them. Two primary tests are rejected: on expiry days the quoted spread widens and more
+orders are withdrawn within a second of entry, both specifically in securities with
+derivatives. The settlement VWAP does not move further from the price at the start of the
+window, and order imbalance is not more one-sided. The window is crowded rather than pushed.
+Stock futures, settled by delivery, are priced on the cash price until the close, leaving no
+gain from moving the settlement. Where settlement is in cash, the index settlement is displaced:
+on index expiries the Nifty 50 falls over the window relative to the Nifty Next 50, which has no
+derivatives (randomization $p = \IdxSpreadDriftExpiryRip{}$).
 
 \vspace{0.6em}
-\noindent \textbf{Keywords:} expiration-day effects; settlement price; closing price
-manipulation; order imbalance; physical settlement. \\
+\noindent \textbf{Keywords:} expiration-day effects; settlement VWAP; order imbalance; limit order
+book; market microstructure. \\
 \noindent \textbf{JEL classification:} G13, G14, G18.
 \end{abstract}
