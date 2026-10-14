@@ -1,39 +1,73 @@
 \section{Hypotheses}\label{sec:hypotheses}
 
-The study tests four hypotheses. Each is examined through several measures, which are
-reported as parts of the hypothesis rather than as separate tests.
+The study set out with four objectives: to compare the trajectory of the cash VWAP with the
+traded price of the stock future in the settlement window; to identify which participants drive
+expiry-day volume; to measure the role of algorithmic trading; and to detect abnormal order book
+pressure, such as bursts of cancellations or aggressive immediate-or-cancel orders, ahead of the
+settlement. The original design expressed these as thirty hypotheses. Testing each separately
+makes the overall conclusion depend on how many happen to be significant, and the design is
+consolidated here into four broad hypotheses. Every original hypothesis is retained as a
+supporting measure of one of them, and one measure of each is designated the primary measure.
 
-\paragraph{H1: Expiry concentrates trading in the settlement window.} The closing and rolling
-of expiring positions, and the unwinding of arbitrage positions at the settlement price, are
-expected to draw volume into the window and to make it more expensive to trade in. The
-measures are the window's share of session volume, the quoted spread, displayed depth, the
-cost of sweeping the displayed book and the rate of cancellation
-(Sections~\ref{sec:activity} and~\ref{sec:book}).
+\paragraph{BH1: The settlement price behaves differently on expiry days.} Does the settlement
+VWAP land somewhere unusual? Primary measure: the absolute distance between the settlement VWAP
+and the mid at 15:00. Supporting measures: the distance from the closing price, the final
+minute's divergence, volume at the running VWAP, the timing of volume within the window, the
+next-morning reversal of the window's move, the pricing of the expiring stock future, the index
+settlement and the attraction of settlement prices to option strikes (Section~\ref{sec:bh1}).
 
-\paragraph{H2: Trading in the window is one-sided on expiry days.} Pressure on the settlement
-price requires order flow that leans persistently in one direction. It is measured by the order
-imbalance
+\paragraph{BH2: Trading in the window is more costly.} Is the window thinner? Primary measure:
+the quoted spread. Supporting measures: depth near the touch, displayed notional, the cost of
+sweeping the book, price impact per unit of flow and per trade, realised variance, illiquidity
+relative to the rest of the session and the recovery of the spread after shocks
+(Section~\ref{sec:bh2}).
+
+\paragraph{BH3: Trading in the window is more one-sided.} Is someone pushing the price? Primary
+measure: the absolute order imbalance
 \begin{equation*}
-  \mathrm{OIB} = \frac{BI - SI}{BI + SI} \in [-1, 1],
+  |\mathrm{OIB}| = \left|\frac{BI - SI}{BI + SI}\right|,
 \end{equation*}
-where $BI$ and $SI$ are buyer- and seller-initiated volume, over the window and in each of its
-five-minute blocks, by the persistence of the imbalance from one block to the next, and by the
-price move from the start of the window to its end. A market with balanced two-sided trading
-has an imbalance near zero that does not persist; one-sided pressure produces an imbalance
-that stays away from zero (Section~\ref{sec:pressure}).
+where $BI$ and $SI$ are buyer- and seller-initiated volume. A balanced market has an imbalance
+near zero; one-sided pressure keeps it away from zero. Because buying pressure on some days and
+selling pressure on others would cancel in a signed average, the absolute value is tested.
+Supporting measures: the persistence of the imbalance through the window, the variance ratio,
+the persistence of signed order flow, the permanent share of price impact, the one-sidedness of
+submitted orders and of the book, and the price effect of each participant category's flow
+(Section~\ref{sec:bh3}).
 
-\paragraph{H3: The settlement price is displaced by trading in the window.} A settlement price
-moved by trading that does not reflect information is reversed once that trading stops, and a
-displacement caused by the settlement should appear only where something settles. The
-measures are the reversal of the window's move the next morning, and the signed move of the
-index, whose derivatives are settled in cash, relative to an index without derivatives
-(Section~\ref{sec:distortion}).
+\paragraph{BH4: Order behaviour and participation change.} How do participants trade? Primary
+measure: the share of orders cancelled within one second of entry. Supporting measures, in four
+groups: cancellation (cancellations per entry and in total), concealment (the share of resting
+and submitted size that is concealed, the size of concealed orders and their replenishment),
+urgency (the use of immediate-or-cancel orders) and participation (proprietary and algorithmic
+volume and the share of each participant category in the window) (Section~\ref{sec:bh4}).
 
-\paragraph{H4: The derivatives create an incentive to move the settlement price.} The incentive
-depends on how the derivative is settled. It is examined through the pricing of the expiring
-stock future within the window and through the attraction of the settlement price to option
-strikes, for stocks and for the index (Section~\ref{sec:derivatives}).
+\subsection{Testing}
 
-Each hypothesis is tested on monthly expiries against other sessions, with the weekly index
-expiries and month ends as calendar controls, and in securities with derivatives against the
-placebo group.
+Each measure is computed per security and session and compared between each expiry session and
+the control session of the same month, one pair per security and month, by a paired $t$-test.
+The four primary tests are the basis of the conclusions, and the false discovery rate is
+controlled across these four rather than across every measure. Each primary measure is also
+compared between the securities with derivatives and the placebo group, which separates an
+effect of the settlement from an effect of the calendar. Table~\ref{tab:primary} reports the
+four primary tests; the full set of measures, grouped by broad hypothesis, is in
+Appendix~\ref{app:tests}.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{The four primary tests. Expiry and control are averages over securities; $d$ is
+Cohen's $d$ on the paired differences and $p$ the paired $t$-test. $p \times 4$ is the Bonferroni
+adjustment for the four primary tests. Placebo $p$ is the Welch test of whether the
+expiry-minus-control difference is larger in the securities with derivatives than in the placebo
+group. $^{\ast}$ rejected under false discovery rate control across the four primary tests at
+$\alpha = \TestAlpha{}$.}
+\label{tab:primary}
+\resizebox{\textwidth}{!}{\input{generated/tables/primary}}
+\end{table}
+
+Two of the four primary tests are rejected. Trading in the window is more costly on expiry days
+(BH2) and more of the orders submitted are withdrawn within a second (BH4), and in both cases the
+change is specific to securities with derivatives. The settlement VWAP does not move further from
+the price at the start of the window (BH1), and trading in the window is not more one-sided
+(BH3). The sections that follow take each hypothesis in turn with its supporting measures.

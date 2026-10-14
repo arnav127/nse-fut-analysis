@@ -1,4 +1,6 @@
-\section{H2: Order imbalance and pressure}\label{sec:pressure}
+\section{BH3: Directional pressure}\label{sec:bh3}\label{sec:pressure}
+
+The third hypothesis decides between a window that is pushed and one that is crowded. Its primary measure is the absolute order imbalance over the window, the measure proposed by the supervisor.
 
 \subsection{Order imbalance in the window}
 
@@ -12,7 +14,9 @@ group, and it has no systematic sign. On monthly expiries the absolute imbalance
 group rises by \PressAbsoibLiquidMonthlyexpiry{} (standard error
 \PressAbsoibLiquidMonthlyexpirySe{}), and its average changes by $\PressOibLiquidMonthlyexpiry{}$, toward selling. Neither change is large relative to the variation across
 sessions, and neither differs significantly from the placebo group. The window is not
-dominated by one side of the market on expiry days.
+dominated by one side of the market on expiry days. On the order book sample, where each
+expiry session is paired with its control, the primary test of BH3 is not rejected
+($p = \OibPValue{}$), and the change relative to the placebo group is not significant either.
 
 The imbalance does, however, become more persistent. On ordinary sessions the imbalance of one
 five-minute block carries over to the next with a coefficient of

@@ -1,0 +1,77 @@
+\section{BH4: Order behaviour and participation}\label{sec:bh4}\label{sec:activity}
+
+The fourth hypothesis concerns how participants trade in the window: whether they cancel more,
+conceal more, trade with more urgency, and whether the mix of participants changes. Its primary
+measure is the share of orders cancelled within one second of entry, the fleeting orders that a
+strategy of placing and withdrawing quotes would produce.
+
+\subsection{Cancellation}
+
+The share of orders cancelled within one second rises from \LifePhantomRateControl{}\% to
+\LifePhantomRateExpiry{}\% ($d = \HTwoEightEffectSizeCohenD{}$, $p = \HTwoEightPValue{}$), and
+the primary test of BH4 is rejected. The rise is specific to securities with derivatives:
+relative to the placebo group it is \DidPhantomorderratePlacebo{} larger
+($p = \DidPhantomorderratePlaceboP{}$). Cancellation counts rise sharply, which is the largest
+effect among all the measures ($d = \HEightEffectSizeCohenD{}$), but cancellations per entry do
+not ($p = \HSevenPValue{}$): entries rise as fast as cancellations. The window attracts more
+order submission of every kind, and more of the orders it attracts are fleeting, rather than a
+disproportionate amount of placing and withdrawing.
+
+\subsection{Concealment}
+
+The share of resting size that is not displayed is high on every session, at
+\ConcealedDepthShareControl{}\% on control sessions, and does not change on expiry. Concealed
+orders become somewhat larger relative to displayed ones, from \ConcealedSizeMultipleControl{}
+to \ConcealedSizeMultipleExpiry{} times their size, and are replenished slightly less often per share
+traded. Fewer, larger concealed orders worked more slowly through the window describe the
+execution of large expiring positions rather than an attempt to hide an accumulation aimed at
+the settlement price.
+
+More entered orders carry a disclosed quantity below their total
+($p = \HNinePValue{}$), while the concealed share of submitted volume does not change
+($p = \CFourPValue{}$).
+
+\subsection{Urgency}
+
+Immediate-or-cancel orders are used no more often by algorithmic traders on expiry days
+($p = \HSixPValue{}$), and their use does not accelerate in the final five minutes
+($p = \HOneOnePValue{}$). Trading in the window is not more urgent.
+
+\subsection{Participation}
+
+Proprietary volume in the window rises on expiry sessions ($p = \HThreePValue{}$), while
+algorithmic volume does not change significantly ($p = \HFivePValue{}$). Across the year the
+shift in participation is visible in the composition of window volume.
+
+Figure~\ref{fig:dailyshare} shows the same quantity session by session across the year. The
+largest spikes fall on month ends and index rebalancing dates, and are shared by the placebo
+group; the difference between the two on monthly expiries is smaller than these spikes, and
+is identified by the regression rather than visible session by session.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{daily_share.pdf}
+  \caption{Share of each session's volume traded in the settlement window, averaged over the
+    securities with derivatives and over the placebo group, for every session of the year.
+    Vertical lines mark the monthly expiries.}
+  \label{fig:dailyshare}
+\end{figure}
+
+Institutional participation in the window rises on monthly expiries. In the
+liquid group, custodian participants are on at least one side of
+\TapeMeanLiquidNormalCustodian{}\% of window volume on ordinary sessions and of
+\TapeMeanLiquidMonthlyexpiryCustodian{}\% on monthly expiries, and on
+\TapeMeanLiquidMonthendCustodian{}\% on month ends; the participation of other clients falls
+correspondingly. Figure~\ref{fig:participants} shows the composition for each group. This is
+the pattern expected from institutions closing, rolling or benchmarking positions to the
+closing price, and it is strongest where institutional ownership is concentrated.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{participants.pdf}
+  \caption{Share of window volume in which each participant category is on at least one side
+    of the trade, by group and type of session. The shares do not sum to one hundred, since a
+    trade between two categories counts for both.}
+  \label{fig:participants}
+\end{figure}
+
