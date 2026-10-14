@@ -148,6 +148,12 @@ HYPOTHESES: List[Hypothesis] = [
     H("H29", "Traded volume is less evenly spread across the window",
       "b6_volume_profile.csv", "volume_gini", "mean"),
 
+    # --- order imbalance, the measure the supervisor proposed ------------------------
+    H("OIB", "|Order imbalance| (BI - SI)/(BI + SI) over the window is larger",
+      "s9_oib_sessions.csv", "abs_oib", "mean"),
+    H("MOV", "|Move from 15:00 to 15:30| is larger",
+      "s9_oib_sessions.csv", "abs_move1530", "mean"),
+
     # --- regime (retained) -----------------------------------------------------------
     H("H24", "Realised variance per minute is higher",
       "a8_volatility_regime.csv", "rv_ratio", "mean"),
@@ -168,6 +174,32 @@ OUT_OF_SCOPE: List[tuple] = [
     ("X4", "Basis mispricing scales with roll intensity",
      "requires cost-of-carry data from a terminal"),
 ]
+
+
+# The four broad hypotheses. Every measure belongs to one of them; one per hypothesis is the
+# primary measure, chosen for what it says about the hypothesis, and the false discovery rate
+# is controlled across the four primary tests. The rest are supporting evidence.
+BROAD = {
+    "BH1": ("The settlement price behaves differently on expiry days",
+            ["S1", "S2", "S3", "S4", "S5", "MOV", "H29"], "S1"),
+    "BH2": ("Trading in the window is more costly",
+            ["H12", "H14", "M2", "M1", "P4", "H17", "H24", "H27", "H30"], "H12"),
+    "BH3": ("Trading in the window is more one-sided",
+            ["OIB", "P1", "P2", "P3", "H16", "H18", "H15"], "OIB"),
+    "BH4": ("Order behaviour and participation change",
+            ["C1", "C2", "C3", "C4", "H9", "H7", "H8", "H28", "H6", "H11", "H3", "H5"], "H28"),
+}
+SUBGROUP = {"C1": "Concealment", "C2": "Concealment", "C3": "Concealment", "C4": "Concealment",
+            "H9": "Concealment", "H7": "Cancellation", "H8": "Cancellation",
+            "H28": "Cancellation", "H6": "Urgency", "H11": "Urgency", "H3": "Participation",
+            "H5": "Participation"}
+
+
+def broad_of(hid: str) -> str:
+    for key, (_, members, _) in BROAD.items():
+        if hid in members:
+            return key
+    return ""
 
 
 def _session_level(
@@ -349,6 +381,19 @@ def run_all_hypothesis_tests() -> pd.DataFrame:
     # and reporting it among the confirmations would invert its meaning.
     summary["supported"] = summary.significant_fdr & summary.direction_consistent.astype(bool)
     summary["contradicted"] = summary.significant_fdr & ~summary.direction_consistent.astype(bool)
+
+    summary["broad"] = summary.hypothesis_id.map(broad_of)
+    summary["subgroup"] = summary.hypothesis_id.map(SUBGROUP).fillna("")
+    primaries = {v[2]: k for k, v in BROAD.items()}
+    summary["primary"] = summary.hypothesis_id.isin(primaries)
+    # The correction that the conclusions rest on: four primary tests, not thirty-five.
+    summary["primary_fdr"] = False
+    prim = summary.primary & summary.p_value.notna()
+    if prim.any():
+        summary.loc[prim, "primary_fdr"] = _benjamini_hochberg(
+            summary.loc[prim, "p_value"].to_numpy(), ALPHA)
+        summary.loc[prim, "bonferroni_primary"] = (
+            summary.loc[prim, "p_value"] * int(prim.sum())).clip(upper=1.0)
 
     out_csv = Path(RESULTS_DIR) / "hypothesis_testing_summary.csv"
     summary.to_csv(out_csv, index=False)

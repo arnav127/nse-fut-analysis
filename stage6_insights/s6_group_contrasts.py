@@ -66,6 +66,7 @@ MEASURES: List[Tuple[str, str, str]] = [
     ("s4_marking_cost.csv", "move_bps_0p1", "Price move per 0.1 cr swept (bps)"),
     ("a12_order_lifespan.csv", "phantom_order_rate", "Orders cancelled within one second"),
     ("a5_cancellation_patterns.csv", "cancel_to_entry_ratio", "Cancellations per entry"),
+    ("s9_oib_sessions.csv", "abs_oib", "|Order imbalance|"),
 ]
 
 
