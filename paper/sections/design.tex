@@ -6,8 +6,9 @@ The comparison of interest is between the settlement window on an expiry day and
 window on other days. Two confounds stand between that comparison and a conclusion about
 the settlement mechanism: the market environment of a given month, and the calendar. A
 monthly expiry is also a Thursday on which the index options expire, and it falls in the last
-days of the month, when index rebalancing and month-end portfolio flows occur. The design
-addresses the second confound with three groups of securities and two calendar controls.
+days of the month, when index rebalancing and month-end portfolio flows occur. The first
+confound is addressed by comparing each expiry with a session of the same month, and the second
+by three groups of securities and two calendar controls.
 
 The \emph{liquid} and \emph{illiquid} groups are the \SelectGroupSize{} most traded and
 \SelectGroupSize{} least traded securities with stock derivatives. Both face the same

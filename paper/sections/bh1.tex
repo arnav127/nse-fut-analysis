@@ -1,8 +1,8 @@
 \section{BH1: The settlement price}\label{sec:bh1}\label{sec:distortion}
 
-The first hypothesis concerns the number the window exists to produce. Its primary measure is
-the distance between the settlement VWAP and the mid at the start of the window, which compares where the window begins with the price it
-produces.
+The first hypothesis concerns the price the window produces. Its primary measure is the
+distance between the settlement VWAP and the mid at the start of the window, which compares the
+settlement price with the price at which the window opened.
 
 \subsection{The window on the order book sample}
 
@@ -16,8 +16,10 @@ Three supporting measures do differ. The settlement VWAP ends further from the l
 price, \AbsReversalBpsExpiry{} basis points against \AbsReversalBpsControl{}
 ($p = \STwoPValue{}$); the final minute's VWAP diverges further from the window's
 ($p = \SThreePValue{}$); and less volume is traded within a basis point of the running VWAP
-($p = \SFourPValue{}$). All three describe a more volatile window rather than trading aimed at
-the average. Volume does not concentrate in the final minute
+($p = \SFourPValue{}$). The first of these is larger in securities with derivatives than in
+the placebo group, by \DidAbsreversalbpsPlacebo{} basis points
+($p = \DidAbsreversalbpsPlaceboP{}$). All three describe a more volatile window rather than
+trading aimed at the average. Volume does not concentrate in the final minute
 ($p = \SFivePValue{}$) and is, if anything, spread more evenly across the window: the
 concentration of volume across its minutes falls, against the stated direction
 ($d = \HTwoNineEffectSizeCohenD{}$). A participant moving an average would find it cheapest to
@@ -127,20 +129,10 @@ a similar extent in all three groups.
   \label{fig:path}
 \end{figure}
 
-On the order book sample the settlement price ends further from the last traded price on
-expiry sessions, \AbsReversalBpsExpiry{} basis points against \AbsReversalBpsControl{}, and
-less volume is traded within a basis point of the running average. Both are consistent with a
-more volatile window rather than with trading that tracks the average. The first is larger in
-securities with derivatives than in the placebo group, by \DidAbsreversalbpsPlacebo{} basis
-points ($p = \DidAbsreversalbpsPlaceboP{}$). On the full-year sample, which covers every
-session and uses session fixed effects, the corresponding comparison of the final minutes with
-the settlement price is not specific to these securities (Section~\ref{sec:bh1}).
-
-
 \subsection{The expiring future and the cash settlement price}
 
-The first objective of the study was to compare the trajectory of the cash VWAP with the
-traded price of the stock future in the window. 
+The expiring stock future trades during the window alongside the cash market whose average
+sets its settlement price, and its price shows how the market values the settlement. 
 Under settlement by delivery, the settlement price of an expiring stock future divides the
 cash flows of a long position between the final variation margin and the payment for the
 delivered shares, but does not change their sum. A long position bought at price $F$ pays
@@ -184,9 +176,9 @@ same future has one day to run.}
 
 The result has a direct implication for the settlement incentive. A holder of an expiring
 stock future gains nothing from moving the settlement price, because the gain on the final
-margin is paid back in the price of the delivered shares. The incentive that motivated the
-original design of this study, that holders of large expiring positions have a direct interest
-in the settlement price, applies to stock futures only in accounting terms.
+margin is paid back in the price of the delivered shares. The direct interest in the
+settlement price that holders of large expiring positions are often assumed to have applies to
+stock futures only in accounting terms.
 
 
 \subsection{Option strikes}
@@ -233,8 +225,8 @@ distribution.
 
 \subsection{The index, where settlement is in cash}\label{sec:index}
 
-Settlement by delivery removes the incentive to move a stock's settlement price. It does not remove it for the index. Nifty 50 futures and
-options are settled in cash against the index's closing value, which is computed from the
+Settlement by delivery removes the incentive to move a stock's settlement price. It does not
+remove it for the index. Nifty 50 futures and options are settled in cash against the index's closing value, which is computed from the
 closing prices of the constituents, that is from their settlement-window VWAPs. The index
 options expired on every Thursday of the year and were the most heavily traded derivatives on
 the exchange. If the settlement window is used to move a price, the index is where it pays.
