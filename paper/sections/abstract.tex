@@ -7,8 +7,13 @@ order flow, and order behaviour and participation. Expiry sessions are compared 
 sessions in the same month, for securities with derivatives and for a matched placebo group
 without them. Two primary tests are rejected: on expiry days the quoted spread widens and more
 orders are withdrawn within a second of entry, both specifically in securities with
-derivatives. The settlement VWAP does not move further from the price at the start of the
-window, and order imbalance is not more one-sided. The window is crowded rather than pushed.
+derivatives. Both follow the higher volatility of the window on expiry days: liquidity
+suppliers quote wider and thinner and refresh their quotes faster when prices move more. The
+settlement VWAP does not move further from the price at the start of the window, and order
+imbalance is not more one-sided, in the cash market or in the expiring stock futures, most of
+whose positions are rolled before the expiry day. The window is crowded rather than pushed, and
+the partial reversal of the settlement price the next morning is accounted for by information
+arriving after the session.
 Stock futures, settled by delivery, are priced on the cash price until the close, leaving no
 gain from moving the settlement. Where settlement is in cash, the index settlement is displaced:
 on index expiries the Nifty 50 falls over the window relative to the Nifty Next 50, which has no

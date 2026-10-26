@@ -17,6 +17,18 @@ not ($p = \HSevenPValue{}$): entries rise as fast as cancellations. The window a
 order submission of every kind, and more of the orders it attracts are fleeting, rather than a
 disproportionate amount of placing and withdrawing.
 
+The rise in fleeting orders follows the rise in volatility documented in
+Section~\ref{sec:bh2}. Across security-months, the change in the share of orders cancelled
+within a second is regressed on the change in the logarithm of the window's realised variance.
+The slope is \FleetvolAllSlope{} percentage points for each ten per cent rise in variance (standard error
+\FleetvolAllSlopeSe{}), and the change for a security whose volatility did not change is
+\FleetvolAllIntercept{} percentage points (standard error \FleetvolAllInterceptSe{}),
+against an average rise of \FleetvolAllRaw{}. In the liquid group, where the rise is largest at
+\FleetvolLiquidRaw{} points, the part not accounted for by volatility is
+\FleetvolLiquidIntercept{} points (standard error \FleetvolLiquidInterceptSe{}). Algorithms
+refresh their quotes more often when the price moves faster, and most of the rise in fleeting
+orders is that response.
+
 \subsection{Concealment}
 
 The share of resting size that is not displayed is high on every session, at

@@ -63,5 +63,99 @@ control sessions differ throughout the window rather than only at its end.
   \label{fig:cost}
 \end{figure}
 
+\subsection{The book through the expiry day}
+
+The snapshots of the order book cover the whole session, which shows whether the cost of
+trading rises only in the window or across the expiry day. Each security's quoted spread and
+displayed depth within five price levels are averaged by minute, and the expiry day is compared
+with the day before it, security by security, as a difference in logarithms.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{bh2_spread_day.pdf}\\[0.5em]
+  \includegraphics[width=\textwidth]{bh2_depth_day.pdf}
+  \caption{Quoted spread (top) and displayed depth within five price levels (bottom) through
+    the session on monthly expiries and on the day before, medians across securities with a
+    five-minute moving average, logarithmic scale. The settlement window is shaded.}
+  \label{fig:bookday}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{bh2_window_zoom.pdf}
+  \caption{Quoted spread and displayed depth minute by minute over the last hour of the
+    session, for the securities with derivatives and the placebo group. Medians across
+    securities.}
+  \label{fig:windowzoom}
+\end{figure}
+
+Figures~\ref{fig:bookday} and~\ref{fig:windowzoom} show the result. In the securities with
+derivatives the spread is slightly wider through much of the expiry day and widens further in
+the window, where the displayed depth also falls below that of the day before. In the placebo
+group the two days are almost indistinguishable in the window. Table~\ref{tab:bookparts}
+quantifies the comparison. Before the window the spread on expiry days is wider by
+\BookdayDayLiquidSpread{} per cent in the liquid group and depth does not change; in the window
+the spread is wider by \BookdayWindowLiquidSpread{} per cent in the liquid group and
+\BookdayWindowIlliquidSpread{} per cent in the illiquid group, and depth is lower by
+\BookdayWindowLiquidDepth{} and \BookdayWindowIlliquidDepth{} per cent. In the placebo group the
+changes in the window are \BookdayWindowPlaceboSpread{} and \BookdayWindowPlaceboDepth{} per
+cent, and neither is significant. Figure~\ref{fig:bookratio} traces the difference through the
+session.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Expiry day against the day before, in per cent (one hundred times the difference in
+logarithms), averaged over security-months; paired $p$-values in brackets. Realised variance
+is the sum of squared five-second changes of the logarithmic midpoint, per minute.}
+\label{tab:bookparts}
+\begin{tabular}{llccc}
+\toprule
+ & & Quoted spread & Depth & Realised variance \\
+\midrule
+Before the window & Liquid & \BookdayDayLiquidSpread{} [\BookdayDayLiquidSpreadP{}] & \BookdayDayLiquidDepth{} [\BookdayDayLiquidDepthP{}] & \BookdayDayLiquidRv{} [\BookdayDayLiquidRvP{}] \\
+ & Illiquid & \BookdayDayIlliquidSpread{} [\BookdayDayIlliquidSpreadP{}] & \BookdayDayIlliquidDepth{} [\BookdayDayIlliquidDepthP{}] & \BookdayDayIlliquidRv{} [\BookdayDayIlliquidRvP{}] \\
+ & Placebo & \BookdayDayPlaceboSpread{} [\BookdayDayPlaceboSpreadP{}] & \BookdayDayPlaceboDepth{} [\BookdayDayPlaceboDepthP{}] & \BookdayDayPlaceboRv{} [\BookdayDayPlaceboRvP{}] \\
+\midrule
+Settlement window & Liquid & \BookdayWindowLiquidSpread{} [\BookdayWindowLiquidSpreadP{}] & \BookdayWindowLiquidDepth{} [\BookdayWindowLiquidDepthP{}] & \BookdayWindowLiquidRv{} [\BookdayWindowLiquidRvP{}] \\
+ & Illiquid & \BookdayWindowIlliquidSpread{} [\BookdayWindowIlliquidSpreadP{}] & \BookdayWindowIlliquidDepth{} [\BookdayWindowIlliquidDepthP{}] & \BookdayWindowIlliquidRv{} [\BookdayWindowIlliquidRvP{}] \\
+ & Placebo & \BookdayWindowPlaceboSpread{} [\BookdayWindowPlaceboSpreadP{}] & \BookdayWindowPlaceboDepth{} [\BookdayWindowPlaceboDepthP{}] & \BookdayWindowPlaceboRv{} [\BookdayWindowPlaceboRvP{}] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{bh2_ratio_by_time.pdf}
+  \caption{Difference between the expiry day and the day before in the quoted spread and in
+    displayed depth, in per cent, by quarter hour of the session, with 95\% intervals.}
+  \label{fig:bookratio}
+\end{figure}
+
+\subsection{Why the window is costlier}
+
+The last column of Table~\ref{tab:bookparts} points to the reason. The realised variance of the
+midpoint in the window is higher on expiry days by \BookdayWindowLiquidRv{} per cent in the
+liquid group and \BookdayWindowIlliquidRv{} per cent in the illiquid group, against
+\BookdayWindowPlaceboRv{} per cent, not significant, in the placebo group. Liquidity suppliers
+quote wider and smaller when prices move more, because their inventory is exposed to larger
+price changes and they are more likely to trade with better-informed counterparties. If the
+widening is this response, a security whose volatility rose more on the expiry day should show
+a larger widening, and a security whose volatility did not change should show little.
+
+Across the security-months of the derivatives groups, the change in the logarithm of the
+spread in the window is regressed on the change in the logarithm of realised variance. The
+slope is \VoltestFoSpreadSlope{} (standard error \VoltestFoSpreadSlopeSe{}), and the intercept,
+the widening of a security whose volatility did not change, is \VoltestFoSpreadIntercept{} per
+cent ($p = \VoltestFoSpreadInterceptP{}$) against an average widening of
+\VoltestFoSpreadRaw{} per cent. The rise in volatility thus accounts for about
+\VoltestFoSpreadExplained{} per cent of the widening. For depth the intercept is
+$\VoltestFoDepthIntercept{}$ per cent ($p = \VoltestFoDepthInterceptP{}$) against an average
+fall of $\VoltestFoDepthRaw{}$ per cent, so the fall in depth is accounted for by volatility
+entirely. The window on expiry days is costlier to trade in because prices move more in it, and
+liquidity suppliers respond to that in the usual way. The additional volatility is itself
+consistent with the additional trading that the expiry draws into the window
+(Section~\ref{sec:bh1}), which is two-sided rather than directional (Section~\ref{sec:bh3}).
+
 
 \input{generated/tables/contrasts}
