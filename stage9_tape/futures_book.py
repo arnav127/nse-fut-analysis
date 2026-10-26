@@ -19,7 +19,6 @@ import json
 import shutil
 import sys
 import time
-from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import List
 
@@ -81,37 +80,53 @@ def _parse_part(args) -> str:
     nsetick.parse(input=str(path), out=str(out), layout="fao_orders",
                   where=(f"instrument == 'FUTSTK' and spread_type == '*' "
                          f"and expiry_date == '{contract}' and symbol in ({quoted})"),
-                  partition_by="symbol", threads=4)
+                  partition_by="symbol", threads=8)
     return str(out)
 
 
 def parse_orders(session: str, contract: str, symbols: List[str]) -> Path:
     """Parsed orders of the expiring futures, one partition per symbol."""
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
     work = SCRATCH / session
-    shutil.rmtree(work, ignore_errors=True)
-    parts = [p for p in order_parts(session) if carries_stock_futures(p)]
-    print(f"{session}: stock futures in {[p.name for p in parts]}", flush=True)
-    jobs = [(p, work / f"part={p.name.split('_')[-1][:2]}", contract, symbols) for p in parts]
-    with ProcessPoolExecutor(max_workers=len(jobs)) as pool:
-        list(pool.map(_parse_part, jobs))
+    done = work / "parsed.ok"
+    if not done.exists():
+        # Reading the share is most of the cost, so a parse that finished is kept.
+        shutil.rmtree(work, ignore_errors=True)
+        parts = [p for p in order_parts(session) if carries_stock_futures(p)]
+        print(f"{session}: stock futures in {[p.name for p in parts]}", flush=True)
+        jobs = [(p, work / f"part={p.name.split('_')[-1][:2]}", contract, symbols)
+                for p in parts]
+        # One part at a time: the share delivers less in total to concurrent readers.
+        for job in jobs:
+            _parse_part(job)
+        done.touch()
     # A symbol's orders belong to one stream, but the parts are combined and sorted in case
-    # one is split, keeping the file order within a timestamp.
+    # one is split, keeping the file order within a timestamp. Arrow rather than pandas, so
+    # the column types the book replay expects are kept.
     merged = work / "orders"
+    shutil.rmtree(merged, ignore_errors=True)
     for symbol in symbols:
         files = sorted(work.glob(f"part=*/**/symbol={symbol}/*.parquet"))
         if not files:
             continue
-        frame = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
-        frame = frame.sort_values(["txn_time"], kind="stable")
+        table = pa.concat_tables([pq.read_table(f, partitioning=None) for f in files])
+        if len(files) > 1:
+            order = np.argsort(table.column("txn_time").to_numpy(), kind="stable")
+            table = table.take(order)
         dest = merged / f"symbol={symbol}"
         dest.mkdir(parents=True, exist_ok=True)
-        frame.to_parquet(dest / "data_0.parquet", index=False)
+        pq.write_table(table, dest / "part-000.parquet")
     return merged
 
 
-def reduce_book(frame: pd.DataFrame) -> pd.DataFrame:
+def reduce_book(frame: pd.DataFrame, scale: float = 1.0) -> pd.DataFrame:
     """Quoted spread (bps), displayed depth within five levels (crore) and realised variance
-    of the mid (squared five-second log changes, bps squared) per minute."""
+    of the mid (squared five-second log changes, bps squared) per minute.
+
+    `scale` converts prices to rupees: the cash snapshots are already in rupees, the
+    replayed futures books are in paise."""
     t = pd.to_datetime(frame.snapshot_time)
     sec = (t.dt.hour * 3600 + t.dt.minute * 60 + t.dt.second).to_numpy()
     bid, ask = frame.best_bid.to_numpy(float), frame.best_ask.to_numpy(float)
@@ -125,7 +140,7 @@ def reduce_book(frame: pd.DataFrame) -> pd.DataFrame:
             px, qty = frame.get(f"{side}_px_{k}"), frame.get(f"{side}_qty_{k}")
             if px is None or qty is None:
                 continue
-            depth += np.nan_to_num(px.to_numpy(float) * qty.to_numpy(float))
+            depth += np.nan_to_num(scale * px.to_numpy(float) * qty.to_numpy(float))
     logmid = 1e4 * np.log(np.where(ok, mid, np.nan))
     change2 = np.r_[np.nan, np.diff(logmid)] ** 2
     out = pd.DataFrame({
@@ -145,14 +160,15 @@ def futures_session(session: str, contract: str, symbols: List[str]) -> pd.DataF
     orders = parse_orders(session, contract, symbols)
     books = SCRATCH / session / "books"
     present = sorted(p.name.split("=", 1)[1] for p in orders.glob("symbol=*"))
-    nsetick.build_books(input=str(orders), out=str(books), interval_secs=5.0, levels=LEVELS,
-                        threads=8, symbols=present)
+    day = f"{session[4:]}-{session[2:4]}-{session[:2]}"
+    nsetick.build_books(input=str(orders), out=str(books), date=day, interval_secs=5.0,
+                        levels=LEVELS, threads=8, symbols=present)
     rows = []
     for symbol in present:
         files = list(books.glob(f"**/symbol={symbol}/*.parquet"))
         if not files:
             continue
-        r = reduce_book(pd.concat([pd.read_parquet(f) for f in files]))
+        r = reduce_book(pd.concat([pd.read_parquet(f) for f in files]), scale=0.01)
         if r.empty:
             continue
         r["symbol"] = symbol

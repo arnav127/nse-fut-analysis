@@ -39,7 +39,8 @@ Action items from the minutes and where they are in these notes:
   minute by minute through the window.
   \item \textbf{Futures}: new in \S9. We rebuilt the order book of the expiring stock futures
   from the F\&O order files, and looked at the futures trades.
-  \item Detailed report: these notes feed into it; the full draft is being updated in parallel.
+  \item \textbf{Detailed report}: everything here has also been written into the full report
+  (new subsections in BH1--BH4, updated abstract and conclusion).
 \end{enumerate}
 
 \section*{1. The question and the four hypotheses}
@@ -337,8 +338,8 @@ Beta-adjusted and no news days & $-0.13$ ($p=0.34$) & $-0.06$ ($p=0.17$) \\
 \begin{itemize}
   \item It is carried by a few dates, not all expiries. 24 Feb 2022 (the day Russia invaded
   Ukraine: market crashed during the day and bounced the next morning), 31 Mar, 25 Aug and
-  29 Sep stand out; 7 of the 12 expiries are inside the normal range. Testing the 12-expiry
-  average against random ordinary sessions: $p=0.16$.
+  29 Sep stand out; 10 of the 12 expiries lie inside the middle 90\% of ordinary sessions.
+  Testing the 12-expiry average against random ordinary sessions: $p=0.16$.
   \item About half of it is market news landing unevenly: high-beta stocks moved most in the
   window and moved back most when the market recovered overnight.
   \item With both adjustments what is left is small and insignificant, in both groups.
@@ -363,7 +364,9 @@ nsetick.build_books(input=orders_dir, out=books_dir, interval_secs=5.0, levels=5
 \end{lstlisting}
 4 expiries (Mar--Jun) and the day before each, same 100 F\&O stocks.
 
-FUTURESBOOK
+\note{running on the HPC now: the order files are about 36 GB a day for the stock-futures
+parts alone and the NSE share reads at about 30 MB/s, so the 8 sessions take a few hours.
+Results go here.}
 
 \textbf{9.2 Futures trades.} Expiring (near) and next-month contract, expiry day vs.\ day
 before, 100 stocks $\times$ 4 months:
@@ -396,6 +399,6 @@ consistent with BH1/BH3 for stocks.
   \item Figure 2: next-morning fall mostly overnight information, not settlement.
 \end{itemize}
 Next: (i) corporate announcements data to test stock news directly; (ii) futures book for more
-sessions (not only expiry and day before); (iii) fold these into the detailed report.
+sessions (not only expiry and day before); (iii) finish the futures order book comparison (\S9.1).
 
 \end{document}
