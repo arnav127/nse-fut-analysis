@@ -120,3 +120,46 @@ expiry are shown. Standard errors clustered by session in parentheses.}
 \label{tab:flow}
 \resizebox{\textwidth}{!}{\input{generated/tables/flow}}
 \end{table}
+
+\subsection{The stock futures}\label{sec:futures}
+
+If holders of expiring positions had to unwind them at the settlement, the pressure would show
+in the expiring future as well as in the cash market. The derivatives trade files for March to
+June cover four monthly expiries. Table~\ref{tab:futtape} compares, for each security with
+derivatives, the expiring contract and the next one on the expiry day and the day before.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Stock futures on the expiry day and the day before, four monthly expiries from March
+to June, averaged over security-months. The share of futures volume is the contract's share of
+the security's volume in its two nearest contracts. Order imbalance is
+$(BI - SI)/(BI + SI)$ over the settlement window, with the aggressor identified as in the cash
+market. Paired $p$-values in brackets.}
+\label{tab:futtape}
+\resizebox{\textwidth}{!}{\begin{tabular}{llccc}
+\toprule
+ & & Day before & Expiry day & Difference \\
+\midrule
+Expiring contract & Share of futures volume (\%) & \FuttapeNearContractshareControl{} & \FuttapeNearContractshareExpiry{} & $\FuttapeNearContractshareDiff{}$ [\FuttapeNearContractshareP{}] \\
+ & Window share of the day's volume (\%) & \FuttapeNearShareControl{} & \FuttapeNearShareExpiry{} & $\FuttapeNearShareDiff{}$ [\FuttapeNearShareP{}] \\
+ & $|$Order imbalance$|$ in the window & \FuttapeNearAbsoibControl{} & \FuttapeNearAbsoibExpiry{} & $\FuttapeNearAbsoibDiff{}$ [\FuttapeNearAbsoibP{}] \\
+ & $|$Move$|$ in the window (bps) & \FuttapeNearAbsmoveControl{} & \FuttapeNearAbsmoveExpiry{} & $\FuttapeNearAbsmoveDiff{}$ [\FuttapeNearAbsmoveP{}] \\
+\midrule
+Next contract & Share of futures volume (\%) & \FuttapeNextContractshareControl{} & \FuttapeNextContractshareExpiry{} & $\FuttapeNextContractshareDiff{}$ [\FuttapeNextContractshareP{}] \\
+ & $|$Order imbalance$|$ in the window & \FuttapeNextAbsoibControl{} & \FuttapeNextAbsoibExpiry{} & $\FuttapeNextAbsoibDiff{}$ [\FuttapeNextAbsoibP{}] \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Most positions are rolled before the expiry day. Already on the day before, the next contract
+accounts for \FuttapeNextContractshareControl{}\% of the futures volume, and on the expiry day
+for \FuttapeNextContractshareExpiry{}\%. Trading in the expiring contract does not concentrate in
+the settlement window: the window's share of its volume falls, from
+\FuttapeNearShareControl{}\% to \FuttapeNearShareExpiry{}\%. The absolute order imbalance in the
+window does not change, at \FuttapeNearAbsoibControl{} on both days. The futures market thus
+shows the same absence of one-sided pressure as the cash market. With settlement by delivery
+and positions largely rolled in advance, little remains to be unwound at the settlement price,
+and what is traded in the window comes from both sides.
+
+%FUTURESBOOKSECTION

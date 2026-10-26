@@ -129,6 +129,91 @@ a similar extent in all three groups.
   \label{fig:path}
 \end{figure}
 
+\subsection{Is the next morning's reversal news?}\label{sec:news}
+
+Information that arrives after the close moves the next morning's price, and could produce the
+fall in Figure~\ref{fig:path} without any role for the settlement. Information that is not
+anticipated is unrelated to the direction of the window's move, so on average it should not
+appear as a reversal of it. In a sample of twelve expiries, however, a few days with large
+news can create such a relation by chance, and market-wide news moves stocks with a high
+exposure to the market more, which a session fixed effect does not remove. Four checks
+address these possibilities. Stock-days with a sign of news the next morning are removed:
+those on which the next session's volume is more than twice the security's median, or on
+which the opening gap is among the largest twentieth of the security's own gaps. The next
+morning's return is adjusted for market news by subtracting the security's beta, estimated
+from close-to-close returns over the year, times the average next-morning return of the
+universe. The expiry of February, on the day Russia's invasion of Ukraine began, when the
+market fell sharply during the session and recovered the next morning, is dropped. And the
+reversal is estimated for each expiry separately.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Additional reversal of the window's move on monthly expiries under the checks for
+news. Coefficient on the window's move interacted with the monthly expiry in the regression of
+Table~\ref{tab:reversal}, with security and session fixed effects; standard errors clustered by
+session in parentheses, $p$-values in brackets.}
+\label{tab:news}
+\begin{tabular}{lcc}
+\toprule
+ & Securities with derivatives & Placebo \\
+\midrule
+Baseline & $\NewsDerivativeBase{}$ (\NewsDerivativeBaseSe{}) [\NewsDerivativeBaseP{}] &
+  $\NewsPlaceboBase{}$ (\NewsPlaceboBaseSe{}) [\NewsPlaceboBaseP{}] \\
+Without stock-days with signs of news & $\NewsDerivativeNonews{}$ (\NewsDerivativeNonewsSe{}) [\NewsDerivativeNonewsP{}] &
+  $\NewsPlaceboNonews{}$ (\NewsPlaceboNonewsSe{}) [\NewsPlaceboNonewsP{}] \\
+Adjusted for market exposure & $\NewsDerivativeBeta{}$ (\NewsDerivativeBetaSe{}) [\NewsDerivativeBetaP{}] &
+  $\NewsPlaceboBeta{}$ (\NewsPlaceboBetaSe{}) [\NewsPlaceboBetaP{}] \\
+Without the February expiry & $\NewsDerivativeNofeb{}$ (\NewsDerivativeNofebSe{}) [\NewsDerivativeNofebP{}] &
+  $\NewsPlaceboNofeb{}$ (\NewsPlaceboNofebSe{}) [\NewsPlaceboNofebP{}] \\
+Adjusted, without signs of news & $\NewsDerivativeBetanonews{}$ (\NewsDerivativeBetanonewsSe{}) [\NewsDerivativeBetanonewsP{}] &
+  $\NewsPlaceboBetanonews{}$ (\NewsPlaceboBetanonewsSe{}) [\NewsPlaceboBetanonewsP{}] \\
+\midrule
+Move from the morning to the window & $\NewsDerivativeEarlier{}$ (\NewsDerivativeEarlierSe{}) [\NewsDerivativeEarlierP{}] &
+  $\NewsPlaceboEarlier{}$ (\NewsPlaceboEarlierSe{}) [\NewsPlaceboEarlierP{}] \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:news} reports the results. Removing the stock-days with signs of news reduces
+the additional reversal in the securities with derivatives from $\NewsDerivativeBase{}$ to
+$\NewsDerivativeNonews{}$, adjusting for market exposure reduces it to
+$\NewsDerivativeBeta{}$, and with both it is $\NewsDerivativeBetanonews{}$ with a $p$-value of
+\NewsDerivativeBetanonewsP{}. In the placebo group the same steps reduce it from
+$\NewsPlaceboBase{}$ to $\NewsPlaceboBetanonews{}$ ($p = \NewsPlaceboBetanonewsP{}$).
+Figure~\ref{fig:newsexpiry} shows that the reversal is carried by a few expiries:
+\NewsExpiriesInrange{} of the twelve lie within the range of the middle ninety per cent of
+the \NewsNormalSessions{} ordinary sessions, and the average over the twelve, compared with the
+averages over one ordinary session drawn from each month, has a randomization $p$-value of
+\NewsSessionriDerivative{}. The largest reversals follow the expiries of February, March,
+August and September.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{overnight_by_expiry.pdf}
+  \caption{Slope of the next morning's return on the window's move, estimated separately for
+    each session. The histogram shows the ordinary sessions and the vertical lines the monthly
+    expiries.}
+  \label{fig:newsexpiry}
+\end{figure}
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=0.8\textwidth]{overnight_robustness.pdf}
+  \caption{Additional reversal on monthly expiries under each check for news, with 95\%
+    intervals.}
+  \label{fig:newsrobust}
+\end{figure}
+
+The reversal is therefore best attributed to information arriving after the session, most of
+it common to the market, rather than to the release of a settlement price displaced by trading.
+It is as large in securities on which nothing settles, it is concentrated on a few dates, and
+it is small and insignificant once market news and signs of stock-specific news are allowed
+for. One feature does not fit news alone: the move from the morning to the start of the window
+is reversed far less, $\NewsDerivativeEarlier{}$, than the window's move. The trade data
+identify news only through its effect on volume and prices, and a record of company
+announcements would allow a direct test.
+
 \subsection{The expiring future and the cash settlement price}
 
 The expiring stock future trades during the window alongside the cash market whose average

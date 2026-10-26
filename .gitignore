@@ -59,3 +59,12 @@ paper_bundle*.tar.gz
 
 # Per-security turnover statistics derived from the licensed NSE tape; not committed.
 config/universe_2022_candidates.csv
+data/results/*.parquet
+data/results/tape/
+data/results/futures_book/
+data/results/book_profile/
+notes/figures/
+notes/*.pdf
+notes/*.aux
+notes/*.log
+notes/*.out

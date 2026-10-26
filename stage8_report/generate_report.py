@@ -41,6 +41,7 @@ from stage8_report.tape_report import (  # noqa: E402
     build_tape_tables,
     collect_tape_metrics,
 )
+from stage8_report.followup_report import collect_followup_metrics  # noqa: E402
 from utils.logger import setup_logger  # noqa: E402
 from utils.provenance import Run, reset as reset_metrics  # noqa: E402
 
@@ -158,6 +159,7 @@ def generate_report(collect: bool = True) -> None:
         collect_all()
         collect_insight_metrics()
         collect_tape_metrics()
+        collect_followup_metrics()
 
         with Run("stage8.generate_report") as run:
             run.record("results.headline", _headline(summary), "",
