@@ -1,0 +1,168 @@
+\documentclass[11pt]{article}
+\usepackage[margin=2.2cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{booktabs}
+\usepackage[hidelinks]{hyperref}
+
+\graphicspath{{figures/}{../paper/figures/}}
+\setlist{nosep, leftmargin=1.4em}
+
+\begin{document}
+
+{\large\textbf{Expiry-day microstructure and the settlement VWAP: progress notes}}\\
+Follow-ups from the meeting of 21 Oct 2026\\
+\small{(working notes; the full report has the details and all tests)}
+\normalsize
+
+\hrule
+\vspace{0.8em}
+
+\section*{Setup (unchanged)}
+\begin{itemize}
+  \item NSE order and trade files, cash market, 2022. Full year (242 sessions) for trades;
+  order book rebuilt for the 12 monthly expiries + the day before each.
+  \item 150 stocks: 50 liquid F\&O, 50 illiquid F\&O, 50 placebo (no derivatives, matched on
+  turnover and price).
+  \item New: F\&O order and trade files for Mar--Jun (4 expiries), used for the futures.
+  \item Comparisons: expiry day vs.\ day before, same stock; regressions with stock and
+  session fixed effects.
+\end{itemize}
+
+\begin{center}
+\small
+\begin{tabular}{llll}
+\toprule
+ & Hypothesis & Primary measure & Result \\
+\midrule
+BH1 & Settlement price is pushed & $|$settle VWAP $-$ mid at 15:00$|$ & not rejected ($p=0.21$) \\
+BH2 & Window costlier to trade in & quoted spread & rejected ($p<0.001$) \\
+BH3 & One-sided pressure & $|$OIB$|$ & not rejected ($p=0.54$) \\
+BH4 & Order behaviour changes & orders cancelled within 1\,s & rejected ($p<0.001$) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section*{1. Reasons behind the results}
+\begin{itemize}
+  \item \textbf{BH1 (no push in stocks).} Stock F\&O settle by delivery, so moving the VWAP gains
+  nothing: in the last minutes the expiring future tracks the live cash price (slope 0.91), not
+  the VWAP. No pull towards option strikes. The index settles in cash, and there we do see it:
+  Nifty 50 falls 6.2 bps vs.\ Nifty Next 50 over the window on index expiries ($p=0.008$).
+  \item \textbf{BH2 (wider spread).} Driven by volatility, see section 3.
+  \item \textbf{BH3 (no one-sided flow).} Flow at the close is two-sided (institutions closing
+  and benchmarking; custodian share of window volume 59\% $\to$ 65\%), and futures positions are
+  mostly rolled before expiry day (section 4).
+  \item \textbf{BH4 (more fleeting orders).} Also mostly volatility: once we control for the rise
+  in volatility, the increase is small and not significant.
+\end{itemize}
+
+\section*{2. Figure 2: is the next-morning fall news?}
+\begin{center}
+\includegraphics[width=0.95\textwidth]{window_path.pdf}
+\end{center}
+Checks:
+\begin{itemize}
+  \item drop stock-days with signs of news next morning (volume $>2\times$ median, or a very
+  large opening gap);
+  \item adjust for market news (stock beta $\times$ market's overnight move);
+  \item drop 24 Feb 2022 (day of the Ukraine invasion: crash, then rebound next morning);
+  \item estimate expiry by expiry.
+\end{itemize}
+
+\begin{center}
+\small
+\begin{tabular}{lcc}
+\toprule
+Extra reversal on monthly expiries & F\&O stocks & Placebo \\
+\midrule
+Baseline & $-0.26$ ($p=0.04$) & $-0.23$ ($p=0.007$) \\
+Without news days & $-0.22$ ($p=0.08$) & $-0.09$ ($p=0.06$) \\
+Beta-adjusted & $-0.15$ ($p=0.20$) & $-0.15$ ($p=0.006$) \\
+Beta-adjusted, without news days & $-0.13$ ($p=0.34$) & $-0.06$ ($p=0.17$) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{center}
+\includegraphics[width=\textwidth]{overnight_by_expiry.pdf}\\
+\small Each monthly expiry (orange) vs.\ ordinary sessions (grey).
+\end{center}
+
+\textbf{Takeaway:} mostly information arriving after the close. It comes from a few expiries,
+is just as strong in placebo stocks (nothing settles there), and is small and insignificant
+after the two adjustments. One caveat: the morning-to-15:00 move is reversed much less than the
+window move, so maybe not all of it is news. Checking against actual company announcements
+would settle it.
+
+\section*{3. BH2: spread and depth plots}
+\begin{center}
+\includegraphics[width=\textwidth]{bh2_spread_day.pdf}\\
+\includegraphics[width=\textwidth]{bh2_depth_day.pdf}\\
+\small Median across stocks, expiry day vs.\ day before (log scale). Window shaded.
+\end{center}
+
+\begin{center}
+\includegraphics[width=0.9\textwidth]{bh2_window_zoom.pdf}\\
+\small Last hour, minute by minute.
+\end{center}
+
+\begin{center}
+\small
+\begin{tabular}{lrrr}
+\toprule
+Window, expiry vs.\ day before & Spread & Depth & Volatility \\
+\midrule
+Liquid F\&O & $+9.8$\% & $-7.2$\% & $+45$\% \\
+Illiquid F\&O & $+10.3$\% & $-4.8$\% & $+46$\% \\
+Placebo & $+1.2$\% (n.s.) & $-0.5$\% (n.s.) & $+7$\% (n.s.) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\textbf{Why:} the window is far more volatile on expiry days, only in F\&O stocks. Regressing each
+stock's change in spread on its change in volatility: volatility explains about 70\% of the
+widening and all of the fall in depth. Market makers quote wider and thinner when prices move
+more.
+
+\section*{4. Futures}
+Rebuilt the order book of the expiring stock futures from the F\&O order files (4 expiries,
+Mar--Jun, and the day before; 100 stocks, 84 on 28 Apr because one file part is an incomplete
+download).
+
+\begin{center}
+\includegraphics[width=\textwidth]{futures_book_day.pdf}\\
+\small Cash (left) vs.\ expiring future (right).
+\end{center}
+
+\begin{center}
+\small
+\begin{tabular}{lrrr}
+\toprule
+Window, expiry vs.\ day before & Spread & Depth & Volatility \\
+\midrule
+Cash (same stocks, Mar--Jun) & $+2.5$\% & $-1.0$\% & $+7.5$\% \\
+Expiring future & $+31.9$\% & $-2.7$\% & $+39.9$\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{itemize}
+  \item The futures spread jumps in the window on expiry day. Volatility explains only about a
+  fifth of it.
+  \item Likely reason: it is the contract's last half hour. Most positions have already rolled
+  (next month has 53\% of futures volume the day before, 59\% on expiry day), and anything left
+  open turns into a delivery obligation, so market makers pull out.
+  \item Still no one-sided pressure: futures $|$OIB$|$ in the window unchanged (0.18 vs.\ 0.18).
+\end{itemize}
+
+\section*{Next}
+\begin{itemize}
+  \item Company announcements data to test the news explanation directly.
+  \item Futures book for more sessions, not only expiry and the day before.
+  \item All of the above is in the updated full report.
+\end{itemize}
+
+\end{document}
