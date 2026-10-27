@@ -115,6 +115,27 @@ def collect_followup_metrics() -> None:
             run.record(f"{stem}.expiry", float(r.expiry), unit, "expiry day")
             run.record(f"{stem}.diff", float(r.mean), unit, "paired difference")
             run.record(f"{stem}.p", float(r.p), "p-value", "paired t-test")
+        for r in _csv("s13_futures_voltest.csv").itertuples(index=False):
+            stem = f"futvol.{MEASURE_KEY[r.measure]}"
+            run.record(f"{stem}.slope", float(r.slope_rv), "ratio",
+                       "expiring future, slope on the change in log realised variance")
+            run.record(f"{stem}.slope.se", float(r.slope_se), "ratio", "standard error")
+            run.record(f"{stem}.intercept", float(r.intercept), "per cent",
+                       "expiring future, change at unchanged realised variance")
+            run.record(f"{stem}.intercept.se", float(r.intercept_se), "per cent",
+                       "standard error")
+            run.record(f"{stem}.intercept.p", float(r.intercept_p), "p-value", "")
+            run.record(f"{stem}.explained", 100 * (1 - float(r.intercept) / float(r.raw_mean)),
+                       "per cent", "share of the raw change accounted for by volatility")
+        books = sorted((Path(RESULTS_DIR) / "futures_book").glob("session=*.parquet"))
+        if books:
+            fb = pd.concat([pd.read_parquet(f, columns=["symbol", "market", "session"])
+                            for f in books])
+            fut = fb[fb.market == "futures"].groupby("session").symbol.nunique()
+            run.record("futbook.securities", int(fut.max()), "securities",
+                       "stock futures with a reconstructed book on a session")
+            run.record("futbook.securities.min", int(fut.min()), "securities",
+                       "fewest stock futures with a reconstructed book on a session")
         for r in _csv("s13_futures_book.csv").itertuples(index=False):
             stem = f"futbook.{r.market}.{PART_KEY[r.part]}.{MEASURE_KEY[r.measure]}"
             run.record(stem, float(r.mean), "per cent",

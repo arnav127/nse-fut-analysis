@@ -162,4 +162,65 @@ shows the same absence of one-sided pressure as the cash market. With settlement
 and positions largely rolled in advance, little remains to be unwound at the settlement price,
 and what is traded in the window comes from both sides.
 
-%FUTURESBOOKSECTION
+\subsection{The order book of the expiring future}\label{sec:futbook}
+
+The cost of trading in the futures market is measured in the same way as in the cash market
+(Section~\ref{sec:bh2}). The derivatives order files are parsed for the stock futures of the
+expiring month, without spread orders, and the book of each future is replayed into
+five-second snapshots, on each of the four expiries from March to June and on the day before.
+On the day before, the same contract has one session to run. Books are reconstructed for
+\FutbookSecurities{} futures on each session except the April expiry, on which one part of the
+exchange's order file is an incomplete download and \FutbookSecuritiesMin{} futures remain.
+The cash book of the same securities on the same sessions is reduced identically.
+
+\begin{figure}[htbp]
+  \centering
+  \includegraphics[width=\textwidth]{futures_book_day.pdf}
+  \caption{Quoted spread and displayed depth within five price levels through the session, for
+    the securities with derivatives (left) and their expiring stock future (right), on the four
+    monthly expiries from March to June and the day before each. Medians across securities, with
+    a five-minute moving average. The settlement window is shaded.}
+  \label{fig:futbook}
+\end{figure}
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Expiry day against the day before, cash and expiring stock future, in per cent (one
+hundred times the difference in logarithms), averaged over security-months of the four
+expiries from March to June. Paired $p$-values in brackets.}
+\label{tab:futbook}
+\resizebox{\textwidth}{!}{\begin{tabular}{llccc}
+\toprule
+ & & Quoted spread & Depth & Realised variance \\
+\midrule
+Before the window & Cash & \FutbookCashDaySpread{} [\FutbookCashDaySpreadP{}] & $\FutbookCashDayDepth{}$ [\FutbookCashDayDepthP{}] & \FutbookCashDayRv{} [\FutbookCashDayRvP{}] \\
+ & Future & \FutbookFuturesDaySpread{} [\FutbookFuturesDaySpreadP{}] & $\FutbookFuturesDayDepth{}$ [\FutbookFuturesDayDepthP{}] & \FutbookFuturesDayRv{} [\FutbookFuturesDayRvP{}] \\
+\midrule
+Settlement window & Cash & \FutbookCashWindowSpread{} [\FutbookCashWindowSpreadP{}] & $\FutbookCashWindowDepth{}$ [\FutbookCashWindowDepthP{}] & \FutbookCashWindowRv{} [\FutbookCashWindowRvP{}] \\
+ & Future & \FutbookFuturesWindowSpread{} [\FutbookFuturesWindowSpreadP{}] & $\FutbookFuturesWindowDepth{}$ [\FutbookFuturesWindowDepthP{}] & \FutbookFuturesWindowRv{} [\FutbookFuturesWindowRvP{}] \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+Figure~\ref{fig:futbook} and Table~\ref{tab:futbook} show the result. Through the day the
+expiring future behaves much like the cash market, with a slightly wider spread on the expiry
+day. In the settlement window the two part. On the day before, the future's spread narrows
+toward the close as it does in the cash market; on the expiry day it widens instead, and over the
+window it is \FutbookFuturesWindowSpread{} per cent wider than on the day before, against
+\FutbookCashWindowSpread{} per cent in the cash market of the same securities and months.
+Displayed depth in the future is lower by \FutbookFuturesWindowDepth{} per cent
+($p = \FutbookFuturesWindowDepthP{}$).
+
+Volatility explains less of this than in the cash market. The future's realised variance in the
+window rises by \FutbookFuturesWindowRv{} per cent, and in the regression of the change in its
+spread on the change in its variance the intercept is \FutvolSpreadIntercept{} per cent
+($p = \FutvolSpreadInterceptP{}$): volatility accounts for about \FutvolSpreadExplained{} per cent
+of the widening. The rest reflects the contract's last minutes. Most positions have already been
+rolled into the next contract, and a position left open at the close of an expiring stock future
+turns into an obligation to deliver or take delivery of the shares, which liquidity suppliers who
+quote both sides do not want to carry. They withdraw from the expiring contract as the close
+approaches, and its spread widens. The cost of trading the expiring future at the settlement is
+therefore higher still than that of trading the shares, but the widening comes from the contract
+running out rather than from pressure on the price: the imbalance in the window does not change
+(Table~\ref{tab:futtape}).

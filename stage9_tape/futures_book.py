@@ -99,8 +99,15 @@ def parse_orders(session: str, contract: str, symbols: List[str]) -> Path:
         jobs = [(p, work / f"part={p.name.split('_')[-1][:2]}", contract, symbols)
                 for p in parts]
         # One part at a time: the share delivers less in total to concurrent readers.
+        # The parts split the stream by security, not by time, so a part whose download is
+        # incomplete loses only its own securities for the session; it is skipped and named.
         for job in jobs:
-            _parse_part(job)
+            try:
+                _parse_part(job)
+            except ValueError as exc:
+                if "does not match" not in str(exc):
+                    raise
+                print(f"{session}: skipped incomplete {job[0].name}", flush=True)
         done.touch()
     # A symbol's orders belong to one stream, but the parts are combined and sorted in case
     # one is split, keeping the file order within a timestamp. Arrow rather than pandas, so

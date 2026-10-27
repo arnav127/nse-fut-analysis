@@ -170,6 +170,8 @@ def volatility_test(book: pd.DataFrame) -> pd.DataFrame:
     rows = []
     for g in ["all F&O", *GROUPS]:
         sub = d[d.group.isin(["liquid", "illiquid"])] if g == "all F&O" else d[d.group == g]
+        if len(sub) < 10:
+            continue
         for v in ("d_spread", "d_depth"):
             raw = _ttest(sub[v])
             X = np.column_stack([np.ones(len(sub)), sub.d_rv])
@@ -223,6 +225,11 @@ def futures_book_figures() -> pd.DataFrame:
             d = book_paired(sub, lo, hi)
             for v in ("d_spread", "d_depth", "d_rv"):
                 rows.append({"market": market, "part": part, "measure": v, **_ttest(d[v])})
+    # The same volatility regression as for the cash market, on the expiring future's window.
+    fut = fb[fb.market == "futures"].assign(group="liquid")  # pooled under one label
+    test = volatility_test(fut[["symbol", "group", "session", "is_expiry", "minute",
+                                "spread_bps", "depth_cr", "rv_bps2"]])
+    test[test.group == "all F&O"].to_csv(RES / "s13_futures_voltest.csv", index=False)
     return pd.DataFrame(rows)
 
 

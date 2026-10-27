@@ -364,9 +364,43 @@ nsetick.build_books(input=orders_dir, out=books_dir, interval_secs=5.0, levels=5
 \end{lstlisting}
 4 expiries (Mar--Jun) and the day before each, same 100 F\&O stocks.
 
-\note{running on the HPC now: the order files are about 36 GB a day for the stock-futures
-parts alone and the NSE share reads at about 30 MB/s, so the 8 sessions take a few hours.
-Results go here.}
+About 25--40 minutes per session on the HPC (the share reads slowly). One part of the
+28 Apr order file is an incomplete download on the NSE share, so that expiry has 84 futures
+instead of 100.
+
+\begin{center}
+\includegraphics[width=\textwidth]{futures_book_day.pdf}\\
+\small Cash (left) vs.\ expiring stock future (right), expiry day vs.\ day before, 4 expiries
+Mar--Jun. Window shaded.
+\end{center}
+
+\begin{center}
+\small
+\begin{tabular}{llrrr}
+\toprule
+ & & Spread & Depth & Volatility (RV) \\
+\midrule
+09:30--15:00 & Cash & $+4.8$*** & $-1.7$ & $+8.6$*** \\
+             & Future & $+3.5$*** & $-0.7$ & $+12.6$*** \\
+15:00--15:30 & Cash & $+2.5$* & $-1.0$ & $+7.5$* \\
+             & Future & $\mathbf{+31.9}$*** & $-2.7$* & $+39.9$*** \\
+\bottomrule
+\end{tabular}\\
+Expiry vs.\ day before, \% (100 $\times$ log ratio), about 400 stock-months.
+\end{center}
+
+\textbf{The futures window is where the cost really jumps.} On the day before, the future's
+spread narrows into the close like the cash market; on expiry day it widens instead, ending the
+window about 32\% wider. Volatility explains only about a fifth of that (same regression as BH2:
+intercept $+24.8$\%, $p<0.001$).
+
+\textbf{Why (reason).} It is the last half hour of the contract. Most positions have already
+rolled to next month, and anything still open at 15:30 turns into an obligation to deliver or
+take delivery of the shares (physical settlement). Market makers quoting both sides don't want
+to be left holding that, so they pull out of the expiring contract and its spread blows out.
+Still no one-sided pressure though (futures $|$OIB$|$ unchanged, 9.2).
+\note{in these 4 months the cash window widening is smaller (+2.5\%) than over the full
+12-month sample (+10\%); the full-year number is the one in \S5.}
 
 \textbf{9.2 Futures trades.} Expiring (near) and next-month contract, expiry day vs.\ day
 before, 100 stocks $\times$ 4 months:
@@ -393,12 +427,14 @@ consistent with BH1/BH3 for stocks.
   \item BH1: stock settlement not pushed (physical settlement removes the incentive); index
   settlement is ($-6.2$ bps vs.\ Next 50).
   \item BH2: window costlier in F\&O stocks only; mostly explained by higher volatility in
-  the window.
+  the window. In the expiring future the spread jumps about 32\% in the window, mostly because
+  market makers pull out of a contract about to turn into delivery.
   \item BH3: no one-sided pressure; flow is two-sided closing, positions rolled earlier.
   \item BH4: more fleeting orders, mostly explained by volatility.
   \item Figure 2: next-morning fall mostly overnight information, not settlement.
 \end{itemize}
 Next: (i) corporate announcements data to test stock news directly; (ii) futures book for more
-sessions (not only expiry and day before); (iii) finish the futures order book comparison (\S9.1).
+sessions (not only expiry and day before).
+%(\S9.1).
 
 \end{document}
