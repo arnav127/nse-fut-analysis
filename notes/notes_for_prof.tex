@@ -45,19 +45,96 @@ BH4 & Order behaviour changes & orders cancelled within 1\,s & rejected ($p<0.00
 \end{tabular}
 \end{center}
 
-\section*{1. Reasons behind the results}
+\section*{1. Why we see what we see}
+For each hypothesis: what we find, how we explain it, what supports that, and what is still a
+guess. Sections 2 to 4 have the new tests behind these.
+
+\subsection*{BH1: stock settlement prices are not pushed, the index is}
+\textbf{Finding.} The stock settlement VWAP is no further from the 15:00 price on expiry days.
+The Nifty 50, however, falls 6.2 bps relative to the Nifty Next 50 over the window on index
+expiries ($p=0.008$), on weekly and monthly expiries alike.
+
+\textbf{Explanation: it depends on how the contract settles.}
 \begin{itemize}
-  \item \textbf{BH1 (no push in stocks).} Stock F\&O settle by delivery, so moving the VWAP gains
-  nothing: in the last minutes the expiring future tracks the live cash price (slope 0.91), not
-  the VWAP. No pull towards option strikes. The index settles in cash, and there we do see it:
-  Nifty 50 falls 6.2 bps vs.\ Nifty Next 50 over the window on index expiries ($p=0.008$).
-  \item \textbf{BH2 (wider spread).} Driven by volatility, see section 3.
-  \item \textbf{BH3 (no one-sided flow).} Flow at the close is two-sided (institutions closing
-  and benchmarking; custodian share of window volume 59\% $\to$ 65\%), and futures positions are
-  mostly rolled before expiry day (section 4).
-  \item \textbf{BH4 (more fleeting orders).} Also mostly volatility: once we control for the rise
-  in volatility, the increase is small and not significant.
+  \item Stock futures and options settle by \emph{delivery}. Someone long a future pays the
+  agreed futures price for the shares whatever the settlement price is: a higher settlement
+  price raises the final margin payment received but raises the price paid for the shares by
+  the same amount. So there is nothing to gain from moving it.
+  \item Evidence: in the last minutes of the window the expiring future moves one for one with
+  the live cash price (slope 0.91), not with the VWAP that is already almost fixed. The market
+  prices the future as a claim on shares, exactly as delivery implies.
+  \item Options do have an incentive (the settlement price decides which strikes are in the
+  money), but we find no pull of settlement prices towards strikes. Our guess: open interest
+  near the money in a single stock is too small to justify the cost of moving its price for
+  thirty minutes.
+  \item The index settles in \emph{cash} against the closing value, so here moving the price
+  does pay, and this is the one place we see a systematic move.
 \end{itemize}
+
+\textbf{Why does the index fall? Two hypotheses (we cannot yet tell them apart):}
+\begin{enumerate}
+  \item \emph{Unwinding of hedges.} Traders who are short index options or futures hedge with
+  the constituent stocks. A cash-futures arbitrageur typically holds the stocks and is short
+  the future (the future usually trades above cash). The cheapest way to exit is to sell the
+  stocks in the settlement window, at the same average the derivative settles at. That is
+  selling pressure concentrated in Nifty 50 stocks and absent in Next 50 stocks.
+  \item \emph{Deliberate pressure.} Large holders of index options benefit from a lower
+  settlement value and push it down.
+\end{enumerate}
+Both predict more aggressive selling in Nifty 50 constituents in the window on index expiries.
+Hypothesis 1 predicts it mainly from proprietary and arbitrage accounts, roughly in proportion to
+open interest, and a recovery the next morning. We see a recovery of about the same size the
+next morning, but it is imprecise. Next step: aggressor flow by participant type in Nifty 50
+stocks on index expiries.
+
+\subsection*{BH2: the window is costlier in F\&O stocks}
+\textbf{Finding.} In the window, spreads are about 10\% wider and depth 5 to 7\% lower on
+expiry days, only in F\&O stocks.
+
+\textbf{Explanation: volatility.} Prices in the window move about 45\% more on expiry days in F\&O
+stocks and hardly more in placebo stocks. Market makers widen and thin their quotes when prices
+move more, because they risk being stuck with inventory that moves against them and are more
+likely to trade with someone better informed. Stocks whose volatility rose more had their spreads
+widen more, and volatility accounts for about 70\% of the widening and all of the fall in depth.
+
+\textbf{Why is the window more volatile? Our hypotheses:}
+\begin{itemize}
+  \item More volume is pulled into the window on expiry days (window share of volume up 2.4 pp
+  relative to placebo): positions being closed, rolled or benchmarked to the close.
+  \item \emph{Option hedging.} On expiry day options close to the money have very high gamma: a
+  small price move swings their delta from 0 to 1. Dealers who hedge those options in the cash
+  market have to trade a lot in the last half hour, and their trades add to price moves.
+\end{itemize}
+The remaining 3\% widening that volatility does not explain may come from market makers who are
+active in both the cash market and the expiring options and are busy managing the options book
+in the last half hour.
+
+\subsection*{BH3: no one-sided pressure}
+\textbf{Finding.} Order imbalance over the window is not more one-sided on expiry days, in cash or
+in the expiring futures. It is more \emph{persistent} from one 5-minute block to the next.
+
+\textbf{Explanation.}
+\begin{itemize}
+  \item No one gains from pushing stock prices (BH1), so the extra trading at the close is
+  closing and benchmarking of positions, which comes from both buyers and sellers.
+  \item Most futures positions are rolled \emph{before} expiry day: the next-month contract
+  already has 53\% of futures volume the day before and 59\% on expiry day. Little is left to be
+  unwound at the settlement price.
+  \item The higher persistence is what large orders worked through the window look like:
+  institutions executing against the closing price slice their orders evenly over the thirty
+  minutes. Custodian (institutional) participation in window volume rises from 59\% to 65\%.
+  Each such order is one-sided, but across stocks and institutions buys and sells offset.
+\end{itemize}
+
+\subsection*{BH4: more fleeting orders}
+\textbf{Finding.} The share of orders cancelled within a second rises (28.6\% to 30.1\%), only in
+F\&O stocks.
+
+\textbf{Explanation.} Algorithmic market makers re-price their quotes every time the price moves.
+When prices move more often, more quotes are cancelled and replaced within a second. Once we
+control for each stock's rise in volatility, the increase is small and not significant.
+Entries rise as fast as cancellations, so this is more active quoting, not orders placed to
+mislead and then pulled.
 
 \section*{2. Figure 2: is the next-morning fall news?}
 \begin{center}
@@ -93,9 +170,20 @@ Beta-adjusted, without news days & $-0.13$ ($p=0.34$) & $-0.06$ ($p=0.17$) \\
 
 \textbf{Takeaway:} mostly information arriving after the close. It comes from a few expiries,
 is just as strong in placebo stocks (nothing settles there), and is small and insignificant
-after the two adjustments. One caveat: the morning-to-15:00 move is reversed much less than the
-window move, so maybe not all of it is news. Checking against actual company announcements
-would settle it.
+after the two adjustments.
+
+\textbf{How news produces it.} News that nobody expected should be unrelated to the direction of
+the window move, so on average it should not undo it. But with only 12 expiries a few big days
+matter. On 24 Feb the market crashed during the day and bounced the next morning; high-beta stocks
+fell most in the window and rose most the next morning, which looks like a reversal stock by
+stock. Adjusting for beta removes about half of the effect for exactly this reason.
+
+\textbf{What might be left.} The move from the morning to 15:00 is reversed much less than the
+window move ($-0.05$ vs.\ $-0.26$), so perhaps not all of it is news. One hypothesis: the last
+half hour of an expiry day (which is also close to month end) carries large closing orders from
+funds, and market makers who absorb them at the close are paid by a small reversal the next
+morning. That would show in all stocks, including placebo, as we find. Company announcement data
+would let us separate the two.
 
 \section*{3. BH2: spread and depth plots}
 \begin{center}
@@ -152,9 +240,15 @@ Expiring future & $+31.9$\% & $-2.7$\% & $+39.9$\% \\
 \begin{itemize}
   \item The futures spread jumps in the window on expiry day. Volatility explains only about a
   fifth of it.
-  \item Likely reason: it is the contract's last half hour. Most positions have already rolled
-  (next month has 53\% of futures volume the day before, 59\% on expiry day), and anything left
-  open turns into a delivery obligation, so market makers pull out.
+  \item Likely reason: it is the contract's last half hour. A market maker in the expiring future
+  normally ends the day with a small long or short position and offsets it the next morning. On
+  expiry day there is no next morning: any position left at 15:30 has to be settled by
+  delivering or taking delivery of the shares, which needs the shares or the cash and carries
+  extra margin. So market makers quote less and wider in the last minutes, and the few traders
+  still in the expiring contract pay for it.
+  \item Most positions have already rolled to next month (53\% of futures volume the day before,
+  59\% on expiry day), so the traders left in the expiring contract are mostly those who missed
+  the roll or want delivery. Liquidity providers follow the volume to the next contract.
   \item Still no one-sided pressure: futures $|$OIB$|$ in the window unchanged (0.18 vs.\ 0.18).
 \end{itemize}
 
