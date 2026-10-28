@@ -28,20 +28,18 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from config.settings import DATA_ROOT, RESULTS_DIR  # noqa: E402
+from config.settings import DATA_ROOT, EXPIRY_CONTROL_PAIRS, RESULTS_DIR  # noqa: E402
 
-FAO_ROOT = Path("/mnt/nse/FAO 2022")
+# One link per F&O file across the library's shares, to the copy whose size matches its .trg
+# record where there is more than one (see scripts/fao_links.py).
+FAO_LINKS = Path.home() / "sandbox/data/raw/fao_all"
 OUT_DIR = Path(RESULTS_DIR) / "futures_book"
 SCRATCH = Path(DATA_ROOT) / "tmp" / "futures_book"
 CASH_BOOKS = Path.home() / "sandbox/BlockCrosser/data/clob_snapshots"
 
-# Expiry session -> (control session, contract code as the file writes it).
-PAIRS = {
-    "31032022": ("30032022", "31Mar2022"),
-    "28042022": ("27042022", "28Apr2022"),
-    "26052022": ("25052022", "26May2022"),
-    "30062022": ("29062022", "30Jun2022"),
-}
+# Expiry session -> (control session, contract code as the file writes it, e.g. 27Jan2022).
+PAIRS = {e: (c, pd.Timestamp(f"{e[4:]}-{e[2:4]}-{e[:2]}").strftime("%d%b%Y"))
+         for e, c in EXPIRY_CONTROL_PAIRS}
 LEVELS = 5
 OPEN, CLOSE = 9 * 3600 + 15 * 60, 15 * 3600 + 30 * 60
 
@@ -53,12 +51,7 @@ def derivative_symbols() -> List[str]:
 
 def order_parts(session: str) -> List[Path]:
     """Every part of the session's order file, one per part number."""
-    found = {}
-    # The share is slow to walk recursively, so only the download folders are listed.
-    for folder in sorted(FAO_ROOT.glob("*/NSEDownload/*/FAO")):
-        for path in sorted(folder.glob(f"FAO_Orders_{session}_*.DAT.gz")):
-            found.setdefault(path.name, path)
-    return [found[k] for k in sorted(found)]
+    return sorted(FAO_LINKS.glob(f"FAO_Orders_{session}_*.DAT.gz"))
 
 
 def carries_stock_futures(path: Path, rows: int = 2_000) -> bool:
