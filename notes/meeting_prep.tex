@@ -1,0 +1,302 @@
+\documentclass[11pt]{article}
+\usepackage[margin=2.1cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage{booktabs}
+\usepackage{xcolor}
+\usepackage[hidelinks]{hyperref}
+
+\setlist{nosep, leftmargin=1.4em}
+\newcommand{\solid}{\textcolor{teal}{\textbf{[solid]}}}
+\newcommand{\guess}{\textcolor{orange!80!black}{\textbf{[conjecture]}}}
+
+\begin{document}
+
+{\Large\textbf{Meeting prep: expiry-day microstructure and the settlement VWAP}}\\
+For my own reading before meeting Prof.\ Banerjee. What we did, what we found, what we only
+think, and what he may ask.
+
+\hrule
+\vspace{0.8em}
+
+\section*{0. The story in five lines}
+\begin{enumerate}
+  \item On expiry days more trading is drawn into the 15:00 to 15:30 settlement window of F\&O
+  stocks, and that window becomes more volatile and more expensive to trade in.
+  \item Nobody pushes \emph{stock} settlement prices: stock F\&O settle by delivery, so there is
+  nothing to gain. Order flow in the window stays two-sided.
+  \item The \emph{index} (cash-settled) is the exception: Nifty 50 falls 6.2 bps against Nifty
+  Next 50 over the window on index expiries.
+  \item The next-morning fall in Figure 2 is mostly information arriving overnight, not the
+  settlement price being released.
+  \item In the expiring stock future the spread widens three times as much as in cash in the
+  last half hour, because market makers leave a contract about to turn into delivery.
+\end{enumerate}
+
+\solid{} = backed by a test. \guess{} = our explanation, not yet tested directly.
+
+\section*{1. What we did, step by step}
+\begin{enumerate}
+  \item \textbf{Data.} NSE order and trade files for 2022. Cash market: trades for 242 sessions
+  (one corrupt file, 2 Aug); orders for 24 sessions (12 monthly expiries + the day before each).
+  Index file: Nifty 50 and Nifty Next 50 every second. F\&O trades and orders: all of 2022, from
+  the library's shares (we first had only Mar to Jun).
+  \item \textbf{Parsing.} Our own Rust parser (nsetick) turns the fixed-width NSE files into
+  parquet, split by date and stock.
+  \item \textbf{Universe.} 150 stocks: 50 liquid F\&O, 50 illiquid F\&O, 50 \emph{placebo} stocks
+  with no derivatives, matched on turnover and price. Placebo stocks trade on the same days but
+  have nothing settling, so anything also seen there is about the day, not the settlement.
+  \item \textbf{Trade direction.} Every trade has the buy and sell order numbers; order numbers
+  are given in order of arrival, so the later order is the one that crossed the spread (the
+  aggressor). So we know who initiated every trade exactly.
+  \item \textbf{Order book.} For the 24 sessions we replay every order entry, change and
+  cancellation to rebuild the full limit order book, and take a snapshot every 5 seconds.
+  Gives quoted spread, depth, cancellations, hidden size, etc.
+  \item \textbf{Daily tape.} For all 242 sessions, one row per stock per day: settlement VWAP,
+  price before the window, VWAP of each 5-minute block, buyer- and seller-initiated volume,
+  participant categories, next morning's prices. 36,300 stock-days.
+  \item \textbf{Tests.} Paired tests expiry vs.\ day before (order book sample); regressions on
+  the full year with stock and session fixed effects; placebo comparisons; randomization
+  inference.
+  \item \textbf{After the 21 Oct meeting.} News tests for Figure 2; spread and depth through
+  the whole day; volatility regressions; futures trades and futures order books for all 12
+  expiries.
+\end{enumerate}
+
+\section*{2. Methods in plain words (in case he asks)}
+\begin{itemize}
+  \item \textbf{Expiry vs.\ day before (paired).} Same stock, same month, one day apart. Removes
+  anything specific to the stock or the month.
+  \item \textbf{Two-way fixed effects.} Regression with a dummy for every stock and every
+  session. The session dummy removes anything that hit the whole market that day (e.g.\ a crash),
+  so a market-wide move cannot look like an expiry effect. Standard errors clustered by session
+  (stocks on the same day are not independent).
+  \item \textbf{Placebo / difference-in-differences.} Compare the change in F\&O stocks with the
+  change in placebo stocks on the same days. If both change equally, it is the day, not the
+  settlement.
+  \item \textbf{Randomization inference.} Pretend a random ordinary session in each month is the
+  ``expiry'', re-run the regression 1,000 times; the $p$-value is how often a fake expiry gives
+  an effect as big as the real one. Does not rely on normal-distribution assumptions.
+  \item \textbf{Four broad hypotheses, one primary measure each} (as he asked), with false
+  discovery rate control across the four primaries; everything else is supporting.
+  \item \textbf{OIB} $= (BI - SI)/(BI + SI)$, buyer- minus seller-initiated volume over total.
+  $|$OIB$|$ near 0 means two-sided, near 1 means one-sided.
+  \item \textbf{Realised variance (volatility)}: sum of squared 5-second changes of the mid
+  price. Our measure of how much prices move.
+  \item \textbf{Log-ratio \%}: $100 \times \log(\text{expiry}/\text{day before})$, roughly the
+  percentage change.
+\end{itemize}
+
+\section*{3. Results by hypothesis}
+
+\subsection*{BH1: Is the settlement price pushed?}
+\textbf{Primary:} distance of the settlement VWAP from the mid at 15:00. 36.0 bps on expiry vs.\
+34.5 on the day before, $p=0.21$ (1,792 pairs). \textbf{Not rejected.} \solid
+
+Supporting:
+\begin{itemize}
+  \item Window share of daily volume rises on monthly expiries, 2.4 pp more in F\&O stocks than
+  placebo ($p<0.001$). More trading, but the price does not move further. \solid
+  \item Futures pricing: in the last minutes the expiring future moves with the live cash price,
+  slope 0.85 (se 0.04), not with the VWAP (which by 15:28 is 98\% fixed). That is what physical
+  delivery implies. \solid
+  \item No pull towards option strikes: distance to nearest strike unchanged. \solid
+  \item \textbf{Index:} Nifty 50 minus Nifty Next 50 falls 6.18 bps more over the window on
+  index expiries (about 11 index points), randomization $p=0.008$; negative on 63\% of index
+  expiries vs.\ 52\% of other days; same on weekly and monthly. \solid
+\end{itemize}
+\textbf{Why:} stock F\&O are physically settled, so moving the VWAP gains nothing (a long future
+pays the futures price for the shares whatever the settlement). The index is cash-settled, so
+there the incentive is real. \solid{} for the stock part (futures slope).
+
+\textbf{Why does the index fall?} \guess
+\begin{enumerate}
+  \item Hedge unwinding: arbitrageurs hold the stocks and are short futures/options; they exit
+  by selling the stocks in the window at the settlement average. Selling pressure in Nifty 50
+  stocks only.
+  \item Deliberate pressure by large index-option holders.
+\end{enumerate}
+We cannot tell them apart without positions. The index recovers about the same amount next
+morning (6.8 bps) but imprecisely ($p=0.28$), which fits temporary selling pressure. Next test:
+aggressor flow by participant type in Nifty 50 stocks on index expiries.
+
+\subsection*{BH2: Is the window costlier to trade in?}
+\textbf{Primary:} quoted spread. 5.31 $\to$ 5.60 bps, $p<0.001$; specific to F\&O stocks (vs.\
+placebo $+0.28$ bps, $p=0.016$). \textbf{Rejected.} \solid
+
+New plots (full day and minute by minute):
+\begin{center}
+\small
+\begin{tabular}{lrrr}
+\toprule
+Window, expiry vs.\ day before & Spread & Depth & Volatility \\
+\midrule
+Liquid F\&O & $+9.8$\% & $-7.2$\% & $+45$\% \\
+Illiquid F\&O & $+10.3$\% & $-4.8$\% & $+46$\% \\
+Placebo & $+1.2$\% n.s. & $-0.5$\% n.s. & $+7$\% n.s. \\
+\bottomrule
+\end{tabular}
+\end{center}
+Before the window the spread is only slightly wider (liquid $+4.5$\%), depth unchanged.
+
+\textbf{Why: volatility.} \solid{} Regress each stock-month's change in spread on its change in
+volatility. Volatility explains about 70\% of the widening and all of the fall in depth.
+Market makers quote wider and smaller when prices move more (inventory risk, risk of trading
+with someone better informed).
+
+\textbf{Why is the window more volatile on expiry?} \guess
+\begin{itemize}
+  \item More trading pulled into the window (closing, rolling, benchmarking to the close).
+  \item Option hedging: on expiry day options near the strike switch quickly between worthless
+  and in the money (very high gamma), so dealers hedging in cash must trade a lot in the last
+  half hour.
+  \item The residual 3\% widening: market makers also active in the expiring options may be busy
+  there.
+\end{itemize}
+
+\subsection*{BH3: Is there one-sided pressure?}
+\textbf{Primary:} $|$OIB$|$ over the window. 0.12 on ordinary days (liquid), $+0.02$ on expiries
+(n.s.); paired $p=0.54$. \textbf{Not rejected.} \solid
+
+Supporting:
+\begin{itemize}
+  \item OIB is more \emph{persistent} block to block on expiries (0.34 $+$ 0.15): large orders
+  worked through the window. \solid
+  \item Variance ratio and permanent share of price impact unchanged (0.75 vs.\ 0.76; 1.19 vs.\
+  1.22): no sign of sustained pressure. \solid
+  \item Proprietary traders trade \emph{against} the window move and earn it back overnight
+  (liquidity provision, not pushing). Not different on expiries. \solid
+  \item Custodian (institutional) share of window volume 59\% $\to$ 65\%. \solid
+  \item Futures: the expiring contract's $|$OIB$|$ in the window unchanged (0.18); roll mostly
+  done before (next month has 52\% of futures volume the day before, 59\% on expiry). \solid
+\end{itemize}
+\textbf{Why:} no gain from pushing; closing flow comes from both sides; positions already
+rolled. Persistence = institutions slicing orders evenly to get the closing price; across stocks
+and institutions buys and sells offset. \guess{} for the slicing interpretation.
+
+\subsection*{BH4: Does order behaviour change?}
+\textbf{Primary:} orders cancelled within 1 second, 28.6\% $\to$ 30.1\%, $p<0.001$; 2.4 pp more
+than placebo. \textbf{Rejected.} \solid
+
+Supporting: entries rise as fast as cancellations (more quoting overall, not place-and-pull);
+hidden share of the book high (82\%) and unchanged; IOC use unchanged; proprietary volume up.
+
+\textbf{Why: volatility again.} \solid{} Controlling for each stock's rise in volatility, the
+increase is small and not significant. Algorithms re-price every time the price moves.
+
+\section*{4. Figure 2: is the next-morning fall news?}
+Figure 2 = average path through the window and to the next morning, oriented so the window
+move is positive. On monthly expiries part of the move is given back next morning.
+Regression: extra reversal $-0.26$ ($p=0.04$) in F\&O stocks, $-0.23$ in placebo.
+
+What we did:
+\begin{itemize}
+  \item Dropped stock-days with signs of news (next-day volume $> 2\times$ median, or opening gap
+  in the stock's top 5\%).
+  \item Adjusted for market news: stock beta $\times$ market's overnight move.
+  \item Dropped 24 Feb 2022 (Ukraine invasion: crash on the day, rebound next morning).
+  \item Estimated expiry by expiry.
+\end{itemize}
+\begin{center}
+\small
+\begin{tabular}{lcc}
+\toprule
+Extra reversal on expiries & F\&O & Placebo \\
+\midrule
+Baseline & $-0.26$ ($p=0.04$) & $-0.23$ ($p=0.007$) \\
+Beta-adjusted, no news days & $-0.13$ ($p=0.34$) & $-0.06$ ($p=0.17$) \\
+\bottomrule
+\end{tabular}
+\end{center}
+\textbf{Conclusion:} mostly news. \solid{} Comes from a few expiries (24 Feb, 31 Mar, 25 Aug,
+29 Sep); 10 of 12 inside the normal range; as strong in placebo; insignificant after
+adjustments.
+
+\textbf{How news makes a ``reversal''} (if he asks why news should matter at all): unexpected
+news is unrelated to the window's direction, so on average it cannot undo it. But with 12
+expiries a few big days dominate. On 24 Feb high-beta stocks fell most in the window and bounced
+most next morning: looks like a reversal stock by stock. Beta adjustment removes half.
+
+\textbf{Caveat / residual:} the morning-to-15:00 move is reversed much less ($-0.05$) than the
+window move, so maybe not all news. \guess: closing orders from funds near month end absorbed by
+market makers, who earn a small reversal next morning (would hit placebo too). Test: company
+announcement data.
+
+\section*{5. Futures (all 12 expiries)}
+Rebuilt the order book of each expiring stock future (84 to 100 stocks per day).
+\begin{center}
+\small
+\begin{tabular}{lrrr}
+\toprule
+Window, expiry vs.\ day before & Spread & Depth & Volatility \\
+\midrule
+Cash (same stocks) & $+10.0$\% & $-6.0$\% & $+45.8$\% \\
+Expiring future & $+33.4$\% & $-6.4$\% & $+58.7$\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+\begin{itemize}
+  \item Before the window the future looks normal (spread not wider). The jump is only in the
+  last half hour. \solid
+  \item Volatility explains only a third of it (vs.\ 70\% in cash); depth fall significant even
+  after controlling for volatility. \solid
+  \item \guess: market makers normally carry a small position overnight and offset it next
+  morning. On expiry there is no next morning: anything open at 15:30 becomes a delivery of
+  shares (needs shares or cash, extra margin). So they pull out of the expiring contract;
+  liquidity has moved to next month anyway.
+  \item Still no one-sided pressure in futures. \solid
+\end{itemize}
+
+\section*{6. Solid vs.\ conjecture at a glance}
+\begin{center}
+\small
+\begin{tabular}{p{7.2cm}p{8.4cm}}
+\toprule
+Solid (tested) & Conjecture (our explanation) \\
+\midrule
+No push in stock settlement prices & Index fall = hedge unwinding vs.\ deliberate push \\
+Futures priced on cash price (delivery) & Options too small per stock to be worth pushing \\
+Index falls 6.2 bps on index expiries & Window volatility from option (gamma) hedging \\
+Window costlier, only F\&O stocks & Residual 3\% from market makers busy in options \\
+Volatility explains most of spread/depth/fleeting & OIB persistence = institutions slicing orders \\
+No one-sided OIB, in cash or futures & Residual overnight reversal = closing-order compensation \\
+Next-morning fall mostly news & Futures widening = delivery risk for market makers \\
+Futures window spread $+33$\% \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section*{7. Questions he may ask, and answers}
+\begin{itemize}
+  \item \textbf{``So is there manipulation?''} Not in stock settlement prices; the incentive
+  is not there (delivery). The index settlement is systematically lower, which is where the
+  incentive is, but without positions or trader IDs we cannot say who or why.
+  \item \textbf{``How do you know the aggressor?''} Order numbers are sequential by arrival; the
+  later order crossed the spread. Exact, no Lee--Ready style guessing.
+  \item \textbf{``Why the day before as control?''} Same stock, same month, same contract one
+  day from expiry. We also use all other sessions in the full-year regressions.
+  \item \textbf{``Why should news cause a reversal?''} See section 4: it should not on average;
+  a few big news days plus beta differences created it.
+  \item \textbf{``How do you know it's volatility and not something else?''} Cross-stock: stocks
+  whose volatility rose more widened more; at zero volatility change the widening is only 3\%.
+  Also placebo stocks: no extra volatility, no widening.
+  \item \textbf{``But why is volatility higher?''} Honest answer: more trading in the window,
+  and probably option hedging near expiry. That part is a hypothesis.
+  \item \textbf{``Did you check futures?''} Yes, full order books for all 12 expiries. Huge
+  widening in the last half hour of the expiring contract; no one-sided pressure.
+  \item \textbf{``Orders match his files?''} We left that check for later (our orders and trades
+  reconcile with each other).
+  \item \textbf{``What next?''} Company announcements (news test); participant flow in Nifty 50
+  stocks on index expiries (index hypothesis); open interest if available.
+\end{itemize}
+
+\section*{8. Limitations to mention if asked}
+\begin{itemize}
+  \item 12 expiries per year: power is limited, a few days can matter.
+  \item No positions/open interest and no trader IDs, only participant categories.
+  \item Index settlement value approximated by its window average (checked within a few points).
+  \item News measured through its footprint (volume, gaps), not actual announcements.
+\end{itemize}
+
+\end{document}
