@@ -26,7 +26,8 @@ Follow-ups from the meeting of 21 Oct 2026\\
   order book rebuilt for the 12 monthly expiries + the day before each.
   \item 150 stocks: 50 liquid F\&O, 50 illiquid F\&O, 50 placebo (no derivatives, matched on
   turnover and price).
-  \item New: F\&O order and trade files for Mar to Jun (4 expiries), used for the futures.
+  \item New: F\&O order and trade files for the whole year (all 12 expiries), from the
+  library's other shares, used for the futures.
   \item Comparisons: expiry day vs.\ day before, same stock; regressions with stock and
   session fixed effects.
 \end{itemize}
@@ -61,7 +62,7 @@ expiries ($p=0.008$), on weekly and monthly expiries alike.
   price raises the final margin payment received but raises the price paid for the shares by
   the same amount. So there is nothing to gain from moving it.
   \item Evidence: in the last minutes of the window the expiring future moves one for one with
-  the live cash price (slope 0.91), not with the VWAP that is already almost fixed. The market
+  the live cash price (slope 0.85, se 0.04), not with the VWAP that is already almost fixed. The market
   prices the future as a claim on shares, exactly as delivery implies.
   \item Options do have an incentive (the settlement price decides which strikes are in the
   money), but we find no pull of settlement prices towards strikes. Our guess: open interest
@@ -118,7 +119,7 @@ in the expiring futures. It is more \emph{persistent} from one 5-minute block to
   \item No one gains from pushing stock prices (BH1), so the extra trading at the close is
   closing and benchmarking of positions, which comes from both buyers and sellers.
   \item Most futures positions are rolled \emph{before} expiry day: the next-month contract
-  already has 53\% of futures volume the day before and 59\% on expiry day. Little is left to be
+  already has 52\% of futures volume the day before and 59\% on expiry day. Little is left to be
   unwound at the settlement price.
   \item The higher persistence is what large orders worked through the window look like:
   institutions executing against the closing price slice their orders evenly over the thirty
@@ -216,9 +217,9 @@ widening and all of the fall in depth. Market makers quote wider and thinner whe
 more.
 
 \section*{4. Futures}
-Rebuilt the order book of the expiring stock futures from the F\&O order files (4 expiries,
-Mar to Jun, and the day before; 100 stocks, 84 on 28 Apr because one file part is an incomplete
-download).
+Rebuilt the order book of the expiring stock futures from the F\&O order files: all 12
+expiries and the day before each, 84 to 100 stocks per day (a few stocks left F\&O during the
+year, and one file part for 28 Apr is an incomplete download).
 
 \begin{center}
 \includegraphics[width=\textwidth]{futures_book_day.pdf}\\
@@ -231,22 +232,23 @@ download).
 \toprule
 Window, expiry vs.\ day before & Spread & Depth & Volatility \\
 \midrule
-Cash (same stocks, Mar to Jun) & $+2.5$\% & $-1.0$\% & $+7.5$\% \\
-Expiring future & $+31.9$\% & $-2.7$\% & $+39.9$\% \\
+Cash (same stocks) & $+10.0$\% & $-6.0$\% & $+45.8$\% \\
+Expiring future & $+33.4$\% & $-6.4$\% & $+58.7$\% \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 \begin{itemize}
-  \item The futures spread jumps in the window on expiry day. Volatility explains only about a
-  fifth of it.
+  \item The futures spread jumps in the window on expiry day, about three times as much as in
+  cash. Volatility explains only about a third of it (vs.\ 70\% in cash), and the fall in
+  depth is significant even after controlling for volatility.
   \item Likely reason: it is the contract's last half hour. A market maker in the expiring future
   normally ends the day with a small long or short position and offsets it the next morning. On
   expiry day there is no next morning: any position left at 15:30 has to be settled by
   delivering or taking delivery of the shares, which needs the shares or the cash and carries
   extra margin. So market makers quote less and wider in the last minutes, and the few traders
   still in the expiring contract pay for it.
-  \item Most positions have already rolled to next month (53\% of futures volume the day before,
+  \item Most positions have already rolled to next month (52\% of futures volume the day before,
   59\% on expiry day), so the traders left in the expiring contract are mostly those who missed
   the roll or want delivery. Liquidity providers follow the volume to the next contract.
   \item Still no one-sided pressure: futures $|$OIB$|$ in the window unchanged (0.18 vs.\ 0.18).
