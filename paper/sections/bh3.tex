@@ -124,20 +124,21 @@ expiry are shown. Standard errors clustered by session in parentheses.}
 \subsection{The stock futures}\label{sec:futures}
 
 If holders of expiring positions had to unwind them at the settlement, the pressure would show
-in the expiring future as well as in the cash market. The derivatives trade files for March to
-June cover four monthly expiries. Table~\ref{tab:futtape} compares, for each security with
+in the expiring future as well as in the cash market. The derivatives trade files cover all
+twelve monthly expiries. Table~\ref{tab:futtape} compares, for each security with
 derivatives, the expiring contract and the next one on the expiry day and the day before.
 
 \begin{table}[htbp]
 \centering
 \small
-\caption{Stock futures on the expiry day and the day before, four monthly expiries from March
-to June, averaged over security-months. The share of futures volume is the contract's share of
+\caption{Stock futures on the expiry day and the day before, twelve monthly expiries,
+averaged over security-months. The share of futures volume is the contract's share of
 the security's volume in its two nearest contracts. Order imbalance is
 $(BI - SI)/(BI + SI)$ over the settlement window, with the aggressor identified as in the cash
 market. Paired $p$-values in brackets.}
 \label{tab:futtape}
-\resizebox{\textwidth}{!}{\begin{tabular}{llccc}
+
+\resizebox{\textwidth}{!}{\begin{tabular}{llccc}
 \toprule
  & & Day before & Expiry day & Difference \\
 \midrule
@@ -155,8 +156,8 @@ Next contract & Share of futures volume (\%) & \FuttapeNextContractshareControl{
 Most positions are rolled before the expiry day. Already on the day before, the next contract
 accounts for \FuttapeNextContractshareControl{}\% of the futures volume, and on the expiry day
 for \FuttapeNextContractshareExpiry{}\%. Trading in the expiring contract does not concentrate in
-the settlement window: the window's share of its volume falls, from
-\FuttapeNearShareControl{}\% to \FuttapeNearShareExpiry{}\%. The absolute order imbalance in the
+the settlement window: the window's share of its volume is \FuttapeNearShareControl{}\% on the
+day before and \FuttapeNearShareExpiry{}\% on the expiry day. The absolute order imbalance in the
 window does not change, at \FuttapeNearAbsoibControl{} on both days. The futures market thus
 shows the same absence of one-sided pressure as the cash market. With settlement by delivery
 and positions largely rolled in advance, little remains to be unwound at the settlement price,
@@ -167,18 +168,19 @@ and what is traded in the window comes from both sides.
 The cost of trading in the futures market is measured in the same way as in the cash market
 (Section~\ref{sec:bh2}). The derivatives order files are parsed for the stock futures of the
 expiring month, without spread orders, and the book of each future is replayed into
-five-second snapshots, on each of the four expiries from March to June and on the day before.
+five-second snapshots, on each of the twelve monthly expiries and on the day before.
 On the day before, the same contract has one session to run. Books are reconstructed for
-\FutbookSecurities{} futures on each session except the April expiry, on which one part of the
-exchange's order file is an incomplete download and \FutbookSecuritiesMin{} futures remain.
+between \FutbookSecuritiesMin{} and \FutbookSecurities{} futures per session: a few
+securities lost their derivatives during the year, and on the April expiry one part of the
+exchange's order file is an incomplete download.
 The cash book of the same securities on the same sessions is reduced identically.
 
 \begin{figure}[htbp]
   \centering
   \includegraphics[width=\textwidth]{futures_book_day.pdf}
   \caption{Quoted spread and displayed depth within five price levels through the session, for
-    the securities with derivatives (left) and their expiring stock future (right), on the four
-    monthly expiries from March to June and the day before each. Medians across securities, with
+    the securities with derivatives (left) and their expiring stock future (right), on the twelve
+    monthly expiries and the day before each. Medians across securities, with
     a five-minute moving average. The settlement window is shaded.}
   \label{fig:futbook}
 \end{figure}
@@ -187,8 +189,8 @@ The cash book of the same securities on the same sessions is reduced identically
 \centering
 \small
 \caption{Expiry day against the day before, cash and expiring stock future, in per cent (one
-hundred times the difference in logarithms), averaged over security-months of the four
-expiries from March to June. Paired $p$-values in brackets.}
+hundred times the difference in logarithms), averaged over security-months of the twelve
+monthly expiries. Paired $p$-values in brackets.}
 \label{tab:futbook}
 \resizebox{\textwidth}{!}{\begin{tabular}{llccc}
 \toprule
@@ -204,11 +206,11 @@ Settlement window & Cash & \FutbookCashWindowSpread{} [\FutbookCashWindowSpreadP
 \end{table}
 
 Figure~\ref{fig:futbook} and Table~\ref{tab:futbook} show the result. Through the day the
-expiring future behaves much like the cash market, with a slightly wider spread on the expiry
-day. In the settlement window the two part. On the day before, the future's spread narrows
+expiring future behaves much like the cash market, and its spread on the expiry day is no
+wider than on the day before. In the settlement window the two part. On the day before, the future's spread narrows
 toward the close as it does in the cash market; on the expiry day it widens instead, and over the
 window it is \FutbookFuturesWindowSpread{} per cent wider than on the day before, against
-\FutbookCashWindowSpread{} per cent in the cash market of the same securities and months.
+\FutbookCashWindowSpread{} per cent in the cash market of the same securities.
 Displayed depth in the future is lower by \FutbookFuturesWindowDepth{} per cent
 ($p = \FutbookFuturesWindowDepthP{}$).
 
