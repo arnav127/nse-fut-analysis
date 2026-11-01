@@ -401,12 +401,68 @@ basis points, which is not significant.
 The index settlement is therefore displaced downward on expiry days, by an amount that is small
 relative to the daily movement of the index but systematic across the year's expiries, specific
 to the index that carries derivatives, and concentrated in the window in which its settlement
-value is fixed. The data identify participant categories but not individual traders, and they
-do not show the positions held in index options, so the cause cannot be established. Two
-explanations are consistent with the evidence: trading intended to lower the settlement value,
-and the unwinding at the settlement price of cash hedges held against index option positions.
-Either way, the settlement value of the most traded derivative in the market is systematically
+value is fixed. The data identify participant categories but not individual traders, so the
+cause cannot be established directly. Two explanations are consistent with it: trading intended
+to lower the settlement value, and the unwinding at the settlement price of stock positions held
+against index derivatives. Section~\ref{sec:hedges} examines the second. Either way, the settlement value of the most traded derivative in the market is systematically
 lowered in the window relative to an index without derivatives.
+
+\subsection{Is the index fall the unwinding of hedges?}\label{sec:hedges}
+
+One explanation for the fall of the index settlement is that traders who hold the constituent
+stocks against index derivatives close the stock side in the settlement window, where it
+matches the price at which the derivatives settle. Three pieces of evidence bear on it: who
+holds index derivatives positions before an expiry, whether the size of the expiring positions
+predicts the size of the fall, and who trades in the window.
+
+\paragraph{Who holds the positions.} The exchange publishes each day the index derivatives
+positions of four participant categories: clients, domestic institutions (DII), foreign
+institutions (FII) and proprietary traders. On the session before an index expiry, measured in
+thousand contracts at the median, domestic institutions are net short index futures
+($\HedgePosDiiFutnetbefore{}$) and net long puts (\HedgePosDiiPutnetbefore{}), the position of a
+holder of stocks hedging its portfolio. Foreign institutions are net long both puts
+(\HedgePosFiiPutnetbefore{}) and calls (\HedgePosFiiCallnetbefore{}) and short futures
+($\HedgePosFiiFutnetbefore{}$). Proprietary traders are the main writers of options, net short
+calls ($\HedgePosProCallnetbefore{}$) and puts ($\HedgePosProPutnetbefore{}$), and close a large
+part of these on the expiry day (net change \HedgePosProCallnetchange{} and
+\HedgePosProPutnetchange{}). Index options are thus used as hedges, by institutions holding
+stocks, and are written mainly by proprietary traders, whose net short call position leaves them
+short delta and hedged, if at all, by long positions in the index or its stocks.
+
+\paragraph{Does the size of the expiring positions matter?} If the fall were the unwinding of
+hedges, it should be larger when more positions expire. On the session before each of the
+\HedgeExpiries{} index expiries with data, expiring Nifty 50 option open interest has a median
+notional of \HedgeOptoi{} lakh crore and a put-call ratio of \HedgePcr{}; on monthly expiries
+the expiring futures add a median of \HedgeFutoi{} thousand crore. Across expiries, the relative
+fall of the index is not related to the expiring option open interest (a change of
+\HedgeOiregOptoicr{} basis points per standard deviation, $p = \HedgeOiregOptoicrP{}$), to the
+open interest within two per cent of the index (\HedgeOiregNearoicr{}, $p = \HedgeOiregNearoicrP{}$)
+or to the put-call ratio (\HedgeOiregPcr{}, $p = \HedgeOiregPcrP{}$). On the twelve monthly
+expiries, more expiring futures open interest goes with a \emph{smaller} fall
+(\HedgeOiregFutoicr{}, $p = \HedgeOiregFutoicrP{}$), the opposite of what an unwinding of
+cash-futures arbitrage would produce. Nor does any category's position before the expiry, or its
+change on the day, predict the fall: the smallest $p$-value among these regressions is
+\HedgePosregMinp{}.
+
+\paragraph{Who trades in the window.} In the cash market, net aggressive flow in the window in
+the \HedgeFlowNiftyStocks{} Nifty 50 constituents of the universe is lower on index expiries by
+\HedgeFlowNiftyFlow{} per cent of median daily volume ($p = \HedgeFlowNiftyFlowP{}$), almost
+all of it from custodian accounts, the category that carries institutional orders
+($\HedgeFlowNiftyFlowcustodian{}$, $p = \HedgeFlowNiftyFlowcustodianP{}$). Proprietary flow does
+not change (\HedgeFlowNiftyFlowproprietary{}, $p = \HedgeFlowNiftyFlowproprietaryP{}$). In the
+other securities with derivatives and in the placebo group the same flow \emph{rises}
+(\HedgeFlowOtherfoFlow{} and \HedgeFlowPlaceboFlow{}). So the constituents of the index are sold
+in the window on index expiries, and by institutions rather than by proprietary traders.
+%HEDGEDERIV
+
+\paragraph{Assessment.} Index options are used as hedges, mainly by institutions, and the
+constituents are sold by institutional accounts in the window on index expiries, which is
+consistent with institutions closing the stock side of hedged or benchmarked positions at the
+price at which the derivatives settle. The size of the expiring positions, however, does not
+predict the size of the fall, and the fall is as large on weekly expiries, when no futures
+expire. The evidence is consistent with hedge-related selling but does not establish it;
+positions at the level of the trader, which the public files do not show, would be needed to
+tie the selling to the expiring positions.
 
 \subsection{Index strikes}
 

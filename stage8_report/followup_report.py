@@ -143,6 +143,98 @@ def collect_followup_metrics() -> None:
             run.record(f"{stem}.p", float(r.p), "p-value", "paired t-test across stock-months")
             run.record(f"{stem}.n", int(r.n), "stock-months", "")
 
+        # BH2 as a panel with stock fixed effects.
+        for r in _csv("s16_bh2_panel.csv").itertuples(index=False):
+            part = "window" if r.part == "window" else "day"
+            y = "spread" if r.y == "log_spread" else "depth"
+            ctrl = "vol" if str(r.vol_control) == "True" else "raw"
+            stem = f"panel.{part}.{y}.{ctrl}.{r.sample}"
+            run.record(stem, float(r.coef), "per cent", f"expiry coefficient, {r.sample}")
+            run.record(f"{stem}.se", float(r.se), "per cent", "clustered by stock")
+            run.record(f"{stem}.p", float(r.p), "p-value", "")
+            run.record(f"{stem}.n", int(r.nobs), "observations", "stock-sessions")
+
+        # Where the placebo stocks sit in the market.
+        summary = _csv("s17_placebo_summary.csv")
+        for r in summary.itertuples(index=False):
+            stem = f"placebocheck.{r.group}"
+            run.record(f"{stem}.n500", int(r.n500_2022), "securities",
+                       "members of the Nifty 500 in October 2022")
+            run.record(f"{stem}.n500either", int(r.n500_either), "securities",
+                       "members of the Nifty 500 in July 2020 or February 2024")
+            run.record(f"{stem}.rankmedian", int(round(float(r.rank_median))), "securities",
+                       "median rank by turnover among all equities")
+            run.record(f"{stem}.rankmin", int(r.rank_min), "securities", "highest rank")
+            run.record(f"{stem}.rankmax", int(r.rank_max), "securities", "lowest rank")
+            run.record(f"{stem}.turnover", float(r.turnover_median_cr), "ratio",
+                       "median turnover over the order book sample, crore")
+        if not summary.empty:
+            run.record("placebocheck.market", int(summary.market_stocks.iloc[0]), "securities",
+                       "equities traded on the order book sample's sessions")
+
+        # The hedge-unwinding tests.
+        oi = _csv("s18_expiring_oi.csv")
+        if not oi.empty:
+            run.record("hedge.expiries", int(len(oi)), "sessions", "index expiries with open "
+                       "interest on the session before")
+            run.record("hedge.optoi", float(oi.opt_oi_cr.median()) / 1e5, "ratio",
+                       "median expiring Nifty option open interest, lakh crore notional")
+            run.record("hedge.pcr", float(oi.pcr.median()), "ratio",
+                       "median put-call ratio of expiring open interest")
+            monthly = oi[oi.monthly == 1]
+            run.record("hedge.futoi", float(monthly.fut_oi_cr.median()) / 1e3, "ratio",
+                       "median expiring Nifty futures open interest on monthly expiries, "
+                       "thousand crore")
+        for r in _csv("s18_oi_regressions.csv").itertuples(index=False):
+            stem = f"hedge.oireg.{r.x.replace('_', '')}"
+            run.record(stem, float(r.slope_per_sd), "basis points",
+                       "change in the index's relative window move per standard deviation")
+            run.record(f"{stem}.se", float(r.se), "basis points", "robust standard error")
+            run.record(f"{stem}.p", float(r.p), "p-value", "")
+            run.record(f"{stem}.n", int(r.n), "sessions", "")
+        for r in _csv("s18_cash_flows.csv").itertuples(index=False):
+            sample = {"Nifty 50 stocks": "nifty", "other F&O stocks": "otherfo",
+                      "placebo": "placebo"}[r.sample]
+            stem = f"hedge.flow.{sample}.{r.y.replace('_', '')}"
+            run.record(stem, float(r.coef), "ratio",
+                       "index-expiry change in net aggressor flow, per cent of median volume")
+            run.record(f"{stem}.se", float(r.se), "ratio", "clustered by session")
+            run.record(f"{stem}.p", float(r.p), "p-value", "")
+            run.record(f"hedge.flow.{sample}.stocks", int(r.stocks), "securities", "")
+        pos = _csv("s18_positions.csv")
+        if not pos.empty:
+            med = pos.groupby("who").median(numeric_only=True)
+            for who in med.index:
+                for col in ("fut_net_before", "call_net_before", "put_net_before",
+                            "call_net_change", "put_net_change"):
+                    run.record(f"hedge.pos.{who.lower()}.{col.replace('_', '')}",
+                               float(med.loc[who, col]) / 1e3, "ratio",
+                               f"median index derivatives position of {who}, thousand "
+                               f"contracts, session before an index expiry")
+        preg = _csv("s18_position_regressions.csv")
+        if not preg.empty:
+            run.record("hedge.posreg.minp", float(preg.p.min()), "p-value",
+                       "smallest p-value among the regressions of the index move on positions")
+            run.record("hedge.posreg.n", int(preg.n.max()), "sessions", "")
+        deriv = _csv("s18_index_deriv_flows.csv")
+        if not deriv.empty:
+            w = deriv[(deriv.in_window == True) & (deriv.expiring == True)]  # noqa: E712
+            run.record("hedge.deriv.sessions", int(deriv.session.nunique()), "sessions",
+                       "sessions with index derivatives trades reduced")
+            for kind in ("calls", "puts", "futures"):
+                for flag, name in ((True, "expiry"), (False, "control")):
+                    sub = w[(w.kind == kind) & (w.is_expiry == flag)]
+                    if sub.empty:
+                        continue
+                    run.record(f"hedge.deriv.{kind}.{name}.share", float(sub.share_of_day.mean()),
+                               "per cent", "window share of the contract's volume")
+                    run.record(f"hedge.deriv.{kind}.{name}.net",
+                               float(sub.net_aggressor.mean()) / 1e5, "ratio",
+                               "net aggressor buying in the window, lakh units")
+                    run.record(f"hedge.deriv.{kind}.{name}.prop",
+                               float(sub.prop_net.mean()) / 1e5, "ratio",
+                               "net buying by proprietary accounts in the window, lakh units")
+
 
 if __name__ == "__main__":
     collect_followup_metrics()
