@@ -453,7 +453,19 @@ not change (\HedgeFlowNiftyFlowproprietary{}, $p = \HedgeFlowNiftyFlowproprietar
 other securities with derivatives and in the placebo group the same flow \emph{rises}
 (\HedgeFlowOtherfoFlow{} and \HedgeFlowPlaceboFlow{}). So the constituents of the index are sold
 in the window on index expiries, and by institutions rather than by proprietary traders.
-%HEDGEDERIV
+
+The index derivatives themselves are traded in the window as well. From the derivatives trade
+files of the \HedgeDerivSessions{} order book sessions, the expiring Nifty 50 options on the
+monthly expiry see heavy aggressive selling in the window, net aggressor flow of
+$\HedgeDerivCallsExpiryNet{}$ lakh units in calls and $\HedgeDerivPutsExpiryNet{}$ in puts against
+$\HedgeDerivCallsControlNet{}$ and $\HedgeDerivPutsControlNet{}$ on the day before, while
+proprietary accounts are net buyers, \HedgeDerivCallsExpiryProp{} lakh units of calls and
+\HedgeDerivPutsExpiryProp{} of puts against \HedgeDerivCallsControlProp{} and
+\HedgeDerivPutsControlProp{} the day before, consistent with option writers buying back part of
+their short positions before settlement. Trading in the expiring index futures in the window is
+small and shows no net direction. The window's share of the day's volume in the expiring
+options is \HedgeDerivCallsExpiryShare{} per cent for calls on the expiry day against
+\HedgeDerivCallsControlShare{} the day before.
 
 \paragraph{Assessment.} Index options are used as hedges, mainly by institutions, and the
 constituents are sold by institutional accounts in the window on index expiries, which is
