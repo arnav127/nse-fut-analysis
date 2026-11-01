@@ -132,6 +132,53 @@ Settlement window & Liquid & \BookdayWindowLiquidSpread{} [\BookdayWindowLiquidS
   \label{fig:bookratio}
 \end{figure}
 
+\subsection{A panel with stock fixed effects}
+
+The paired comparisons above take each security's difference between the expiry and the day
+before. The same question can be asked as a panel regression, which also allows the expiry
+effect of the securities with derivatives to be compared directly with that of the placebo
+group. Each observation is a security and a session of the order book sample. The logarithm of
+the quoted spread, and of displayed depth, over the window is regressed on an expiry indicator
+with security and month fixed effects, separately for each group. In a pooled regression with
+security and session fixed effects, the expiry indicator is interacted with membership of the
+derivatives groups; the session effects absorb anything common to all securities on a day, so
+the interaction is the expiry effect specific to securities with derivatives. Standard errors
+are clustered by security. Table~\ref{tab:panel} reports the coefficients, in per cent, with and
+without the logarithm of the window's realised variance as a control.
+
+\begin{table}[htbp]
+\centering
+\small
+\caption{Panel regressions of the window's log quoted spread and log displayed depth (times one
+hundred) on the expiry indicator. Group columns: security and month fixed effects. Last column:
+all three groups, security and session fixed effects, coefficient on expiry times membership of
+the derivatives groups. Standard errors clustered by security in parentheses; $p$-values in
+brackets.}
+\label{tab:panel}
+\resizebox{\textwidth}{!}{\begin{tabular}{llcccc}
+\toprule
+ & & Liquid & Illiquid & Placebo & Derivatives $-$ placebo \\
+\midrule
+Spread & no control & \PanelWindowSpreadRawLiquid{} (\PanelWindowSpreadRawLiquidSe{}) [\PanelWindowSpreadRawLiquidP{}] & \PanelWindowSpreadRawIlliquid{} (\PanelWindowSpreadRawIlliquidSe{}) [\PanelWindowSpreadRawIlliquidP{}] & \PanelWindowSpreadRawPlacebo{} (\PanelWindowSpreadRawPlaceboSe{}) [\PanelWindowSpreadRawPlaceboP{}] & \PanelWindowSpreadRawDid{} (\PanelWindowSpreadRawDidSe{}) [\PanelWindowSpreadRawDidP{}] \\
+ & volatility control & \PanelWindowSpreadVolLiquid{} (\PanelWindowSpreadVolLiquidSe{}) [\PanelWindowSpreadVolLiquidP{}] & \PanelWindowSpreadVolIlliquid{} (\PanelWindowSpreadVolIlliquidSe{}) [\PanelWindowSpreadVolIlliquidP{}] & \PanelWindowSpreadVolPlacebo{} (\PanelWindowSpreadVolPlaceboSe{}) [\PanelWindowSpreadVolPlaceboP{}] & \PanelWindowSpreadVolDid{} (\PanelWindowSpreadVolDidSe{}) [\PanelWindowSpreadVolDidP{}] \\
+\midrule
+Depth & no control & $\PanelWindowDepthRawLiquid{}$ (\PanelWindowDepthRawLiquidSe{}) [\PanelWindowDepthRawLiquidP{}] & $\PanelWindowDepthRawIlliquid{}$ (\PanelWindowDepthRawIlliquidSe{}) [\PanelWindowDepthRawIlliquidP{}] & $\PanelWindowDepthRawPlacebo{}$ (\PanelWindowDepthRawPlaceboSe{}) [\PanelWindowDepthRawPlaceboP{}] & $\PanelWindowDepthRawDid{}$ (\PanelWindowDepthRawDidSe{}) [\PanelWindowDepthRawDidP{}] \\
+ & volatility control & $\PanelWindowDepthVolLiquid{}$ (\PanelWindowDepthVolLiquidSe{}) [\PanelWindowDepthVolLiquidP{}] & $\PanelWindowDepthVolIlliquid{}$ (\PanelWindowDepthVolIlliquidSe{}) [\PanelWindowDepthVolIlliquidP{}] & $\PanelWindowDepthVolPlacebo{}$ (\PanelWindowDepthVolPlaceboSe{}) [\PanelWindowDepthVolPlaceboP{}] & $\PanelWindowDepthVolDid{}$ (\PanelWindowDepthVolDidSe{}) [\PanelWindowDepthVolDidP{}] \\
+\bottomrule
+\end{tabular}}
+\end{table}
+
+The panel confirms the paired results. With security fixed effects the window's spread is
+wider on expiry days by \PanelWindowSpreadRawLiquid{} per cent in the liquid group and
+\PanelWindowSpreadRawIlliquid{} per cent in the illiquid group, and by
+\PanelWindowSpreadRawPlacebo{} per cent, not significant, in the placebo group. Relative to the
+placebo group, on the same sessions, the securities with derivatives widen by
+\PanelWindowSpreadRawDid{} per cent ($p = \PanelWindowSpreadRawDidP{}$). With realised variance
+as a control the difference falls to \PanelWindowSpreadVolDid{} per cent
+($p = \PanelWindowSpreadVolDidP{}$): most of the widening goes with volatility, and a smaller
+part remains. The fall in depth is significant within each derivatives group but is estimated
+less precisely relative to the placebo group, and it disappears with the volatility control.
+
 \subsection{Why the window is costlier}
 
 The last column of Table~\ref{tab:bookparts} points to the reason. The realised variance of the
