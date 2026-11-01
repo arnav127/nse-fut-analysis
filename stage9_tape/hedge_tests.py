@@ -144,6 +144,10 @@ def derivative_flows() -> pd.DataFrame:
     if not files:
         return pd.DataFrame()
     d = pd.concat([pd.read_parquet(f) for f in files], ignore_index=True)
+    # Complete expiry and control pairs only.
+    have = set(d.session)
+    keep = {s for e, c in EXPIRY_CONTROL_PAIRS if e in have and c in have for s in (e, c)}
+    d = d[d.session.isin(keep)]
     expiries = {e for e, _ in EXPIRY_CONTROL_PAIRS}
     d["is_expiry"] = d.session.isin(expiries)
     d["kind"] = np.where(d.instrument == "FUTIDX", "futures",

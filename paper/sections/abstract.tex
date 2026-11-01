@@ -17,7 +17,10 @@ arriving after the session.
 Stock futures, settled by delivery, are priced on the cash price until the close, leaving no
 gain from moving the settlement. Where settlement is in cash, the index settlement is displaced:
 on index expiries the Nifty 50 falls over the window relative to the Nifty Next 50, which has no
-derivatives (randomization $p = \IdxSpreadDriftExpiryRip{}$).
+derivatives (randomization $p = \IdxSpreadDriftExpiryRip{}$). Institutions hold index options
+as hedges and sell the index constituents in the window on index expiries, consistent with
+hedges being unwound at the settlement price, although the size of the expiring positions does
+not predict the size of the fall.
 
 \vspace{0.6em}
 \noindent \textbf{Keywords:} expiration-day effects; settlement VWAP; order imbalance; limit order
