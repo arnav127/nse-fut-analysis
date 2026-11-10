@@ -31,7 +31,7 @@
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{\small Expiry days and the settlement price on NSE}
-\fancyhead[R]{\small Project Course Report (draft)}
+\fancyhead[R]{\small Project Course Report}
 \fancyfoot[C]{\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
 \setlength{\emergencystretch}{2em}
@@ -46,21 +46,37 @@
 
 % ---------------------------------------------------------------- title page
 \begin{titlepage}
+\begin{tikzpicture}[remember picture,overlay]
+  \draw[line width=0.6pt] ($(current page.north west)+(1.2cm,-1.2cm)$) rectangle
+    ($(current page.south east)+(-1.2cm,1.2cm)$);
+\end{tikzpicture}
 \centering
-\vspace*{1.5cm}
-{\large Indian Institute of Management Ahmedabad\par}
-\vspace{0.4cm}
-{\large Project Course Report (Draft)\par}
-\vspace{2.2cm}
-{\Huge\bfseries\color{iimblue} What Happens in the Last Half Hour?\par}
-\vspace{0.5cm}
-{\Large Expiry days, the settlement VWAP and the order book\\ on the National Stock Exchange\par}
-\vspace{2.5cm}
-{\large Arnav Dixit \qquad Mayank Gomekar\par}
-\vspace{0.6cm}
-{\large Faculty guide: Prof.\ Anirban Banerjee\par}
+\vspace*{0.6cm}
+\includegraphics[width=4.6cm]{iima_logo.png}\par
+\vspace{1.0cm}
+{\LARGE\bfseries Project Course Report\par}
+\vspace{0.7cm}
+{\large\bfseries Term 5\par}
+\vspace{1.1cm}
+{\large\bfseries Academic Project\par}
+{\large\itshape On\par}
+\vspace{0.2cm}
+{\Large\bfseries\color{iimblue} What Happens in the Last Half Hour?\par}
+\vspace{0.2cm}
+{\large\bfseries Expiry Days, the Settlement VWAP and the Order Book on the NSE\par}
+\vspace{1.1cm}
+{\large\bfseries Area\par}
+{\large\bfseries FINANCE\par}
+\vspace{1.1cm}
+{\large\bfseries Name of the project supervisor:\par}
+{\large Anirban Banerjee\par}
+\vspace{1.1cm}
+{\large\bfseries Name of the students:\par}
+{\large Arnav Dixit (PGPGC202500112)\par}
+{\large Mayank Gomekar (PGPGC202500150)\par}
 \vfill
 {\large November 2026\par}
+\vspace*{0.4cm}
 \end{titlepage}
 
 \tableofcontents
@@ -188,40 +204,6 @@ hold shares against futures sell them at the settlement price, because that is t
 which their futures settle. All of this adds volume to the window. So for every difference we
 find, we ask whether it comes from someone pushing the price or simply from more people
 trading.
-
-% ---------------------------------------------------------------- evolution
-\section{How the project evolved}
-
-Our proposal set out four questions: how the cash VWAP moves relative to the futures price
-through the window; which participants drive expiry-day volume; what role algorithmic trading
-plays; and whether there is abnormal order book pressure (bursts of cancellations or aggressive
-IOC orders) before settlement. Over three meetings with Prof.\ Banerjee the project changed shape:
-
-\begin{center}
-\small
-\begin{tabularx}{\textwidth}{lX}
-\toprule
-Meeting & What we were asked to do, and where it is in this report \\
-\midrule
-First review & Group the many individual tests into three or four broad hypotheses with one main
-measure each (Section~\ref{sec:hyp}); compare prices at 15:00 and 15:30; use order imbalance
-OIB $=(BI-SI)/(BI+SI)$ as the measure of one-sided pressure (Section~\ref{sec:bh3}). \\
-21 October & Explain \emph{why} each result happens, not only whether it holds (a ``Why'' box in
-every results section); check whether the next-morning fall in prices is news
-(Section~\ref{sec:news}); plot the spread and depth for BH2 (Section~\ref{sec:bh2}); look at
-futures as well (Sections~\ref{sec:futbook} and~\ref{sec:futtape}). \\
-Early November & Run BH2 as a panel regression with stock fixed effects (Section~\ref{sec:panel});
-check where the placebo stocks sit in the market, for example whether they are in the Nifty 500
-(Section~\ref{sec:placebo}); look at options open interest to see whether options are really used
-as hedges and whether the index fall is hedge unwinding (Section~\ref{sec:hedges}). \\
-\bottomrule
-\end{tabularx}
-\end{center}
-
-The report therefore goes beyond our original title. The four original questions are all
-answered inside the four broad hypotheses, but most of the interesting findings came from asking
-why things happen: the role of physical delivery, the role of volatility, and the difference
-between stock and index settlement.
 
 % ---------------------------------------------------------------- hypotheses
 \section{The four broad hypotheses}\label{sec:hyp}
@@ -497,7 +479,7 @@ undone by the next morning.
   \includegraphics[width=\textwidth]{window_path.pdf}
   \caption{Average price path through the window and at the next morning's open, relative to the
     pre-window price and to the market on the same day, oriented so that the window move is
-    positive. This is the ``Figure 2'' we discussed in the October meeting.}
+    positive.}
   \label{fig:path}
 \end{figure}
 
@@ -708,7 +690,7 @@ widening is specific to F\&O stocks: 0.28 bps more than in placebo stocks ($p = 
 value in the book falls from Rs 2.39 crore to Rs 2.17 crore, and sweeping the book with a Rs 0.1
 crore order moves the price 16.8 bps against 16.2.
 
-As suggested in the October meeting, we plotted the spread and depth through the whole day:
+We plotted the spread and depth through the whole day:
 
 \begin{figure}[H]
   \centering
@@ -1114,10 +1096,53 @@ ID & Measure & $t$ & $p$ & $d$ \\
 \end{tabularx}
 \end{center}
 
-\section{Where the code and data are}
+\section{Code and data}
 
-All analysis code is in our project repository (Python and SQL on top of our Rust parser
-\texttt{nsetick}). The licensed NSE files are not included. The derived tables that every chart in
-this report is drawn from are kept with the project, and every figure can be rebuilt from them.
+All our code is on GitHub at
+\href{https://github.com/arnav127/nse-fut-analysis}{\texttt{github.com/arnav127/nse-fut-analysis}}.
+The repository's README explains how to run it. The table below links each part of this report
+to the code that produces it.
+
+\begin{center}
+\footnotesize
+\begin{tabularx}{\textwidth}{>{\raggedright\arraybackslash}p{5.2cm}X}
+\toprule
+Part of the report & Code \\
+\midrule
+Decoding the raw NSE files & \href{https://github.com/arnav127/nse-fut-analysis/tree/main/stage1_parse}{\texttt{stage1\_parse/}} and our parser
+  \href{https://github.com/arnav127/nsetick}{\texttt{nsetick}} \\
+Choosing the three groups of stocks & \href{https://github.com/arnav127/nse-fut-analysis/blob/main/scripts/build_universe.py}{\texttt{scripts/build\_universe.py}} \\
+Placebo check (Nifty 500, turnover rank) & \href{https://github.com/arnav127/nse-fut-analysis/blob/main/stage9_tape/placebo_check.py}{\texttt{stage9\_tape/placebo\_check.py}} \\
+Rebuilding the order book & \href{https://github.com/arnav127/nse-fut-analysis/tree/main/stage4_clob}{\texttt{stage4\_clob/}} \\
+Order book measures in the window & \href{https://github.com/arnav127/nse-fut-analysis/tree/main/stage6_insights}{\texttt{stage6\_insights/}} \\
+The four hypotheses and paired tests & \href{https://github.com/arnav127/nse-fut-analysis/blob/main/stage8_report/stat_tests.py}{\texttt{stage8\_report/stat\_tests.py}} \\
+Full-year data, reversal, order imbalance, flows & \href{https://github.com/arnav127/nse-fut-analysis/blob/main/stage9_tape/settlement_tests.py}{\texttt{stage9\_tape/settlement\_tests.py}} \\
+Next-morning fall and news & \href{https://github.com/arnav127/nse-fut-analysis/blob/main/stage9_tape/overnight_tests.py}{\texttt{stage9\_tape/overnight\_tests.py}} \\
+Nifty 50 vs Nifty Next 50 & \href{https://github.com/arnav127/nse-fut-analysis/blob/main/stage9_tape/index_tests.py}{\texttt{stage9\_tape/index\_tests.py}} \\
+Hedge unwinding and open interest & \href{https://github.com/arnav127/nse-fut-analysis/blob/main/stage9_tape/hedge_tests.py}{\texttt{stage9\_tape/hedge\_tests.py}},
+  \href{https://github.com/arnav127/nse-fut-analysis/blob/main/stage9_tape/index_deriv_trades.py}{\texttt{index\_deriv\_trades.py}} \\
+Spread, depth and volatility (BH2, BH4) & \href{https://github.com/arnav127/nse-fut-analysis/blob/main/stage9_tape/followups.py}{\texttt{stage9\_tape/followups.py}},
+  \href{https://github.com/arnav127/nse-fut-analysis/blob/main/stage9_tape/book_profile.py}{\texttt{book\_profile.py}} \\
+BH2 panel regression & \href{https://github.com/arnav127/nse-fut-analysis/blob/main/stage9_tape/bh2_panel.py}{\texttt{stage9\_tape/bh2\_panel.py}} \\
+Futures pricing and strike pinning & \href{https://github.com/arnav127/nse-fut-analysis/blob/main/stage6_insights/s7_futures_convergence.py}{\texttt{s7\_futures\_convergence.py}},
+  \href{https://github.com/arnav127/nse-fut-analysis/blob/main/stage6_insights/s8_strike_pinning.py}{\texttt{s8\_strike\_pinning.py}} \\
+Futures trades and order books & \href{https://github.com/arnav127/nse-fut-analysis/blob/main/stage9_tape/futures_tape.py}{\texttt{stage9\_tape/futures\_tape.py}},
+  \href{https://github.com/arnav127/nse-fut-analysis/blob/main/stage9_tape/futures_book.py}{\texttt{futures\_book.py}} \\
+Charts in this report & \href{https://github.com/arnav127/nse-fut-analysis/blob/main/report/make_figures.py}{\texttt{report/make\_figures.py}} \\
+\bottomrule
+\end{tabularx}
+\end{center}
+
+\paragraph{Data.} The NSE's historical order, trade and index files are licensed, so they are not
+in the repository. The public data we used can be downloaded from the NSE:
+\begin{itemize}
+  \item Daily F\&O bhavcopy (open interest by contract):
+  \href{https://archives.nseindia.com/content/historical/DERIVATIVES/}{\texttt{archives.nseindia.com/content/historical/DERIVATIVES/}}
+  \item Participant-wise open interest:
+  \href{https://archives.nseindia.com/content/nsccl/}{\texttt{archives.nseindia.com/content/nsccl/}}
+  (files \texttt{fao\_participant\_oi\_DDMMYYYY.csv})
+  \item Nifty 50 and Nifty 500 constituents: NSE's index constituent files
+  (\href{https://www.niftyindices.com}{\texttt{niftyindices.com}}), archived copies from 2022.
+\end{itemize}
 
 \end{document}

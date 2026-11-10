@@ -74,3 +74,14 @@ report/*.aux
 report/*.log
 report/*.out
 report/*.toc
+
+# Not published: NSE material, planning documents, personal notes, downloaded data
+NSE_Hist_Order_data_layout*.pdf
+NSE_Expiry_Day_Analysis_Proposal_and_Steps.*
+Project proposal*.pdf
+implementation_plan.md
+generate_proposal_docs.py
+notes/
+data/external/
+data/results_hpc/
+data/results/s14_index_deriv/
