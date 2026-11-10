@@ -46,11 +46,10 @@ The NSE files are licensed and are **not** in this repository. Everything here r
 
 ## Running it
 
-Install the parser (wheels are on its [releases page](https://github.com/arnav127/nsetick/releases)),
-then the Python packages:
+Install the parser ([nsetick on PyPI](https://pypi.org/project/nsetick/)) and the Python packages:
 
 ```bash
-pip install nsetick --find-links https://github.com/arnav127/nsetick/releases/expanded_assets/v0.2.2
+pip install nsetick
 pip install -r requirements.txt
 ```
 
